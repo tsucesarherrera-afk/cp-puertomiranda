@@ -1,0 +1,2058 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CP Puerto Miranda - Sistema de Gestión</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1e3a8a;
+            --primary-dark: #1e40af;
+            --secondary: #64748b;
+            --accent: #f59e0b;
+            --danger: #dc2626;
+            --success: #059669;
+            --info: #0284c7;
+            --cloud: #6366f1;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+            --cp-blue: #4a90e2;
+            --cp-cyan: #5bc0de;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text);
+        }
+
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-box {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+        }
+
+        .logo-container {
+            margin-bottom: 30px;
+        }
+
+        .logo-image {
+            width: 200px;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+
+        .logo-title {
+            color: var(--cp-blue);
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.3;
+            text-transform: uppercase;
+        }
+
+        .logo-subtitle {
+            color: var(--secondary);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--cp-blue);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--cp-blue), var(--cp-cyan));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(74, 144, 226, 0.3);
+        }
+
+        .error-msg {
+            background: #fee2e2;
+            color: var(--danger);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            border-left: 4px solid var(--danger);
+        }
+
+        .app-container {
+            display: none;
+            min-height: 100vh;
+        }
+
+        .cloud-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 50px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cloud-status:hover {
+            transform: scale(1.05);
+        }
+
+        .cloud-status.online {
+            border: 2px solid var(--success);
+            color: var(--success);
+        }
+
+        .cloud-status.offline {
+            border: 2px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .cloud-status.syncing {
+            border: 2px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 280px;
+            background: var(--card);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.08);
+            z-index: 100;
+            padding: 20px 0;
+            overflow-y: auto;
+        }
+
+        .sidebar-logo {
+            text-align: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .sidebar-logo h3 {
+            color: var(--cp-blue);
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            line-height: 1.3;
+        }
+
+        .db-info {
+            margin: 15px 20px;
+            padding: 12px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .db-info label {
+            display: block;
+            font-size: 10px;
+            color: var(--cloud);
+            font-weight: 700;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+
+        .db-status {
+            font-size: 12px;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0 15px;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            color: var(--secondary);
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(74, 144, 226, 0.1);
+            color: var(--cp-blue);
+        }
+
+        .nav-link.active {
+            background: var(--cp-blue);
+            color: white;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 80px 30px 30px;
+            min-height: 100vh;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: var(--card);
+            padding: 20px 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+
+        .header h1 {
+            font-size: 24px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--cp-blue);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .btn-logout {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .content-section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .stat-title {
+            color: var(--secondary);
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-icon.blue { background: rgba(74, 144, 226, 0.1); color: var(--cp-blue); }
+        .stat-icon.green { background: rgba(5, 150, 105, 0.1); color: var(--success); }
+        .stat-icon.cloud { background: rgba(99, 102, 241, 0.1); color: var(--cloud); }
+        .stat-icon.orange { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 15px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+
+        .card-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--cp-blue);
+        }
+
+        .btn-primary {
+            background: var(--cp-blue);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-cloud {
+            background: var(--cloud);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cloud:hover {
+            background: #4f46e5;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-success:hover {
+            background: #047857;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .btn-warning {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-right: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: rgba(74, 144, 226, 0.05);
+            font-weight: 600;
+            color: var(--cp-blue);
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        tr:hover {
+            background: rgba(74, 144, 226, 0.02);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--cp-blue);
+        }
+
+        .hijos-section {
+            background: rgba(74, 144, 226, 0.03);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 2px dashed var(--border);
+        }
+
+        .hijo-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlide 0.3s ease;
+        }
+
+        @keyframes modalSlide {
+            from { opacity: 0; transform: scale(0.9) translateY(-20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-header {
+            padding: 25px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--secondary);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            background: rgba(0,0,0,0.05);
+            color: var(--danger);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success { background: rgba(5, 150, 105, 0.1); color: var(--success); }
+        .badge-cloud { background: rgba(99, 102, 241, 0.1); color: var(--cloud); }
+        .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
+        .badge-danger { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
+
+        .sync-panel {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
+            border: 2px solid rgba(99, 102, 241, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .sync-panel h3 {
+            color: var(--cloud);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .migration-steps {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+            border: 1px solid var(--border);
+        }
+
+        .step {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .step:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .step-number {
+            width: 30px;
+            height: 30px;
+            background: var(--cp-blue);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content h4 {
+            color: var(--text);
+            margin-bottom: 5px;
+        }
+
+        .step-content p {
+            color: var(--secondary);
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 15px;
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(74, 144, 226, 0.02);
+        }
+
+        .file-input-label:hover {
+            border-color: var(--cp-blue);
+            background: rgba(74, 144, 226, 0.05);
+        }
+
+        .file-input-label.has-file {
+            border-color: var(--success);
+            background: rgba(5, 150, 105, 0.05);
+            color: var(--success);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--success);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 10px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
+            display: none;
+            animation: slideIn 0.3s ease;
+            z-index: 2000;
+        }
+
+        .toast.error {
+            background: var(--danger);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); }
+            to { transform: translateX(0); }
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border);
+            border-top-color: var(--cloud);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .sync-constant-info {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid var(--cloud);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .sync-constant-info h4 {
+            color: var(--cloud);
+            margin-bottom: 10px;
+        }
+
+        .change-log {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .change-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            border-left: 3px solid;
+        }
+
+        .change-item.added {
+            background: rgba(5, 150, 105, 0.1);
+            border-left-color: var(--success);
+        }
+
+        .change-item.updated {
+            background: rgba(245, 158, 11, 0.1);
+            border-left-color: var(--accent);
+        }
+
+        .change-item.skipped {
+            background: rgba(100, 116, 139, 0.1);
+            border-left-color: var(--secondary);
+        }
+
+        .cedula-unique {
+            position: relative;
+        }
+
+        .cedula-unique input {
+            padding-right: 40px;
+        }
+
+        .validation-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+        }
+
+        .validation-icon.valid { color: var(--success); }
+        .validation-icon.invalid { color: var(--danger); }
+
+        .info-box {
+            background: rgba(5, 150, 105, 0.1);
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .connection-test {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+
+        .connection-test.success {
+            background: rgba(5, 150, 105, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(5, 150, 105, 0.2);
+        }
+
+        .connection-test.error {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+                height: auto;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p id="loadingText">Cargando...</p>
+    </div>
+
+    <!-- Login Screen -->
+    <div class="login-container" id="loginScreen">
+        <div class="login-box">
+            <div class="logo-container">
+                <svg class="logo-image" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="400" height="300" fill="#5bc0de" rx="15"/>
+                    <rect x="80" y="120" width="240" height="140" fill="#ffffff" stroke="#333" stroke-width="2"/>
+                    <polygon points="60,120 200,40 340,120" fill="#d9534f" stroke="#333" stroke-width="2"/>
+                    <rect x="100" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
+                    <rect x="180" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
+                    <rect x="260" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
+                    <rect x="170" y="180" width="60" height="80" fill="#8b4513" stroke="#333" stroke-width="2"/>
+                    <circle cx="220" cy="220" r="3" fill="#ffd700"/>
+                    <rect x="90" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
+                    <rect x="270" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
+                    <rect x="150" y="260" width="100" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
+                    <rect x="140" y="270" width="120" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
+                </svg>
+                <div class="logo-title">Consultorio Popular<br>Tipo II</div>
+                <div class="logo-subtitle">Puerto Miranda</div>
+            </div>
+            
+            <div class="error-msg" id="loginError">
+                Complete todos los campos
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Usuario</label>
+                    <input type="text" id="username" placeholder="Ingrese su nombre de usuario" required autocomplete="off">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" placeholder="Contraseña" required>
+                </div>
+
+                <button type="submit" class="btn">
+                    Ingresar al Sistema
+                </button>
+            </form>
+
+            <div style="margin-top: 20px; text-align: center; font-size: 12px; color: var(--secondary);">
+                <p>🔒 Sistema de Gestión de Personal</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div class="app-container" id="appContainer">
+        <!-- Cloud Status -->
+        <div class="cloud-status offline" id="cloudStatus">
+            <div class="status-dot"></div>
+            <span id="cloudText">Verificando...</span>
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <h3>Consultorio Popular<br>Tipo II<br>Puerto Miranda</h3>
+            </div>
+
+            <div class="db-info">
+                <label>☁️ Estado</label>
+                <div class="db-status" id="dbStatus">Cargando...</div>
+            </div>
+            
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a class="nav-link active" onclick="showSection('dashboard')">
+                            <span>📊</span> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick="showSection('migration')">
+                            <span>🔄</span> Sincronizar Excel
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick="showSection('trabajadores')">
+                            <span>👷</span> Trabajadores
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick="showSection('registrar')">
+                            <span>➕</span> Nuevo Registro
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick="showSection('consulta')">
+                            <span>🔍</span> Consulta
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <h1 id="pageTitle">Dashboard</h1>
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">US</div>
+                    <div>
+                        <div style="font-weight: 600;" id="userNameDisplay">Usuario</div>
+                        <div style="font-size: 12px; color: var(--secondary);">Administrador</div>
+                    </div>
+                    <button class="btn-logout" onclick="logout()">Salir</button>
+                </div>
+            </div>
+
+            <!-- Dashboard Section -->
+            <div class="content-section active" id="dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-title">Total Trabajadores</div>
+                            <div class="stat-icon blue">👷</div>
+                        </div>
+                        <div class="stat-value" id="statTotal">0</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-title">Total Hijos</div>
+                            <div class="stat-icon green">👶</div>
+                        </div>
+                        <div class="stat-value" id="statHijos">0</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-title">Base de Datos</div>
+                            <div class="stat-icon cloud">☁️</div>
+                        </div>
+                        <div class="stat-value" id="statCloud" style="font-size: 18px;">Local</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-title">Dependencias</div>
+                            <div class="stat-icon orange">🏢</div>
+                        </div>
+                        <div class="stat-value" id="statDeps">0</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Últimos Registros</div>
+                    </div>
+                    <div class="card-body">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cédula</th>
+                                    <th>Nombre</th>
+                                    <th>Cargo</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentBody">
+                                <tr><td colspan="4" style="text-align: center; color: var(--secondary);">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Migration Section -->
+            <div class="content-section" id="migration">
+                <div class="sync-panel">
+                    <h3>🔄 Sincronización con Excel</h3>
+                    <p style="margin-bottom: 15px; color: var(--secondary);">
+                        Importa o actualiza trabajadores desde un archivo Excel. 
+                        El sistema detecta automáticamente cambios y mantiene la cédula como identificador único.
+                    </p>
+
+                    <div class="sync-constant-info">
+                        <h4>📋 Funcionamiento:</h4>
+                        <ul style="margin-left: 20px; font-size: 13px; line-height: 1.8;">
+                            <li><strong>Nuevos:</strong> Cédulas que no existen se agregan</li>
+                            <li><strong>Actualizar:</strong> Datos modificados se actualizan automáticamente</li>
+                            <li><strong>Preservar:</strong> Se mantienen hijos y datos manuales</li>
+                        </ul>
+                    </div>
+
+                    <div class="migration-steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Seleccionar archivo Excel</h4>
+                                <div style="background: #f8fafc; padding: 10px; border-radius: 6px; font-size: 11px; font-family: monospace; margin: 10px 0;">
+                                    Columnas: Cedula, PrimerNombre, SegundoNombre, PrimerApellido, SegundoApellido, Sexo, FechaNacimiento, EstadoCivil, Direccion, Celular, Correo, NivelAcademico, Profesion, TipoPersonal, FechaIngreso, Cargo, Codigo, Dependencia, Nomina, Observaciones
+                                </div>
+                                <div class="file-input-wrapper">
+                                    <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleFileSelect(this)">
+                                    <label for="excelFile" class="file-input-label" id="fileLabel">
+                                        📁 Seleccionar archivo Excel (.xlsx)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Sincronizar</h4>
+                                <button class="btn-success" onclick="syncFromExcel()" id="btnSync" disabled>
+                                    🔄 Iniciar Sincronización
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Resultado</div>
+                    </div>
+                    <div class="card-body">
+                        <div id="syncStatus" style="padding: 20px; text-align: center; color: var(--secondary);">
+                            Esperando archivo...
+                        </div>
+                        <div id="changeLog" class="change-log" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trabajadores List Section -->
+            <div class="content-section" id="trabajadores">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Lista de Trabajadores</div>
+                        <button class="btn-primary" onclick="openModal()">+ Nuevo</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-box">
+                            <input type="text" class="search-input" id="searchInput" placeholder="Buscar por cédula, nombre o apellido..." onkeyup="searchTrabajadores()">
+                            <button class="btn-primary" onclick="searchTrabajadores()">Buscar</button>
+                        </div>
+
+                        <table id="trabajadoresTable">
+                            <thead>
+                                <tr>
+                                    <th>Cédula</th>
+                                    <th>Nombre Completo</th>
+                                    <th>Cargo</th>
+                                    <th>Dependencia</th>
+                                    <th>Hijos</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trabajadoresBody">
+                                <tr><td colspan="6" style="text-align: center; color: var(--secondary); padding: 40px;">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registrar Section -->
+            <div class="content-section" id="registrar">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Registrar Nuevo Trabajador</div>
+                        <span class="badge badge-success" id="saveMode">Modo: Local</span>
+                    </div>
+                    <div class="card-body">
+                        <form id="trabajadorForm" onsubmit="saveTrabajador(event)">
+                            <div class="form-grid">
+                                <div class="form-group cedula-unique">
+                                    <label>Cédula * <span style="color: var(--danger); font-size: 11px;">(ÚNICA)</span></label>
+                                    <input type="text" name="cedula" id="cedulaInput" required placeholder="V-12345678" onblur="validateCedulaUnica(this.value)">
+                                    <span class="validation-icon" id="cedulaValidation"></span>
+                                    <div id="cedulaError" style="color: var(--danger); font-size: 12px; margin-top: 5px; display: none;"></div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Primer Nombre *</label>
+                                    <input type="text" name="primerNombre" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Segundo Nombre</label>
+                                    <input type="text" name="segundoNombre">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Primer Apellido *</label>
+                                    <input type="text" name="primerApellido" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Segundo Apellido</label>
+                                    <input type="text" name="segundoApellido">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Sexo *</label>
+                                    <select name="sexo" required>
+                                        <option value="">Seleccione...</option>
+                                        <option value="Masculino">Masculino</option>
+                                        <option value="Femenino">Femenino</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Fecha de Nacimiento *</label>
+                                    <input type="date" name="fechaNacimiento" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Estado Civil *</label>
+                                    <select name="estadoCivil" required>
+                                        <option value="">Seleccione...</option>
+                                        <option value="Soltero">Soltero/a</option>
+                                        <option value="Casado">Casado/a</option>
+                                        <option value="Divorciado">Divorciado/a</option>
+                                        <option value="Viudo">Viudo/a</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <label>Dirección</label>
+                                    <input type="text" name="direccion">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Celular</label>
+                                    <input type="tel" name="celular">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Correo Electrónico</label>
+                                    <input type="email" name="correo">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Nivel Académico</label>
+                                    <select name="nivelAcademico">
+                                        <option value="">Seleccione...</option>
+                                        <option value="Primaria">Primaria</option>
+                                        <option value="Secundaria">Secundaria</option>
+                                        <option value="Técnico Medio">Técnico Medio</option>
+                                        <option value="Universitario">Universitario</option>
+                                        <option value="Especialización">Especialización</option>
+                                        <option value="Maestría">Maestría</option>
+                                        <option value="Doctorado">Doctorado</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Profesión</label>
+                                    <input type="text" name="profesion">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Tipo de Personal *</label>
+                                    <select name="tipoPersonal" required>
+                                        <option value="">Seleccione...</option>
+                                        <option value="Fijo">Fijo</option>
+                                        <option value="Contratado">Contratado</option>
+                                        <option value="Obrero">Obrero</option>
+                                        <option value="Temporal">Temporal</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Fecha de Ingreso *</label>
+                                    <input type="date" name="fechaIngreso" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Cargo *</label>
+                                    <input type="text" name="cargo" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Código</label>
+                                    <input type="text" name="codigo">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Dependencia *</label>
+                                    <input type="text" name="dependencia" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Nómina</label>
+                                    <input type="text" name="nomina">
+                                </div>
+                                
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <label>Observaciones</label>
+                                    <textarea name="observaciones" rows="3"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="hijos-section">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                    <h3 style="color: var(--cp-blue);">👶 Hijos/Dependientes</h3>
+                                    <button type="button" class="btn-primary" onclick="addHijo()" style="width: auto; padding: 8px 16px; font-size: 13px;">
+                                        + Agregar Hijo
+                                    </button>
+                                </div>
+                                <div id="hijosContainer"></div>
+                            </div>
+
+                            <div style="margin-top: 25px; display: flex; gap: 10px;">
+                                <button type="submit" class="btn-primary" id="btnSubmit">💾 Guardar</button>
+                                <button type="reset" class="btn-secondary" onclick="resetCedulaValidation()">Limpiar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consulta Section -->
+            <div class="content-section" id="consulta">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Consulta de Trabajadores</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-box">
+                            <input type="text" class="search-input" id="consultaInput" placeholder="Ingrese cédula o nombre..." style="font-size: 16px; padding: 15px;">
+                            <button class="btn-primary" onclick="consultaAvanzada()" style="padding: 15px 30px;">🔍 Buscar</button>
+                        </div>
+                        
+                        <div id="consultaResult" style="margin-top: 20px;"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal para Editar -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Editar Trabajador</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm" onsubmit="updateTrabajador(event)">
+                    <input type="hidden" id="editId">
+                    <div class="form-grid" id="editFormContent"></div>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button type="submit" class="btn-primary">Actualizar</button>
+                        <button type="button" class="btn-secondary" onclick="closeModal()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================
+        // CONFIGURACIÓN
+        // ============================================
+        const ADMIN_PASS = 'admin123';
+        
+        let trabajadores = [];
+        let currentUser = '';
+        let currentEditId = null;
+        let selectedFile = null;
+
+        // ============================================
+        // INICIALIZACIÓN
+        // ============================================
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value;
+            
+            if (user === '' || pass === '') {
+                document.getElementById('loginError').textContent = 'Complete todos los campos';
+                document.getElementById('loginError').style.display = 'block';
+                return;
+            }
+            
+            if (pass === ADMIN_PASS) {
+                currentUser = user;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+                document.body.style.background = 'var(--bg)';
+                
+                document.getElementById('userNameDisplay').textContent = user;
+                document.getElementById('userAvatar').textContent = user.substring(0, 2).toUpperCase();
+                
+                initializeSystem();
+            } else {
+                document.getElementById('loginError').textContent = 'Contraseña incorrecta';
+                document.getElementById('loginError').style.display = 'block';
+            }
+        });
+
+        function initializeSystem() {
+            loadLocalData();
+            updateStats();
+            loadRecent();
+            loadTrabajadores();
+            updateCloudStatus('online', 'Listo');
+        }
+
+        function logout() {
+            currentUser = '';
+            location.reload();
+        }
+
+        function updateCloudStatus(status, text) {
+            const statusEl = document.getElementById('cloudStatus');
+            const textEl = document.getElementById('cloudText');
+            const dbStatus = document.getElementById('dbStatus');
+
+            statusEl.className = 'cloud-status ' + status;
+            textEl.textContent = text;
+            dbStatus.textContent = text;
+        }
+
+        // ============================================
+        // VALIDACIÓN DE CÉDULA
+        // ============================================
+        function validateCedulaUnica(cedula) {
+            const validationIcon = document.getElementById('cedulaValidation');
+            const cedulaError = document.getElementById('cedulaError');
+            const btnSubmit = document.getElementById('btnSubmit');
+            
+            if (!cedula || cedula.trim() === '') {
+                validationIcon.textContent = '';
+                cedulaError.style.display = 'none';
+                btnSubmit.disabled = false;
+                return true;
+            }
+            
+            const existe = trabajadores.some(t => 
+                t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
+            );
+            
+            if (existe) {
+                validationIcon.textContent = '❌';
+                validationIcon.className = 'validation-icon invalid';
+                cedulaError.textContent = '⚠️ Esta cédula ya existe';
+                cedulaError.style.display = 'block';
+                btnSubmit.disabled = true;
+                return false;
+            }
+            
+            validationIcon.textContent = '✓';
+            validationIcon.className = 'validation-icon valid';
+            cedulaError.style.display = 'none';
+            btnSubmit.disabled = false;
+            return true;
+        }
+
+        function resetCedulaValidation() {
+            document.getElementById('cedulaValidation').textContent = '';
+            document.getElementById('cedulaError').style.display = 'none';
+            document.getElementById('btnSubmit').disabled = false;
+        }
+
+        // ============================================
+        // SINCRONIZACIÓN EXCEL
+        // ============================================
+        function handleFileSelect(input) {
+            const label = document.getElementById('fileLabel');
+            const btnSync = document.getElementById('btnSync');
+            
+            if (input.files && input.files[0]) {
+                selectedFile = input.files[0];
+                label.textContent = `📄 ${selectedFile.name}`;
+                label.classList.add('has-file');
+                btnSync.disabled = false;
+                document.getElementById('syncStatus').innerHTML = 'Archivo listo para sincronizar';
+            } else {
+                selectedFile = null;
+                label.textContent = '📁 Seleccionar archivo Excel (.xlsx)';
+                label.classList.remove('has-file');
+                btnSync.disabled = true;
+            }
+        }
+
+        async function syncFromExcel() {
+            if (!selectedFile) {
+                showToast('Selecciona un archivo primero', 'error');
+                return;
+            }
+
+            showLoading(true, 'Procesando Excel...');
+            
+            try {
+                const data = await selectedFile.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                if (jsonData.length < 2) {
+                    throw new Error('El archivo no tiene datos suficientes');
+                }
+
+                const headers = jsonData[0].map(h => h.toString().trim());
+                const excelData = [];
+                
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    const obj = {};
+                    headers.forEach((h, idx) => {
+                        obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
+                    });
+                    
+                    excelData.push(normalizeTrabajador(obj));
+                }
+
+                const resultado = sincronizarDatos(excelData);
+                mostrarResultadoSync(resultado);
+                
+                if (resultado.totalCambios > 0) {
+                    saveLocalData();
+                    loadTrabajadores();
+                    updateStats();
+                    showToast(`Sincronización: ${resultado.totalCambios} cambios`);
+                } else {
+                    showToast('No se detectaron cambios');
+                }
+
+                selectedFile = null;
+                document.getElementById('excelFile').value = '';
+                document.getElementById('fileLabel').textContent = '📁 Seleccionar archivo Excel (.xlsx)';
+                document.getElementById('fileLabel').classList.remove('has-file');
+                document.getElementById('btnSync').disabled = true;
+
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+                document.getElementById('syncStatus').innerHTML = `<div style="color: var(--danger);">❌ ${error.message}</div>`;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function sincronizarDatos(excelData) {
+            const cambios = {
+                agregados: [],
+                actualizados: [],
+                sinCambios: [],
+                errores: []
+            };
+
+            const cedulasVistas = new Set();
+
+            for (const nuevo of excelData) {
+                const cedula = nuevo.cedula.toString().trim();
+                const cedulaKey = cedula.toLowerCase();
+
+                if (!nuevo.cedula || !nuevo.primerNombre || !nuevo.primerApellido) {
+                    cambios.errores.push({ cedula: cedula || '(vacía)', error: 'Faltan campos' });
+                    continue;
+                }
+
+                if (cedulasVistas.has(cedulaKey)) {
+                    cambios.errores.push({ cedula: cedula, error: 'Duplicado en Excel' });
+                    continue;
+                }
+
+                const indexExistente = trabajadores.findIndex(t => 
+                    t.cedula.toString().trim().toLowerCase() === cedulaKey
+                );
+
+                if (indexExistente === -1) {
+                    trabajadores.push(nuevo);
+                    cambios.agregados.push({ cedula: cedula, nombre: `${nuevo.primerNombre} ${nuevo.primerApellido}` });
+                } else {
+                    const actual = trabajadores[indexExistente];
+                    const hayCambios = detectarCambios(actual, nuevo);
+
+                    if (hayCambios) {
+                        trabajadores[indexExistente] = {
+                            ...nuevo,
+                            id: actual.id,
+                            fechaRegistro: actual.fechaRegistro,
+                            hijos: actual.hijos || []
+                        };
+                        cambios.actualizados.push({ cedula: cedula, nombre: `${nuevo.primerNombre} ${nuevo.primerApellido}` });
+                    } else {
+                        cambios.sinCambios.push({ cedula: cedula });
+                    }
+                }
+
+                cedulasVistas.add(cedulaKey);
+            }
+
+            return {
+                agregados: cambios.agregados,
+                actualizados: cambios.actualizados,
+                sinCambios: cambios.sinCambios,
+                errores: cambios.errores,
+                totalCambios: cambios.agregados.length + cambios.actualizados.length
+            };
+        }
+
+        function detectarCambios(actual, nuevo) {
+            const campos = ['primerNombre', 'segundoNombre', 'primerApellido', 'segundoApellido', 'sexo', 'cargo', 'dependencia'];
+            return campos.some(campo => (actual[campo] || '') !== (nuevo[campo] || ''));
+        }
+
+        function mostrarResultadoSync(resultado) {
+            const statusDiv = document.getElementById('syncStatus');
+            const logDiv = document.getElementById('changeLog');
+            
+            let html = `
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; text-align: center;">
+                    <div style="background: rgba(5, 150, 105, 0.1); padding: 15px; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--success);">${resultado.agregados.length}</div>
+                        <div style="font-size: 12px;">Agregados</div>
+                    </div>
+                    <div style="background: rgba(245, 158, 11, 0.1); padding: 15px; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--accent);">${resultado.actualizados.length}</div>
+                        <div style="font-size: 12px;">Actualizados</div>
+                    </div>
+                    <div style="background: rgba(100, 116, 139, 0.1); padding: 15px; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--secondary);">${resultado.sinCambios.length}</div>
+                        <div style="font-size: 12px;">Sin cambios</div>
+                    </div>
+                    <div style="background: rgba(220, 38, 38, 0.1); padding: 15px; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--danger);">${resultado.errores.length}</div>
+                        <div style="font-size: 12px;">Errores</div>
+                    </div>
+                </div>
+            `;
+            
+            statusDiv.innerHTML = html;
+
+            let logHtml = '';
+            if (resultado.agregados.length > 0) {
+                logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--success);">➕ Agregados:</strong>';
+                resultado.agregados.forEach(r => logHtml += `<div class="change-item added">${r.cedula} - ${r.nombre}</div>`);
+                logHtml += '</div>';
+            }
+            if (resultado.actualizados.length > 0) {
+                logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--accent);">🔄 Actualizados:</strong>';
+                resultado.actualizados.forEach(r => logHtml += `<div class="change-item updated">${r.cedula} - ${r.nombre}</div>`);
+                logHtml += '</div>';
+            }
+            
+            logDiv.innerHTML = logHtml || '<div style="color: var(--secondary);">Sin cambios para mostrar</div>';
+            logDiv.style.display = 'block';
+        }
+
+        function normalizeTrabajador(data) {
+            const parseDate = (val) => {
+                if (!val) return '';
+                if (typeof val === 'number') {
+                    const epoch = new Date(1899, 11, 30);
+                    const d = new Date(epoch.getTime() + val * 24 * 60 * 60 * 1000);
+                    return d.toISOString().split('T')[0];
+                }
+                if (typeof val === 'string' && val.includes('/')) {
+                    const p = val.split('/');
+                    if (p.length === 3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+                }
+                return val;
+            };
+
+            return {
+                id: Date.now() + Math.random(),
+                cedula: (data.Cedula || data.cedula || '').toString().trim(),
+                primerNombre: (data.PrimerNombre || data.primerNombre || '').toString().trim(),
+                segundoNombre: (data.SegundoNombre || data.segundoNombre || '').toString().trim(),
+                primerApellido: (data.PrimerApellido || data.primerApellido || '').toString().trim(),
+                segundoApellido: (data.SegundoApellido || data.segundoApellido || '').toString().trim(),
+                sexo: (data.Sexo || data.sexo || '').toString().trim(),
+                fechaNacimiento: parseDate(data.FechaNacimiento || data.fechaNacimiento),
+                estadoCivil: (data.EstadoCivil || data.estadoCivil || '').toString().trim(),
+                direccion: (data.Direccion || data.direccion || '').toString().trim(),
+                celular: (data.Celular || data.celular || '').toString().trim(),
+                correo: (data.Correo || data.correo || '').toString().trim(),
+                nivelAcademico: (data.NivelAcademico || data.nivelAcademico || '').toString().trim(),
+                profesion: (data.Profesion || data.profesion || '').toString().trim(),
+                tipoPersonal: (data.TipoPersonal || data.tipoPersonal || '').toString().trim(),
+                fechaIngreso: parseDate(data.FechaIngreso || data.fechaIngreso),
+                cargo: (data.Cargo || data.cargo || '').toString().trim(),
+                codigo: (data.Codigo || data.codigo || '').toString().trim(),
+                dependencia: (data.Dependencia || data.dependencia || '').toString().trim(),
+                nomina: (data.Nomina || data.nomina || '').toString().trim(),
+                observaciones: (data.Observaciones || data.observaciones || '').toString().trim(),
+                hijos: [],
+                fechaRegistro: new Date().toISOString()
+            };
+        }
+
+        // ============================================
+        // FUNCIONES UTILITARIAS
+        // ============================================
+        function showLoading(show, text = 'Cargando...') {
+            document.getElementById('loadingOverlay').classList.toggle('active', show);
+            document.getElementById('loadingText').textContent = text;
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast ' + (type === 'error' ? 'error' : '');
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+
+        function saveLocalData() {
+            localStorage.setItem('cp_trabajadores', JSON.stringify(trabajadores));
+        }
+
+        function loadLocalData() {
+            const local = localStorage.getItem('cp_trabajadores');
+            if (local) {
+                try {
+                    trabajadores = JSON.parse(local);
+                } catch (e) {
+                    trabajadores = [];
+                }
+            }
+        }
+
+        // ============================================
+        // UI Y NAVEGACIÓN
+        // ============================================
+        function showSection(sectionId) {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            event.target.closest('.nav-link').classList.add('active');
+            
+            const titles = {
+                'dashboard': 'Dashboard',
+                'migration': 'Sincronizar Excel',
+                'trabajadores': 'Trabajadores',
+                'registrar': 'Nuevo Registro',
+                'consulta': 'Consulta'
+            };
+            document.getElementById('pageTitle').textContent = titles[sectionId];
+            
+            if (sectionId === 'dashboard') {
+                updateStats();
+                loadRecent();
+            } else if (sectionId === 'trabajadores') {
+                loadTrabajadores();
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('statTotal').textContent = trabajadores.length;
+            const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
+            document.getElementById('statHijos').textContent = totalHijos;
+            const deps = [...new Set(trabajadores.map(t => t.dependencia).filter(Boolean))];
+            document.getElementById('statDeps').textContent = deps.length;
+        }
+
+        function loadRecent() {
+            const recent = [...trabajadores].reverse().slice(0, 5);
+            const tbody = document.getElementById('recentBody');
+            tbody.innerHTML = recent.length ? recent.map(t => `
+                <tr>
+                    <td>${t.cedula}</td>
+                    <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
+                    <td>${t.cargo}</td>
+                    <td><span class="badge badge-success">Activo</span></td>
+                </tr>
+            `).join('') : '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin registros</td></tr>';
+        }
+
+        function loadTrabajadores() {
+            const tbody = document.getElementById('trabajadoresBody');
+            tbody.innerHTML = trabajadores.length ? trabajadores.map(t => `
+                <tr>
+                    <td><strong>${t.cedula}</strong></td>
+                    <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
+                    <td>${t.cargo}</td>
+                    <td>${t.dependencia}</td>
+                    <td>${t.hijos ? t.hijos.length : 0}</td>
+                    <td>
+                        <button class="btn-warning" onclick="editTrabajador(${t.id})">✏️</button>
+                        <button class="btn-danger" onclick="deleteTrabajador(${t.id})">🗑️</button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary); padding: 40px;">Sin trabajadores</td></tr>';
+        }
+
+        function searchTrabajadores() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = trabajadores.filter(t => 
+                t.cedula.toLowerCase().includes(query) ||
+                t.primerNombre.toLowerCase().includes(query) ||
+                t.primerApellido.toLowerCase().includes(query)
+            );
+            
+            const tbody = document.getElementById('trabajadoresBody');
+            tbody.innerHTML = filtered.length ? filtered.map(t => `
+                <tr>
+                    <td><strong>${t.cedula}</strong></td>
+                    <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
+                    <td>${t.cargo}</td>
+                    <td>${t.dependencia}</td>
+                    <td>${t.hijos ? t.hijos.length : 0}</td>
+                    <td>
+                        <button class="btn-warning" onclick="editTrabajador(${t.id})">✏️</button>
+                        <button class="btn-danger" onclick="deleteTrabajador(${t.id})">🗑️</button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary);">No encontrado</td></tr>';
+        }
+
+        function addHijo() {
+            const container = document.getElementById('hijosContainer');
+            const div = document.createElement('div');
+            div.className = 'hijo-item';
+            div.innerHTML = `
+                <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre" required>
+                <input type="text" placeholder="Cédula" class="hijo-cedula">
+                <select class="hijo-sexo">
+                    <option value="">Sexo</option>
+                    <option value="Masculino">M</option>
+                    <option value="Femenino">F</option>
+                </select>
+                <input type="date" class="hijo-fecha">
+                <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function saveTrabajador(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            
+            const cedula = formData.get('cedula').toString().trim();
+            
+            const existe = trabajadores.some(t => 
+                t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
+            );
+            
+            if (existe) {
+                showToast('Error: La cédula ya existe', 'error');
+                return;
+            }
+            
+            const hijos = [];
+            document.querySelectorAll('.hijo-item').forEach(item => {
+                hijos.push({
+                    nombresApellidos: item.querySelector('.hijo-nombre').value,
+                    cedula: item.querySelector('.hijo-cedula').value,
+                    sexo: item.querySelector('.hijo-sexo').value,
+                    fechaNacimiento: item.querySelector('.hijo-fecha').value
+                });
+            });
+            
+            const trabajador = {
+                id: Date.now(),
+                cedula: cedula,
+                primerNombre: formData.get('primerNombre'),
+                segundoNombre: formData.get('segundoNombre'),
+                primerApellido: formData.get('primerApellido'),
+                segundoApellido: formData.get('segundoApellido'),
+                sexo: formData.get('sexo'),
+                fechaNacimiento: formData.get('fechaNacimiento'),
+                estadoCivil: formData.get('estadoCivil'),
+                direccion: formData.get('direccion'),
+                celular: formData.get('celular'),
+                correo: formData.get('correo'),
+                nivelAcademico: formData.get('nivelAcademico'),
+                profesion: formData.get('profesion'),
+                tipoPersonal: formData.get('tipoPersonal'),
+                fechaIngreso: formData.get('fechaIngreso'),
+                cargo: formData.get('cargo'),
+                codigo: formData.get('codigo'),
+                dependencia: formData.get('dependencia'),
+                nomina: formData.get('nomina'),
+                observaciones: formData.get('observaciones'),
+                hijos: hijos,
+                fechaRegistro: new Date().toISOString()
+            };
+            
+            trabajadores.push(trabajador);
+            saveLocalData();
+            form.reset();
+            document.getElementById('hijosContainer').innerHTML = '';
+            resetCedulaValidation();
+            showToast('Trabajador guardado');
+            updateStats();
+        }
+
+        function consultaAvanzada() {
+            const query = document.getElementById('consultaInput').value.toLowerCase();
+            const resultDiv = document.getElementById('consultaResult');
+            
+            if (!query) {
+                resultDiv.innerHTML = '<p style="text-align: center; color: var(--secondary);">Ingrese término de búsqueda</p>';
+                return;
+            }
+            
+            const encontrados = trabajadores.filter(t => 
+                t.cedula.toLowerCase().includes(query) ||
+                t.primerNombre.toLowerCase().includes(query) ||
+                t.primerApellido.toLowerCase().includes(query)
+            );
+            
+            if (encontrados.length === 0) {
+                resultDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--secondary);">No se encontraron resultados</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = encontrados.map(t => `
+                <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border);">
+                    <h3 style="color: var(--cp-blue); margin-bottom: 10px;">${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px;">
+                        <div><strong>Cédula:</strong> ${t.cedula}</div>
+                        <div><strong>Cargo:</strong> ${t.cargo}</div>
+                        <div><strong>Dependencia:</strong> ${t.dependencia}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function editTrabajador(id) {
+            const t = trabajadores.find(x => x.id === id);
+            if (!t) return;
+            
+            currentEditId = id;
+            const content = document.getElementById('editFormContent');
+            content.innerHTML = `
+                <div class="form-group">
+                    <label>Cédula</label>
+                    <input type="text" value="${t.cedula}" disabled style="background: #f1f5f9;">
+                </div>
+                <div class="form-group">
+                    <label>Primer Nombre</label>
+                    <input type="text" name="primerNombre" value="${t.primerNombre}" required>
+                </div>
+                <div class="form-group">
+                    <label>Primer Apellido</label>
+                    <input type="text" name="primerApellido" value="${t.primerApellido}" required>
+                </div>
+                <div class="form-group">
+                    <label>Cargo</label>
+                    <input type="text" name="cargo" value="${t.cargo}" required>
+                </div>
+                <div class="form-group">
+                    <label>Dependencia</label>
+                    <input type="text" name="dependencia" value="${t.dependencia}" required>
+                </div>
+            `;
+            
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function updateTrabajador(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            
+            const index = trabajadores.findIndex(t => t.id === currentEditId);
+            if (index !== -1) {
+                trabajadores[index] = {
+                    ...trabajadores[index],
+                    primerNombre: formData.get('primerNombre'),
+                    primerApellido: formData.get('primerApellido'),
+                    cargo: formData.get('cargo'),
+                    dependencia: formData.get('dependencia')
+                };
+                
+                saveLocalData();
+                closeModal();
+                loadTrabajadores();
+                showToast('Actualizado correctamente');
+            }
+        }
+
+        function deleteTrabajador(id) {
+            if (confirm('¿Eliminar este trabajador?')) {
+                trabajadores = trabajadores.filter(t => t.id !== id);
+                saveLocalData();
+                loadTrabajadores();
+                updateStats();
+                showToast('Eliminado');
+            }
+        }
+
+        function openModal() {
+            document.getElementById('trabajadorForm').reset();
+            document.getElementById('hijosContainer').innerHTML = '';
+            resetCedulaValidation();
+            showSection('registrar');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            event.target.closest('.nav-link').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('active');
+            currentEditId = null;
+        }
+
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        window.addEventListener('load', function() {
+            document.getElementById('appContainer').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
