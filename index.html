@@ -345,6 +345,22 @@
             margin-bottom: 30px;
         }
 
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header">
+        <div class="card-title">Acciones Rápidas</div>
+    </div>
+    <div class="card-body" style="display: flex; gap: 15px; flex-wrap: wrap;">
+        <button class="btn-success" onclick="exportarExcel()">
+            📊 Exportar a Excel
+        </button>
+        <button class="btn-primary" onclick="showSection('registrar'); document.querySelector('[onclick*=\'registrar\']').click();">
+            ➕ Nuevo Trabajador
+        </button>
+        <button class="btn-cloud" onclick="showSection('migration'); document.querySelector('[onclick*=\'migration\']').click();">
+            🔄 Sincronizar Excel
+        </button>
+    </div>
+</div>   
         .stat-card {
             background: var(--card);
             padding: 25px;
@@ -2188,4 +2204,5 @@ function exportarExcel() {
     </script>
 </body>
 </html>
+
 
