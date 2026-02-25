@@ -345,22 +345,6 @@
             margin-bottom: 30px;
         }
 
-<div class="card" style="margin-top: 20px;">
-    <div class="card-header">
-        <div class="card-title">Acciones Rápidas</div>
-    </div>
-    <div class="card-body" style="display: flex; gap: 15px; flex-wrap: wrap;">
-        <button class="btn-success" onclick="exportarExcel()">
-            📊 Exportar a Excel
-        </button>
-        <button class="btn-primary" onclick="showSection('registrar'); document.querySelector('[onclick*=\'registrar\']').click();">
-            ➕ Nuevo Trabajador
-        </button>
-        <button class="btn-cloud" onclick="showSection('migration'); document.querySelector('[onclick*=\'migration\']').click();">
-            🔄 Sincronizar Excel
-        </button>
-    </div>
-</div>   
         .stat-card {
             background: var(--card);
             padding: 25px;
@@ -538,6 +522,26 @@
             cursor: pointer;
             font-size: 13px;
             margin-right: 5px;
+        }
+
+        .btn-export {
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.3);
+        }
+
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.4);
         }
 
         table {
@@ -934,6 +938,45 @@
             border: 1px solid rgba(220, 38, 38, 0.2);
         }
 
+        .export-panel {
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.1), rgba(5, 150, 105, 0.05));
+            border: 2px solid rgba(5, 150, 105, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .export-panel h3 {
+            color: var(--success);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .export-info {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+            border: 1px solid var(--border);
+        }
+
+        .export-info ul {
+            margin-left: 20px;
+            font-size: 13px;
+            line-height: 1.8;
+            color: var(--secondary);
+        }
+
+        .export-info li {
+            margin-bottom: 8px;
+        }
+
+        .export-info strong {
+            color: var(--text);
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -1037,6 +1080,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" onclick="showSection('export')">
+                            <span>📥</span> Exportar Excel
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" onclick="showSection('trabajadores')">
                             <span>👷</span> Trabajadores
                         </a>
@@ -1105,16 +1153,29 @@
                         <div class="stat-value" id="statDeps">0</div>
                     </div>
                 </div>
-<!-- sección de trabajadores -->
-                
-               <div class="card">
-    <div class="card-header">
-        <div class="card-title">Lista de Trabajadores</div>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-success" onclick="exportarExcel()">📊 Exportar Excel</button>
-            <button class="btn-primary" onclick="openModal()">+ Nuevo</button>
-        </div>
-    </div>    
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Últimos Registros</div>
+                    </div>
+                    <div class="card-body">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cédula</th>
+                                    <th>Nombre</th>
+                                    <th>Cargo</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentBody">
+                                <tr><td colspan="4" style="text-align: center; color: var(--secondary);">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Migration Section -->
             <div class="content-section" id="migration">
                 <div class="sync-panel">
@@ -1171,6 +1232,90 @@
                             Esperando archivo...
                         </div>
                         <div id="changeLog" class="change-log" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Section -->
+            <div class="content-section" id="export">
+                <div class="export-panel">
+                    <h3>📥 Exportar a Excel</h3>
+                    <p style="margin-bottom: 15px; color: var(--secondary);">
+                        Exporta todos los datos del sistema a un archivo Excel con dos hojas: Trabajadores e Hijos.
+                    </p>
+
+                    <div class="export-info">
+                        <h4 style="color: var(--success); margin-bottom: 15px;">📋 Estructura del archivo exportado:</h4>
+                        <ul>
+                            <li><strong>Hoja 1 - Trabajadores:</strong> Contiene todos los datos personales y laborales de cada trabajador</li>
+                            <li><strong>Hoja 2 - Hijos:</strong> Contiene los datos de los hijos/dependientes vinculados a cada trabajador por cédula</li>
+                            <li><strong>Formato:</strong> Archivo .xlsx compatible con Excel, LibreOffice y Google Sheets</li>
+                            <li><strong>Datos incluidos:</strong> Todos los registros almacenados en el sistema</li>
+                        </ul>
+                    </div>
+
+                    <div class="migration-steps" style="margin-top: 20px;">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Preparar exportación</h4>
+                                <p style="color: var(--secondary); font-size: 13px;">
+                                    Actualmente hay <strong id="exportTotalTrabajadores">0</strong> trabajadores y 
+                                    <strong id="exportTotalHijos">0</strong> hijos registrados en el sistema.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Generar archivo Excel</h4>
+                                <button class="btn-export" onclick="exportToExcel()">
+                                    📥 Descargar Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Vista previa de datos</div>
+                    </div>
+                    <div class="card-body">
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="color: var(--cp-blue); margin-bottom: 10px;">👷 Trabajadores (primeros 5 registros)</h4>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Cédula</th>
+                                        <th>Nombre</th>
+                                        <th>Cargo</th>
+                                        <th>Dependencia</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewTrabajadores">
+                                    <tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin datos</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div>
+                            <h4 style="color: var(--success); margin-bottom: 10px;">👶 Hijos/Dependientes (primeros 5 registros)</h4>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Cédula Padre/Madre</th>
+                                        <th>Nombre Hijo</th>
+                                        <th>Sexo</th>
+                                        <th>Fecha Nac.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewHijos">
+                                    <tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin datos</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1512,6 +1657,145 @@
         }
 
         // ============================================
+        // EXPORTAR A EXCEL
+        // ============================================
+        function exportToExcel() {
+            if (trabajadores.length === 0) {
+                showToast('No hay datos para exportar', 'error');
+                return;
+            }
+
+            showLoading(true, 'Generando archivo Excel...');
+
+            try {
+                // Preparar datos de trabajadores
+                const trabajadoresData = trabajadores.map(t => ({
+                    'ID': t.id,
+                    'Cedula': t.cedula,
+                    'PrimerNombre': t.primerNombre,
+                    'SegundoNombre': t.segundoNombre || '',
+                    'PrimerApellido': t.primerApellido,
+                    'SegundoApellido': t.segundoApellido || '',
+                    'Sexo': t.sexo,
+                    'FechaNacimiento': t.fechaNacimiento,
+                    'EstadoCivil': t.estadoCivil,
+                    'Direccion': t.direccion || '',
+                    'Celular': t.celular || '',
+                    'Correo': t.correo || '',
+                    'NivelAcademico': t.nivelAcademico || '',
+                    'Profesion': t.profesion || '',
+                    'TipoPersonal': t.tipoPersonal,
+                    'FechaIngreso': t.fechaIngreso,
+                    'Cargo': t.cargo,
+                    'Codigo': t.codigo || '',
+                    'Dependencia': t.dependencia,
+                    'Nomina': t.nomina || '',
+                    'Observaciones': t.observaciones || '',
+                    'FechaRegistro': t.fechaRegistro,
+                    'TotalHijos': t.hijos ? t.hijos.length : 0
+                }));
+
+                // Preparar datos de hijos
+                const hijosData = [];
+                trabajadores.forEach(t => {
+                    if (t.hijos && t.hijos.length > 0) {
+                        t.hijos.forEach((h, index) => {
+                            hijosData.push({
+                                'ID': `${t.id}_${index}`,
+                                'CedulaPadreMadre': t.cedula,
+                                'NombrePadreMadre': `${t.primerNombre} ${t.primerApellido}`,
+                                'NombresApellidosHijo': h.nombresApellidos,
+                                'CedulaHijo': h.cedula || '',
+                                'Sexo': h.sexo || '',
+                                'FechaNacimiento': h.fechaNacimiento || ''
+                            });
+                        });
+                    }
+                });
+
+                // Crear workbook
+                const wb = XLSX.utils.book_new();
+                
+                // Hoja de trabajadores
+                const wsTrabajadores = XLSX.utils.json_to_sheet(trabajadoresData);
+                XLSX.utils.book_append_sheet(wb, wsTrabajadores, 'Trabajadores');
+                
+                // Hoja de hijos (solo si hay datos)
+                if (hijosData.length > 0) {
+                    const wsHijos = XLSX.utils.json_to_sheet(hijosData);
+                    XLSX.utils.book_append_sheet(wb, wsHijos, 'Hijos');
+                }
+
+                // Generar nombre de archivo con fecha
+                const fecha = new Date().toISOString().split('T')[0];
+                const nombreArchivo = `CP_Puerto_Miranda_${fecha}.xlsx`;
+
+                // Descargar archivo
+                XLSX.writeFile(wb, nombreArchivo);
+                
+                showLoading(false);
+                showToast(`Archivo exportado: ${nombreArchivo}`);
+                
+            } catch (error) {
+                showLoading(false);
+                showToast('Error al exportar: ' + error.message, 'error');
+            }
+        }
+
+        function updateExportPreview() {
+            // Actualizar contadores
+            const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
+            document.getElementById('exportTotalTrabajadores').textContent = trabajadores.length;
+            document.getElementById('exportTotalHijos').textContent = totalHijos;
+
+            // Vista previa trabajadores
+            const previewTrabajadores = document.getElementById('previewTrabajadores');
+            const trabajadoresPreview = trabajadores.slice(0, 5);
+            
+            if (trabajadoresPreview.length > 0) {
+                previewTrabajadores.innerHTML = trabajadoresPreview.map(t => `
+                    <tr>
+                        <td>${t.cedula}</td>
+                        <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
+                        <td>${t.cargo}</td>
+                        <td>${t.dependencia}</td>
+                    </tr>
+                `).join('');
+            } else {
+                previewTrabajadores.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin trabajadores registrados</td></tr>';
+            }
+
+            // Vista previa hijos
+            const previewHijos = document.getElementById('previewHijos');
+            const hijosPreview = [];
+            trabajadores.forEach(t => {
+                if (t.hijos) {
+                    t.hijos.forEach(h => {
+                        hijosPreview.push({
+                            cedulaPadre: t.cedula,
+                            ...h
+                        });
+                    });
+                }
+            });
+            
+            const hijosLimitados = hijosPreview.slice(0, 5);
+            
+            if (hijosLimitados.length > 0) {
+                previewHijos.innerHTML = hijosLimitados.map(h => `
+                    <tr>
+                        <td>${h.cedulaPadre}</td>
+                        <td>${h.nombresApellidos}</td>
+                        <td>${h.sexo || '-'}</td>
+                        <td>${h.fechaNacimiento || '-'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                previewHijos.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin hijos registrados</td></tr>';
+            }
+        }
+
+        // ============================================
         // SINCRONIZACIÓN EXCEL
         // ============================================
         function handleFileSelect(input) {
@@ -1784,6 +2068,7 @@
             const titles = {
                 'dashboard': 'Dashboard',
                 'migration': 'Sincronizar Excel',
+                'export': 'Exportar Excel',
                 'trabajadores': 'Trabajadores',
                 'registrar': 'Nuevo Registro',
                 'consulta': 'Consulta'
@@ -1795,6 +2080,8 @@
                 loadRecent();
             } else if (sectionId === 'trabajadores') {
                 loadTrabajadores();
+            } else if (sectionId === 'export') {
+                updateExportPreview();
             }
         }
 
@@ -2056,153 +2343,6 @@
         window.addEventListener('load', function() {
             document.getElementById('appContainer').style.display = 'none';
         });
-        // ============================================
-// EXPORTAR A EXCEL
-// ============================================
-function exportarExcel() {
-    if (trabajadores.length === 0) {
-        showToast('No hay datos para exportar', 'error');
-        return;
-    }
-
-    showLoading(true, 'Generando Excel...');
-
-    try {
-        // Preparar datos de trabajadores
-        const trabajadoresData = trabajadores.map(t => ({
-            'ID': t.id,
-            'Cédula': t.cedula,
-            'Primer Nombre': t.primerNombre,
-            'Segundo Nombre': t.segundoNombre || '',
-            'Primer Apellido': t.primerApellido,
-            'Segundo Apellido': t.segundoApellido || '',
-            'Sexo': t.sexo,
-            'Fecha Nacimiento': t.fechaNacimiento,
-            'Estado Civil': t.estadoCivil,
-            'Dirección': t.direccion || '',
-            'Celular': t.celular || '',
-            'Correo': t.correo || '',
-            'Nivel Académico': t.nivelAcademico || '',
-            'Profesión': t.profesion || '',
-            'Tipo Personal': t.tipoPersonal,
-            'Fecha Ingreso': t.fechaIngreso,
-            'Cargo': t.cargo,
-            'Código': t.codigo || '',
-            'Dependencia': t.dependencia,
-            'Nómina': t.nomina || '',
-            'Observaciones': t.observaciones || '',
-            'Fecha Registro': t.fechaRegistro,
-            'Total Hijos': t.hijos ? t.hijos.length : 0
-        }));
-
-        // Preparar datos de hijos (aplanados con referencia al trabajador)
-        const hijosData = [];
-        trabajadores.forEach(t => {
-            if (t.hijos && t.hijos.length > 0) {
-                t.hijos.forEach((h, index) => {
-                    hijosData.push({
-                        'ID Trabajador': t.id,
-                        'Cédula Trabajador': t.cedula,
-                        'Nombre Trabajador': `${t.primerNombre} ${t.primerApellido}`,
-                        'N° Hijo': index + 1,
-                        'Nombres y Apellidos Hijo': h.nombresApellidos || '',
-                        'Cédula Hijo': h.cedula || '',
-                        'Sexo Hijo': h.sexo || '',
-                        'Fecha Nacimiento Hijo': h.fechaNacimiento || ''
-                    });
-                });
-            }
-        });
-
-        // Si no hay hijos, agregar fila vacía con headers
-        if (hijosData.length === 0) {
-            hijosData.push({
-                'ID Trabajador': '',
-                'Cédula Trabajador': '',
-                'Nombre Trabajador': '',
-                'N° Hijo': '',
-                'Nombres y Apellidos Hijo': '',
-                'Cédula Hijo': '',
-                'Sexo Hijo': '',
-                'Fecha Nacimiento Hijo': ''
-            });
-        }
-
-        // Crear libro de trabajo
-        const wb = XLSX.utils.book_new();
-        
-        // Crear hoja de trabajadores
-        const wsTrabajadores = XLSX.utils.json_to_sheet(trabajadoresData);
-        
-        // Crear hoja de hijos
-        const wsHijos = XLSX.utils.json_to_sheet(hijosData);
-
-        // Ajustar anchos de columnas para trabajadores
-        const wscolsTrabajadores = [
-            {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15},
-            {wch: 15}, {wch: 10}, {wch: 15}, {wch: 12}, {wch: 30},
-            {wch: 15}, {wch: 25}, {wch: 15}, {wch: 15}, {wch: 12},
-            {wch: 15}, {wch: 20}, {wch: 10}, {wch: 20}, {wch: 15},
-            {wch: 30}, {wch: 20}, {wch: 12}
-        ];
-        wsTrabajadores['!cols'] = wscolsTrabajadores;
-
-        // Ajustar anchos de columnas para hijos
-        const wscolsHijos = [
-            {wch: 15}, {wch: 18}, {wch: 25}, {wch: 10}, {wch: 30},
-            {wch: 15}, {wch: 12}, {wch: 20}
-        ];
-        wsHijos['!cols'] = wscolsHijos;
-
-        // Agregar hojas al libro
-        XLSX.utils.book_append_sheet(wb, wsTrabajadores, "Trabajadores");
-        XLSX.utils.book_append_sheet(wb, wsHijos, "Hijos");
-
-        // Generar nombre de archivo con fecha
-        const fecha = new Date().toISOString().split('T')[0];
-        const nombreArchivo = `CP_Puerto_Miranda_Trabajadores_${fecha}.xlsx`;
-
-        // Descargar archivo
-        XLSX.writeFile(wb, nombreArchivo);
-
-        showToast(`Exportado: ${trabajadores.length} trabajadores, ${hijosData.filter(h => h['ID Trabajador'] !== '').length} hijos`);
-        
-        // Registrar en log si existe
-        if (document.getElementById('syncStatus')) {
-            const logDiv = document.getElementById('changeLog');
-            const statusDiv = document.getElementById('syncStatus');
-            
-            statusDiv.innerHTML = `
-                <div style="background: rgba(5, 150, 105, 0.1); padding: 20px; border-radius: 10px; text-align: center;">
-                    <div style="font-size: 32px; margin-bottom: 10px;">📊</div>
-                    <div style="font-size: 18px; font-weight: 700; color: var(--success);">Exportación Exitosa</div>
-                    <div style="font-size: 14px; color: var(--secondary); margin-top: 5px;">
-                        ${trabajadores.length} trabajadores<br>
-                        ${hijosData.filter(h => h['ID Trabajador'] !== '').length} hijos registrados
-                    </div>
-                </div>
-            `;
-            
-            if (logDiv) {
-                logDiv.style.display = 'block';
-                logDiv.innerHTML = `
-                    <div class="change-item added">
-                        <strong>Archivo generado:</strong> ${nombreArchivo}<br>
-                        <small>Fecha: ${new Date().toLocaleString()}</small>
-                    </div>
-                `;
-            }
-        }
-
-    } catch (error) {
-        showToast('Error al exportar: ' + error.message, 'error');
-        console.error('Error exportando Excel:', error);
-    } finally {
-        showLoading(false);
-    }
-}
     </script>
 </body>
 </html>
-
-
