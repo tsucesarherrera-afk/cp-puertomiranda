@@ -1496,17 +1496,28 @@
 
     <script>
         // ============================================
-        // CONFIGURACIÓN SUPABASE (GRATUITO)
+        // CONFIGURACIÓN SUPABASE - CREDENCIALES REALES
         // ============================================
-        // REEMPLAZA ESTOS VALORES CON TU PROYECTO SUPABASE
-        const SUPABASE_URL = 'https://tu-proyecto.supabase.co'; // Tu URL de Supabase
-        const SUPABASE_KEY = 'tu-anon-key-publica-aqui'; // Tu anon key
+        const SUPABASE_URL = 'https://lhzigadhmkqfplbwepxp.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoemlnYWRobWtxZnBsYndlcHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTg4ODEsImV4cCI6MjA4NzUzNDg4MX0.i0PIrrEUmvtnRsFnodIAD_NzYJD903DpQRnvJqqvfFk';
         
         let supabase = null;
         
-        // Inicializar Supabase si hay configuración
-        if (SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('tu-proyecto')) {
-            supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Inicializar Supabase
+        function initializeSupabase() {
+            try {
+                if (typeof supabaseJs !== 'undefined') {
+                    supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    console.log('✅ Supabase inicializado correctamente');
+                    return true;
+                } else {
+                    console.error('❌ Librería Supabase no cargada');
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Error inicializando Supabase:', error);
+                return false;
+            }
         }
 
         const ADMIN_PASS = 'admin123';
@@ -1547,9 +1558,12 @@
         });
 
         async function initializeSystem() {
+            // Inicializar Supabase primero
+            const supabaseInitialized = initializeSupabase();
+            
             loadLocalData();
             
-            if (supabase) {
+            if (supabaseInitialized && supabase) {
                 await loadFromSupabase();
             } else {
                 updateCloudStatus('offline', 'Modo Local');
@@ -1571,7 +1585,10 @@
         // SUPABASE - OPERACIONES CRUD
         // ============================================
         async function loadFromSupabase() {
-            if (!supabase) return;
+            if (!supabase) {
+                updateCloudStatus('offline', 'Sin conexión');
+                return;
+            }
             
             showLoading(true, 'Conectando a Supabase...');
             updateCloudStatus('syncing', 'Conectando...');
@@ -1615,6 +1632,8 @@
                     
                     saveLocalData();
                     showToast(`📥 Cargados ${data.length} registros de Supabase`);
+                } else {
+                    showToast('Base de datos vacía en Supabase');
                 }
                 
                 updateCloudStatus('online', 'Supabase ✅');
@@ -1623,7 +1642,7 @@
             } catch (error) {
                 console.error('Error Supabase:', error);
                 updateCloudStatus('offline', 'Error de conexión');
-                showToast('Error conectando a Supabase, usando datos locales', 'error');
+                showToast('Error conectando a Supabase: ' + error.message, 'error');
             } finally {
                 showLoading(false);
             }
@@ -1708,7 +1727,7 @@
                 await loadFromSupabase(); // Recargar para confirmar
                 
             } catch (error) {
-                showToast('Error en sincronización', 'error');
+                showToast('Error en sincronización: ' + error.message, 'error');
             } finally {
                 showLoading(false);
             }
@@ -1716,7 +1735,7 @@
 
         function testSupabaseConnection() {
             if (!supabase) {
-                showToast('Configura Supabase primero (ver instrucciones)', 'error');
+                showToast('Supabase no inicializado', 'error');
                 return;
             }
             loadFromSupabase();
@@ -1807,7 +1826,7 @@
             }
 
             if (!supabase) {
-                showToast('⚠️ Supabase no configurado. Los datos se guardarán solo localmente.', 'error');
+                showToast('⚠️ Supabase no inicializado. Los datos se guardarán solo localmente.', 'error');
             }
 
             showLoading(true, 'Procesando Excel...');
