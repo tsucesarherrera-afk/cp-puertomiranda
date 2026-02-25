@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CP Puerto Miranda - Sistema de Gestión</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -977,6 +978,41 @@
             color: var(--text);
         }
 
+        .sync-controls {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+            border: 1px solid var(--border);
+        }
+
+        .sync-btn {
+            background: linear-gradient(135deg, var(--cloud), #818cf8);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .sync-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+        }
+
+        .sync-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -1051,7 +1087,7 @@
     <!-- Main Application -->
     <div class="app-container" id="appContainer">
         <!-- Cloud Status -->
-        <div class="cloud-status offline" id="cloudStatus">
+        <div class="cloud-status offline" id="cloudStatus" onclick="testConnection()">
             <div class="status-dot"></div>
             <span id="cloudText">Verificando...</span>
         </div>
@@ -1063,7 +1099,7 @@
             </div>
 
             <div class="db-info">
-                <label>☁️ Estado</label>
+                <label>☁️ Base de Datos</label>
                 <div class="db-status" id="dbStatus">Cargando...</div>
             </div>
             
@@ -1075,8 +1111,13 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" onclick="showSection('sync')">
+                            <span>☁️</span> Sincronizar Nube
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" onclick="showSection('migration')">
-                            <span>🔄</span> Sincronizar Excel
+                            <span>🔄</span> Importar Excel
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1176,10 +1217,66 @@
                 </div>
             </div>
 
+            <!-- Sync Section -->
+            <div class="content-section" id="sync">
+                <div class="sync-panel">
+                    <h3>☁️ Sincronización con Supabase</h3>
+                    <p style="margin-bottom: 15px; color: var(--secondary);">
+                        Sincroniza tus datos locales con la base de datos en la nube de Supabase.
+                        Los datos se mantienen actualizados en tiempo real.
+                    </p>
+
+                    <div class="sync-constant-info">
+                        <h4>📋 Información de conexión:</h4>
+                        <ul style="margin-left: 20px; font-size: 13px; line-height: 1.8;">
+                            <li><strong>URL:</strong> <span id="supabaseUrl">Conectando...</span></li>
+                            <li><strong>Estado:</strong> <span id="connectionStatus">Verificando...</span></li>
+                            <li><strong>Última sincronización:</strong> <span id="lastSync">Nunca</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="sync-controls">
+                        <h4 style="margin-bottom: 15px;">🔄 Controles de sincronización:</h4>
+                        <button class="sync-btn" onclick="syncToCloud()" id="btnSyncToCloud">
+                            ⬆️ Subir a la Nube
+                        </button>
+                        <button class="sync-btn" onclick="syncFromCloud()" id="btnSyncFromCloud">
+                            ⬇️ Descargar de la Nube
+                        </button>
+                        <button class="sync-btn" onclick="mergeCloudData()" id="btnMerge" style="background: linear-gradient(135deg, var(--success), #34d399);">
+                            🔄 Fusionar Datos
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Estadísticas de sincronización</div>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center;">
+                            <div style="padding: 20px; background: rgba(74, 144, 226, 0.05); border-radius: 10px;">
+                                <div style="font-size: 32px; font-weight: 700; color: var(--cp-blue);" id="syncLocalCount">0</div>
+                                <div style="font-size: 12px; color: var(--secondary);">Registros Locales</div>
+                            </div>
+                            <div style="padding: 20px; background: rgba(99, 102, 241, 0.05); border-radius: 10px;">
+                                <div style="font-size: 32px; font-weight: 700; color: var(--cloud);" id="syncCloudCount">0</div>
+                                <div style="font-size: 12px; color: var(--secondary);">Registros en Nube</div>
+                            </div>
+                            <div style="padding: 20px; background: rgba(5, 150, 105, 0.05); border-radius: 10px;">
+                                <div style="font-size: 32px; font-weight: 700; color: var(--success);" id="syncTotalCount">0</div>
+                                <div style="font-size: 12px; color: var(--secondary);">Total Unificado</div>
+                            </div>
+                        </div>
+                        <div id="syncLog" class="change-log" style="margin-top: 20px; display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Migration Section -->
             <div class="content-section" id="migration">
                 <div class="sync-panel">
-                    <h3>🔄 Sincronización con Excel</h3>
+                    <h3>🔄 Importar desde Excel</h3>
                     <p style="margin-bottom: 15px; color: var(--secondary);">
                         Importa o actualiza trabajadores desde un archivo Excel. 
                         El sistema detecta automáticamente cambios y mantiene la cédula como identificador único.
@@ -1216,7 +1313,7 @@
                             <div class="step-content">
                                 <h4>Sincronizar</h4>
                                 <button class="btn-success" onclick="syncFromExcel()" id="btnSync" disabled>
-                                    🔄 Iniciar Sincronización
+                                    🔄 Iniciar Importación
                                 </button>
                             </div>
                         </div>
@@ -1553,14 +1650,286 @@
 
     <script>
         // ============================================
-        // CONFIGURACIÓN
+        // CONFIGURACIÓN SUPABASE
         // ============================================
-        const ADMIN_PASS = 'admin123';
+        const SUPABASE_URL = 'https://lhzigadhmkqfplbwepxp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoemlnYWRobWtxZnBsYndlcHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTg4ODEsImV4cCI6MjA4NzUzNDg4MX0.i0PIrrEUmvtnRsFnodIAD_NzYJD903DpQRnvJqqvfFk';
+        
+        let supabase = null;
+        let isOnline = false;
+        
+        // ============================================
+        // CONFIGURACIÓN GENERAL
+        // ============================================
+        const ADMIN_PASS = 'Admin123*.*';
         
         let trabajadores = [];
         let currentUser = '';
         let currentEditId = null;
         let selectedFile = null;
+
+        // ============================================
+        // INICIALIZACIÓN SUPABASE
+        // ============================================
+        function initSupabase() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                document.getElementById('supabaseUrl').textContent = SUPABASE_URL.replace('https://', '');
+                testConnection();
+            } catch (error) {
+                console.error('Error inicializando Supabase:', error);
+                updateCloudStatus('offline', 'Error de conexión');
+            }
+        }
+
+        async function testConnection() {
+            updateCloudStatus('syncing', 'Verificando...');
+            
+            try {
+                const { data, error } = await supabase.from('trabajadores').select('count');
+                
+                if (error) throw error;
+                
+                isOnline = true;
+                updateCloudStatus('online', 'Conectado');
+                updateSyncStats();
+                
+            } catch (error) {
+                isOnline = false;
+                updateCloudStatus('offline', 'Sin conexión');
+                document.getElementById('connectionStatus').textContent = 'Desconectado - ' + error.message;
+            }
+        }
+
+        // ============================================
+        // SINCRONIZACIÓN CON SUPABASE
+        // ============================================
+        async function syncToCloud() {
+            if (!isOnline) {
+                showToast('No hay conexión con la base de datos', 'error');
+                return;
+            }
+
+            showLoading(true, 'Subiendo datos a la nube...');
+            
+            try {
+                // Preparar datos para Supabase
+                const trabajadoresData = trabajadores.map(t => ({
+                    id: t.id,
+                    cedula: t.cedula,
+                    primer_nombre: t.primerNombre,
+                    segundo_nombre: t.segundoNombre,
+                    primer_apellido: t.primerApellido,
+                    segundo_apellido: t.segundoApellido,
+                    sexo: t.sexo,
+                    fecha_nacimiento: t.fechaNacimiento,
+                    estado_civil: t.estadoCivil,
+                    direccion: t.direccion,
+                    celular: t.celular,
+                    correo: t.correo,
+                    nivel_academico: t.nivelAcademico,
+                    profesion: t.profesion,
+                    tipo_personal: t.tipoPersonal,
+                    fecha_ingreso: t.fechaIngreso,
+                    cargo: t.cargo,
+                    codigo: t.codigo,
+                    dependencia: t.dependencia,
+                    nomina: t.nomina,
+                    observaciones: t.observaciones,
+                    hijos: t.hijos,
+                    fecha_registro: t.fechaRegistro,
+                    updated_at: new Date().toISOString()
+                }));
+
+                // Upsert trabajadores
+                const { error: trabajadoresError } = await supabase
+                    .from('trabajadores')
+                    .upsert(trabajadoresData, { onConflict: 'id' });
+
+                if (trabajadoresError) throw trabajadoresError;
+
+                localStorage.setItem('cp_last_sync', new Date().toISOString());
+                document.getElementById('lastSync').textContent = new Date().toLocaleString();
+                
+                showLoading(false);
+                showToast(`✅ ${trabajadores.length} trabajadores sincronizados en la nube`);
+                updateSyncStats();
+                
+            } catch (error) {
+                showLoading(false);
+                showToast('Error al subir: ' + error.message, 'error');
+            }
+        }
+
+        async function syncFromCloud() {
+            if (!isOnline) {
+                showToast('No hay conexión con la base de datos', 'error');
+                return;
+            }
+
+            showLoading(true, 'Descargando datos de la nube...');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('trabajadores')
+                    .select('*');
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    // Convertir datos de Supabase a formato local
+                    trabajadores = data.map(t => ({
+                        id: t.id,
+                        cedula: t.cedula,
+                        primerNombre: t.primer_nombre,
+                        segundoNombre: t.segundo_nombre,
+                        primerApellido: t.primer_apellido,
+                        segundoApellido: t.segundo_apellido,
+                        sexo: t.sexo,
+                        fechaNacimiento: t.fecha_nacimiento,
+                        estadoCivil: t.estado_civil,
+                        direccion: t.direccion,
+                        celular: t.celular,
+                        correo: t.correo,
+                        nivelAcademico: t.nivel_academico,
+                        profesion: t.profesion,
+                        tipoPersonal: t.tipo_personal,
+                        fechaIngreso: t.fecha_ingreso,
+                        cargo: t.cargo,
+                        codigo: t.codigo,
+                        dependencia: t.dependencia,
+                        nomina: t.nomina,
+                        observaciones: t.observaciones,
+                        hijos: t.hijos || [],
+                        fechaRegistro: t.fecha_registro
+                    }));
+
+                    saveLocalData();
+                    updateStats();
+                    loadTrabajadores();
+                    
+                    localStorage.setItem('cp_last_sync', new Date().toISOString());
+                    document.getElementById('lastSync').textContent = new Date().toLocaleString();
+                }
+
+                showLoading(false);
+                showToast(`✅ ${data.length} trabajadores descargados de la nube`);
+                updateSyncStats();
+                
+            } catch (error) {
+                showLoading(false);
+                showToast('Error al descargar: ' + error.message, 'error');
+            }
+        }
+
+        async function mergeCloudData() {
+            if (!isOnline) {
+                showToast('No hay conexión con la base de datos', 'error');
+                return;
+            }
+
+            showLoading(true, 'Fusionando datos locales y de la nube...');
+            
+            try {
+                const { data: cloudData, error } = await supabase
+                    .from('trabajadores')
+                    .select('*');
+
+                if (error) throw error;
+
+                const cloudTrabajadores = cloudData.map(t => ({
+                    id: t.id,
+                    cedula: t.cedula,
+                    primerNombre: t.primer_nombre,
+                    segundoNombre: t.segundo_nombre,
+                    primerApellido: t.primer_apellido,
+                    segundoApellido: t.segundo_apellido,
+                    sexo: t.sexo,
+                    fechaNacimiento: t.fecha_nacimiento,
+                    estadoCivil: t.estado_civil,
+                    direccion: t.direccion,
+                    celular: t.celular,
+                    correo: t.correo,
+                    nivelAcademico: t.nivel_academico,
+                    profesion: t.profesion,
+                    tipoPersonal: t.tipo_personal,
+                    fechaIngreso: t.fecha_ingreso,
+                    cargo: t.cargo,
+                    codigo: t.codigo,
+                    dependencia: t.dependencia,
+                    nomina: t.nomina,
+                    observaciones: t.observaciones,
+                    hijos: t.hijos || [],
+                    fechaRegistro: t.fecha_registro,
+                    updated_at: t.updated_at
+                }));
+
+                // Fusionar: priorizar datos más recientes por cédula
+                const mergedMap = new Map();
+                
+                // Agregar locales primero
+                trabajadores.forEach(t => {
+                    mergedMap.set(t.cedula, { ...t, source: 'local' });
+                });
+                
+                // Fusionar con nube (priorizar más reciente)
+                cloudTrabajadores.forEach(cloud => {
+                    const local = mergedMap.get(cloud.cedula);
+                    if (!local) {
+                        mergedMap.set(cloud.cedula, { ...cloud, source: 'cloud' });
+                    } else {
+                        // Comparar fechas si existen
+                        const localDate = new Date(local.updated_at || local.fechaRegistro);
+                        const cloudDate = new Date(cloud.updated_at || cloud.fechaRegistro);
+                        
+                        if (cloudDate > localDate) {
+                            mergedMap.set(cloud.cedula, { ...cloud, source: 'merged' });
+                        }
+                    }
+                });
+
+                trabajadores = Array.from(mergedMap.values());
+                
+                // Subir datos fusionados
+                await syncToCloud();
+                
+                saveLocalData();
+                updateStats();
+                loadTrabajadores();
+                
+                showLoading(false);
+                showToast(`✅ Fusión completada: ${trabajadores.length} registros unificados`);
+                updateSyncStats();
+                
+            } catch (error) {
+                showLoading(false);
+                showToast('Error al fusionar: ' + error.message, 'error');
+            }
+        }
+
+        async function updateSyncStats() {
+            if (!isOnline) {
+                document.getElementById('syncCloudCount').textContent = '-';
+                document.getElementById('connectionStatus').textContent = 'Desconectado';
+                return;
+            }
+
+            try {
+                const { count, error } = await supabase
+                    .from('trabajadores')
+                    .select('*', { count: 'exact', head: true });
+
+                if (error) throw error;
+
+                document.getElementById('syncCloudCount').textContent = count || 0;
+                document.getElementById('syncLocalCount').textContent = trabajadores.length;
+                document.getElementById('syncTotalCount').textContent = trabajadores.length;
+                document.getElementById('connectionStatus').textContent = 'Conectado';
+                
+            } catch (error) {
+                document.getElementById('syncCloudCount').textContent = 'Error';
+            }
+        }
 
         // ============================================
         // INICIALIZACIÓN
@@ -1593,11 +1962,16 @@
         });
 
         function initializeSystem() {
+            initSupabase();
             loadLocalData();
             updateStats();
             loadRecent();
             loadTrabajadores();
-            updateCloudStatus('online', 'Listo');
+            
+            const lastSync = localStorage.getItem('cp_last_sync');
+            if (lastSync) {
+                document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
+            }
         }
 
         function logout() {
@@ -1857,6 +2231,11 @@
                     loadTrabajadores();
                     updateStats();
                     showToast(`Sincronización: ${resultado.totalCambios} cambios`);
+                    
+                    // Auto-sincronizar con la nube si está online
+                    if (isOnline) {
+                        await syncToCloud();
+                    }
                 } else {
                     showToast('No se detectaron cambios');
                 }
@@ -2067,7 +2446,8 @@
             
             const titles = {
                 'dashboard': 'Dashboard',
-                'migration': 'Sincronizar Excel',
+                'sync': 'Sincronizar Nube',
+                'migration': 'Importar Excel',
                 'export': 'Exportar Excel',
                 'trabajadores': 'Trabajadores',
                 'registrar': 'Nuevo Registro',
@@ -2082,6 +2462,8 @@
                 loadTrabajadores();
             } else if (sectionId === 'export') {
                 updateExportPreview();
+            } else if (sectionId === 'sync') {
+                updateSyncStats();
             }
         }
 
@@ -2091,6 +2473,7 @@
             document.getElementById('statHijos').textContent = totalHijos;
             const deps = [...new Set(trabajadores.map(t => t.dependencia).filter(Boolean))];
             document.getElementById('statDeps').textContent = deps.length;
+            document.getElementById('statCloud').textContent = isOnline ? 'Supabase' : 'Local';
         }
 
         function loadRecent() {
@@ -2165,7 +2548,7 @@
             container.appendChild(div);
         }
 
-        function saveTrabajador(e) {
+        async function saveTrabajador(e) {
             e.preventDefault();
             const form = e.target;
             const formData = new FormData(form);
@@ -2219,6 +2602,12 @@
             
             trabajadores.push(trabajador);
             saveLocalData();
+            
+            // Sincronizar con la nube si está online
+            if (isOnline) {
+                await syncToCloud();
+            }
+            
             form.reset();
             document.getElementById('hijosContainer').innerHTML = '';
             resetCedulaValidation();
@@ -2290,7 +2679,7 @@
             document.getElementById('editModal').classList.add('active');
         }
 
-        function updateTrabajador(e) {
+        async function updateTrabajador(e) {
             e.preventDefault();
             const form = e.target;
             const formData = new FormData(form);
@@ -2306,16 +2695,28 @@
                 };
                 
                 saveLocalData();
+                
+                // Sincronizar con la nube si está online
+                if (isOnline) {
+                    await syncToCloud();
+                }
+                
                 closeModal();
                 loadTrabajadores();
                 showToast('Actualizado correctamente');
             }
         }
 
-        function deleteTrabajador(id) {
+        async function deleteTrabajador(id) {
             if (confirm('¿Eliminar este trabajador?')) {
                 trabajadores = trabajadores.filter(t => t.id !== id);
                 saveLocalData();
+                
+                // Sincronizar con la nube si está online
+                if (isOnline) {
+                    await syncToCloud();
+                }
+                
                 loadTrabajadores();
                 updateStats();
                 showToast('Eliminado');
