@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CP Puerto Miranda - Sistema de Gestión</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -22,7 +21,6 @@
             --success: #059669;
             --info: #0284c7;
             --cloud: #6366f1;
-            --supabase: #3ecf8e;
             --bg: #f1f5f9;
             --card: #ffffff;
             --text: #1e293b;
@@ -167,8 +165,8 @@
         }
 
         .cloud-status.online {
-            border: 2px solid var(--supabase);
-            color: var(--supabase);
+            border: 2px solid var(--success);
+            color: var(--success);
         }
 
         .cloud-status.offline {
@@ -225,15 +223,15 @@
         .db-info {
             margin: 15px 20px;
             padding: 12px;
-            background: rgba(62, 207, 142, 0.1);
+            background: rgba(99, 102, 241, 0.1);
             border-radius: 10px;
-            border: 1px solid rgba(62, 207, 142, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.2);
         }
 
         .db-info label {
             display: block;
             font-size: 10px;
-            color: var(--supabase);
+            color: var(--cloud);
             font-weight: 700;
             margin-bottom: 3px;
             text-transform: uppercase;
@@ -385,7 +383,7 @@
 
         .stat-icon.blue { background: rgba(74, 144, 226, 0.1); color: var(--cp-blue); }
         .stat-icon.green { background: rgba(5, 150, 105, 0.1); color: var(--success); }
-        .stat-icon.cloud { background: rgba(62, 207, 142, 0.1); color: var(--supabase); }
+        .stat-icon.cloud { background: rgba(99, 102, 241, 0.1); color: var(--cloud); }
         .stat-icon.orange { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
 
         .stat-value {
@@ -467,8 +465,8 @@
             font-weight: 500;
         }
 
-        .btn-supabase {
-            background: var(--supabase);
+        .btn-cloud {
+            background: var(--cloud);
             color: white;
             border: none;
             padding: 12px 24px;
@@ -481,8 +479,8 @@
             transition: all 0.3s ease;
         }
 
-        .btn-supabase:hover {
-            background: #2bb673;
+        .btn-cloud:hover {
+            background: #4f46e5;
             transform: translateY(-2px);
         }
 
@@ -524,25 +522,6 @@
             cursor: pointer;
             font-size: 13px;
             margin-right: 5px;
-        }
-
-        .btn-export {
-            background: #10b981;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-export:hover {
-            background: #059669;
-            transform: translateY(-2px);
         }
 
         table {
@@ -691,20 +670,20 @@
         }
 
         .badge-success { background: rgba(5, 150, 105, 0.1); color: var(--success); }
-        .badge-supabase { background: rgba(62, 207, 142, 0.1); color: var(--supabase); }
+        .badge-cloud { background: rgba(99, 102, 241, 0.1); color: var(--cloud); }
         .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
         .badge-danger { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
 
         .sync-panel {
-            background: linear-gradient(135deg, rgba(62, 207, 142, 0.1), rgba(62, 207, 142, 0.05));
-            border: 2px solid rgba(62, 207, 142, 0.2);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
+            border: 2px solid rgba(99, 102, 241, 0.2);
             border-radius: 15px;
             padding: 25px;
             margin-bottom: 25px;
         }
 
         .sync-panel h3 {
-            color: var(--supabase);
+            color: var(--cloud);
             margin-bottom: 15px;
             display: flex;
             align-items: center;
@@ -837,7 +816,7 @@
             width: 50px;
             height: 50px;
             border: 4px solid var(--border);
-            border-top-color: var(--supabase);
+            border-top-color: var(--cloud);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -847,15 +826,15 @@
         }
 
         .sync-constant-info {
-            background: rgba(62, 207, 142, 0.1);
-            border: 1px solid var(--supabase);
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid var(--cloud);
             border-radius: 8px;
             padding: 15px;
             margin-top: 15px;
         }
 
         .sync-constant-info h4 {
-            color: var(--supabase);
+            color: var(--cloud);
             margin-bottom: 10px;
         }
 
@@ -920,22 +899,23 @@
             margin-bottom: 15px;
         }
 
-        .info-box.warning {
-            background: rgba(245, 158, 11, 0.1);
-            border-color: var(--accent);
+        .connection-test {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 13px;
         }
 
-        .config-panel {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid var(--border);
+        .connection-test.success {
+            background: rgba(5, 150, 105, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(5, 150, 105, 0.2);
         }
 
-        .config-panel h4 {
-            color: var(--supabase);
-            margin-bottom: 15px;
+        .connection-test.error {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(220, 38, 38, 0.2);
         }
 
         @media (max-width: 768px) {
@@ -990,7 +970,7 @@
             <form id="loginForm">
                 <div class="form-group">
                     <label for="username">Usuario</label>
-                    <input type="text" id="username" placeholder="Ingrese su nombre" required autocomplete="off">
+                    <input type="text" id="username" placeholder="Ingrese su nombre de usuario" required autocomplete="off">
                 </div>
                 
                 <div class="form-group">
@@ -1005,7 +985,6 @@
 
             <div style="margin-top: 20px; text-align: center; font-size: 12px; color: var(--secondary);">
                 <p>🔒 Sistema de Gestión de Personal</p>
-                <p>🗄️ Conectado a Supabase</p>
             </div>
         </div>
     </div>
@@ -1013,7 +992,7 @@
     <!-- Main Application -->
     <div class="app-container" id="appContainer">
         <!-- Cloud Status -->
-        <div class="cloud-status offline" id="cloudStatus" onclick="testSupabaseConnection()">
+        <div class="cloud-status offline" id="cloudStatus">
             <div class="status-dot"></div>
             <span id="cloudText">Verificando...</span>
         </div>
@@ -1025,7 +1004,7 @@
             </div>
 
             <div class="db-info">
-                <label>🗄️ Base de Datos</label>
+                <label>☁️ Estado</label>
                 <div class="db-status" id="dbStatus">Cargando...</div>
             </div>
             
@@ -1039,11 +1018,6 @@
                     <li class="nav-item">
                         <a class="nav-link" onclick="showSection('migration')">
                             <span>🔄</span> Sincronizar Excel
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" onclick="showSection('export')">
-                            <span>📥</span> Exportar Datos
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1102,9 +1076,9 @@
                     <div class="stat-card">
                         <div class="stat-header">
                             <div class="stat-title">Base de Datos</div>
-                            <div class="stat-icon cloud">🗄️</div>
+                            <div class="stat-icon cloud">☁️</div>
                         </div>
-                        <div class="stat-value" id="statCloud" style="font-size: 18px;">Supabase</div>
+                        <div class="stat-value" id="statCloud" style="font-size: 18px;">Local</div>
                     </div>
                     
                     <div class="stat-card">
@@ -1119,9 +1093,6 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">Últimos Registros</div>
-                        <button class="btn-supabase" onclick="syncWithSupabase()" style="padding: 8px 16px; font-size: 13px;">
-                            🔄 Sincronizar Todo
-                        </button>
                     </div>
                     <div class="card-body">
                         <table>
@@ -1144,19 +1115,18 @@
             <!-- Migration Section -->
             <div class="content-section" id="migration">
                 <div class="sync-panel">
-                    <h3>🔄 Sincronización con Excel ↔ Supabase</h3>
+                    <h3>🔄 Sincronización con Excel</h3>
                     <p style="margin-bottom: 15px; color: var(--secondary);">
-                        Importa desde Excel y sincroniza automáticamente con la base de datos en la nube.
-                        Los cambios se reflejan en tiempo real para todos los usuarios.
+                        Importa o actualiza trabajadores desde un archivo Excel. 
+                        El sistema detecta automáticamente cambios y mantiene la cédula como identificador único.
                     </p>
 
                     <div class="sync-constant-info">
                         <h4>📋 Funcionamiento:</h4>
                         <ul style="margin-left: 20px; font-size: 13px; line-height: 1.8;">
-                            <li><strong>Importar Excel:</strong> Detecta nuevos y actualizaciones</li>
-                            <li><strong>Sincronización:</strong> Automática con Supabase</li>
-                            <li><strong>Multi-usuario:</strong> Datos compartidos en tiempo real</li>
-                            <li><strong>Cédula única:</strong> No permite duplicados</li>
+                            <li><strong>Nuevos:</strong> Cédulas que no existen se agregan</li>
+                            <li><strong>Actualizar:</strong> Datos modificados se actualizan automáticamente</li>
+                            <li><strong>Preservar:</strong> Se mantienen hijos y datos manuales</li>
                         </ul>
                     </div>
 
@@ -1166,7 +1136,7 @@
                             <div class="step-content">
                                 <h4>Seleccionar archivo Excel</h4>
                                 <div style="background: #f8fafc; padding: 10px; border-radius: 6px; font-size: 11px; font-family: monospace; margin: 10px 0;">
-                                    Cedula, PrimerNombre, SegundoNombre, PrimerApellido, SegundoApellido, Sexo, FechaNacimiento, EstadoCivil, Direccion, Celular, Correo, NivelAcademico, Profesion, TipoPersonal, FechaIngreso, Cargo, Codigo, Dependencia, Nomina, Observaciones
+                                    Columnas: Cedula, PrimerNombre, SegundoNombre, PrimerApellido, SegundoApellido, Sexo, FechaNacimiento, EstadoCivil, Direccion, Celular, Correo, NivelAcademico, Profesion, TipoPersonal, FechaIngreso, Cargo, Codigo, Dependencia, Nomina, Observaciones
                                 </div>
                                 <div class="file-input-wrapper">
                                     <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleFileSelect(this)">
@@ -1180,9 +1150,9 @@
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h4>Sincronizar con Supabase</h4>
-                                <button class="btn-supabase" onclick="importAndSyncToSupabase()" id="btnSync" disabled>
-                                    🔄 Importar y Sincronizar
+                                <h4>Sincronizar</h4>
+                                <button class="btn-success" onclick="syncFromExcel()" id="btnSync" disabled>
+                                    🔄 Iniciar Sincronización
                                 </button>
                             </div>
                         </div>
@@ -1191,7 +1161,7 @@
 
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">Resultado de Sincronización</div>
+                        <div class="card-title">Resultado</div>
                     </div>
                     <div class="card-body">
                         <div id="syncStatus" style="padding: 20px; text-align: center; color: var(--secondary);">
@@ -1202,73 +1172,12 @@
                 </div>
             </div>
 
-            <!-- Export Section (NUEVO) -->
-            <div class="content-section" id="export">
-                <div class="sync-panel">
-                    <h3>📥 Exportar Datos a Excel</h3>
-                    <p style="margin-bottom: 15px; color: var(--secondary);">
-                        Descarga todos los trabajadores registrados en formato Excel (.xlsx).
-                        Incluye todos los campos y datos actualizados desde Supabase.
-                    </p>
-
-                    <div class="info-box">
-                        <strong>📊 Datos disponibles para exportar:</strong>
-                        <ul style="margin-top: 10px; margin-left: 20px; font-size: 13px; line-height: 1.8;">
-                            <li>Total de trabajadores: <span id="exportTotal" style="font-weight: 600; color: var(--supabase);">0</span></li>
-                            <li>Última sincronización: <span id="exportLastSync">-</span></li>
-                            <li>Origen: <span id="exportSource">Supabase + Local</span></li>
-                        </ul>
-                    </div>
-
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <button class="btn-export" onclick="exportToExcel()">
-                            📥 Descargar Excel Completo
-                        </button>
-                        <button class="btn-primary" onclick="exportFilteredExcel()">
-                            🔍 Descargar con Filtro
-                        </button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Vista Previa de Exportación</div>
-                    </div>
-                    <div class="card-body">
-                        <div style="overflow-x: auto;">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Cédula</th>
-                                        <th>Nombre Completo</th>
-                                        <th>Cargo</th>
-                                        <th>Dependencia</th>
-                                        <th>Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="exportPreviewBody">
-                                    <tr><td colspan="5" style="text-align: center; color: var(--secondary);">Cargando datos...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div style="margin-top: 15px; text-align: center; color: var(--secondary); font-size: 12px;">
-                            Mostrando primeros 10 registros. La exportación incluye todos los campos y registros completos.
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Trabajadores List Section -->
             <div class="content-section" id="trabajadores">
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">Lista de Trabajadores</div>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="btn-supabase" onclick="loadFromSupabase()" style="padding: 8px 16px; font-size: 13px;">
-                                🔄 Recargar
-                            </button>
-                            <button class="btn-primary" onclick="openModal()">+ Nuevo</button>
-                        </div>
+                        <button class="btn-primary" onclick="openModal()">+ Nuevo</button>
                     </div>
                     <div class="card-body">
                         <div class="search-box">
@@ -1300,7 +1209,7 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">Registrar Nuevo Trabajador</div>
-                        <span class="badge badge-supabase" id="saveMode">Guarda en: Supabase</span>
+                        <span class="badge badge-success" id="saveMode">Modo: Local</span>
                     </div>
                     <div class="card-body">
                         <form id="trabajadorForm" onsubmit="saveTrabajador(event)">
@@ -1496,30 +1405,8 @@
 
     <script>
         // ============================================
-        // CONFIGURACIÓN SUPABASE - CREDENCIALES REALES
+        // CONFIGURACIÓN
         // ============================================
-        const SUPABASE_URL = 'https://lhzigadhmkqfplbwepxp.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoemlnYWRobWtxZnBsYndlcHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTg4ODEsImV4cCI6MjA4NzUzNDg4MX0.i0PIrrEUmvtnRsFnodIAD_NzYJD903DpQRnvJqqvfFk';
-        
-        let supabase = null;
-        
-        // Inicializar Supabase
-        function initializeSupabase() {
-            try {
-                if (typeof supabaseJs !== 'undefined') {
-                    supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
-                    console.log('✅ Supabase inicializado correctamente');
-                    return true;
-                } else {
-                    console.error('❌ Librería Supabase no cargada');
-                    return false;
-                }
-            } catch (error) {
-                console.error('❌ Error inicializando Supabase:', error);
-                return false;
-            }
-        }
-
         const ADMIN_PASS = 'admin123';
         
         let trabajadores = [];
@@ -1557,23 +1444,12 @@
             }
         });
 
-        async function initializeSystem() {
-            // Inicializar Supabase primero
-            const supabaseInitialized = initializeSupabase();
-            
+        function initializeSystem() {
             loadLocalData();
-            
-            if (supabaseInitialized && supabase) {
-                await loadFromSupabase();
-            } else {
-                updateCloudStatus('offline', 'Modo Local');
-                document.getElementById('dbStatus').textContent = 'LocalStorage';
-            }
-            
             updateStats();
             loadRecent();
             loadTrabajadores();
-            updateExportPreview();
+            updateCloudStatus('online', 'Listo');
         }
 
         function logout() {
@@ -1581,170 +1457,20 @@
             location.reload();
         }
 
-        // ============================================
-        // SUPABASE - OPERACIONES CRUD
-        // ============================================
-        async function loadFromSupabase() {
-            if (!supabase) {
-                updateCloudStatus('offline', 'Sin conexión');
-                return;
-            }
-            
-            showLoading(true, 'Conectando a Supabase...');
-            updateCloudStatus('syncing', 'Conectando...');
-            
-            try {
-                const { data, error } = await supabase
-                    .from('trabajadores')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (error) throw error;
-                
-                if (data && data.length > 0) {
-                    // Convertir formato Supabase a formato local
-                    trabajadores = data.map(item => ({
-                        id: item.id,
-                        cedula: item.cedula,
-                        primerNombre: item.primer_nombre,
-                        segundoNombre: item.segundo_nombre || '',
-                        primerApellido: item.primer_apellido,
-                        segundoApellido: item.segundo_apellido || '',
-                        sexo: item.sexo,
-                        fechaNacimiento: item.fecha_nacimiento,
-                        estadoCivil: item.estado_civil,
-                        direccion: item.direccion || '',
-                        celular: item.celular || '',
-                        correo: item.correo || '',
-                        nivelAcademico: item.nivel_academico || '',
-                        profesion: item.profesion || '',
-                        tipoPersonal: item.tipo_personal,
-                        fechaIngreso: item.fecha_ingreso,
-                        cargo: item.cargo,
-                        codigo: item.codigo || '',
-                        dependencia: item.dependencia,
-                        nomina: item.nomina || '',
-                        observaciones: item.observaciones || '',
-                        hijos: item.hijos || [],
-                        fechaRegistro: item.created_at,
-                        updatedAt: item.updated_at
-                    }));
-                    
-                    saveLocalData();
-                    showToast(`📥 Cargados ${data.length} registros de Supabase`);
-                } else {
-                    showToast('Base de datos vacía en Supabase');
-                }
-                
-                updateCloudStatus('online', 'Supabase ✅');
-                document.getElementById('dbStatus').textContent = 'Supabase Conectado';
-                
-            } catch (error) {
-                console.error('Error Supabase:', error);
-                updateCloudStatus('offline', 'Error de conexión');
-                showToast('Error conectando a Supabase: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
+        function updateCloudStatus(status, text) {
+            const statusEl = document.getElementById('cloudStatus');
+            const textEl = document.getElementById('cloudText');
+            const dbStatus = document.getElementById('dbStatus');
 
-        async function saveToSupabase(trabajador) {
-            if (!supabase) return false;
-            
-            try {
-                // Convertir a formato snake_case para PostgreSQL
-                const record = {
-                    cedula: trabajador.cedula,
-                    primer_nombre: trabajador.primerNombre,
-                    segundo_nombre: trabajador.segundoNombre,
-                    primer_apellido: trabajador.primerApellido,
-                    segundo_apellido: trabajador.segundoApellido,
-                    sexo: trabajador.sexo,
-                    fecha_nacimiento: trabajador.fechaNacimiento,
-                    estado_civil: trabajador.estadoCivil,
-                    direccion: trabajador.direccion,
-                    celular: trabajador.celular,
-                    correo: trabajador.correo,
-                    nivel_academico: trabajador.nivelAcademico,
-                    profesion: trabajador.profesion,
-                    tipo_personal: trabajador.tipoPersonal,
-                    fecha_ingreso: trabajador.fechaIngreso,
-                    cargo: trabajador.cargo,
-                    codigo: trabajador.codigo,
-                    dependencia: trabajador.dependencia,
-                    nomina: trabajador.nomina,
-                    observaciones: trabajador.observaciones,
-                    hijos: trabajador.hijos,
-                    updated_by: currentUser
-                };
-                
-                // Verificar si existe
-                const { data: existing } = await supabase
-                    .from('trabajadores')
-                    .select('id')
-                    .eq('cedula', trabajador.cedula)
-                    .single();
-                
-                let result;
-                if (existing) {
-                    // Actualizar
-                    result = await supabase
-                        .from('trabajadores')
-                        .update(record)
-                        .eq('cedula', trabajador.cedula);
-                } else {
-                    // Insertar
-                    result = await supabase
-                        .from('trabajadores')
-                        .insert([record]);
-                }
-                
-                if (result.error) throw result.error;
-                return true;
-                
-            } catch (error) {
-                console.error('Error guardando en Supabase:', error);
-                return false;
-            }
-        }
-
-        async function syncWithSupabase() {
-            if (!supabase) {
-                showToast('Supabase no configurado', 'error');
-                return;
-            }
-            
-            showLoading(true, 'Sincronizando todo con Supabase...');
-            
-            try {
-                let successCount = 0;
-                for (const t of trabajadores) {
-                    const ok = await saveToSupabase(t);
-                    if (ok) successCount++;
-                }
-                
-                showToast(`✅ Sincronizados ${successCount} de ${trabajadores.length} registros`);
-                await loadFromSupabase(); // Recargar para confirmar
-                
-            } catch (error) {
-                showToast('Error en sincronización: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function testSupabaseConnection() {
-            if (!supabase) {
-                showToast('Supabase no inicializado', 'error');
-                return;
-            }
-            loadFromSupabase();
+            statusEl.className = 'cloud-status ' + status;
+            textEl.textContent = text;
+            dbStatus.textContent = text;
         }
 
         // ============================================
         // VALIDACIÓN DE CÉDULA
         // ============================================
-        async function validateCedulaUnica(cedula) {
+        function validateCedulaUnica(cedula) {
             const validationIcon = document.getElementById('cedulaValidation');
             const cedulaError = document.getElementById('cedulaError');
             const btnSubmit = document.getElementById('btnSubmit');
@@ -1756,30 +1482,14 @@
                 return true;
             }
             
-            // Verificar en local
-            const existeLocal = trabajadores.some(t => 
+            const existe = trabajadores.some(t => 
                 t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
             );
             
-            // Verificar en Supabase si está conectado
-            let existeSupabase = false;
-            if (supabase && !existeLocal) {
-                try {
-                    const { data } = await supabase
-                        .from('trabajadores')
-                        .select('cedula')
-                        .eq('cedula', cedula)
-                        .single();
-                    existeSupabase = !!data;
-                } catch (e) {
-                    // No existe o error
-                }
-            }
-            
-            if (existeLocal || existeSupabase) {
+            if (existe) {
                 validationIcon.textContent = '❌';
                 validationIcon.className = 'validation-icon invalid';
-                cedulaError.textContent = '⚠️ Esta cédula ya existe en el sistema';
+                cedulaError.textContent = '⚠️ Esta cédula ya existe';
                 cedulaError.style.display = 'block';
                 btnSubmit.disabled = true;
                 return false;
@@ -1799,7 +1509,7 @@
         }
 
         // ============================================
-        // IMPORTAR EXCEL Y SINCRONIZAR
+        // SINCRONIZACIÓN EXCEL
         // ============================================
         function handleFileSelect(input) {
             const label = document.getElementById('fileLabel');
@@ -1819,14 +1529,10 @@
             }
         }
 
-        async function importAndSyncToSupabase() {
+        async function syncFromExcel() {
             if (!selectedFile) {
                 showToast('Selecciona un archivo primero', 'error');
                 return;
-            }
-
-            if (!supabase) {
-                showToast('⚠️ Supabase no inicializado. Los datos se guardarán solo localmente.', 'error');
             }
 
             showLoading(true, 'Procesando Excel...');
@@ -1856,20 +1562,18 @@
                     excelData.push(normalizeTrabajador(obj));
                 }
 
-                const resultado = await sincronizarConSupabase(excelData);
+                const resultado = sincronizarDatos(excelData);
                 mostrarResultadoSync(resultado);
                 
                 if (resultado.totalCambios > 0) {
                     saveLocalData();
                     loadTrabajadores();
                     updateStats();
-                    updateExportPreview();
-                    showToast(`✅ Sincronización: ${resultado.totalCambios} cambios`);
+                    showToast(`Sincronización: ${resultado.totalCambios} cambios`);
                 } else {
                     showToast('No se detectaron cambios');
                 }
 
-                // Limpiar
                 selectedFile = null;
                 document.getElementById('excelFile').value = '';
                 document.getElementById('fileLabel').textContent = '📁 Seleccionar archivo Excel (.xlsx)';
@@ -1884,7 +1588,7 @@
             }
         }
 
-        async function sincronizarConSupabase(excelData) {
+        function sincronizarDatos(excelData) {
             const cambios = {
                 agregados: [],
                 actualizados: [],
@@ -1892,56 +1596,47 @@
                 errores: []
             };
 
+            const cedulasVistas = new Set();
+
             for (const nuevo of excelData) {
                 const cedula = nuevo.cedula.toString().trim();
+                const cedulaKey = cedula.toLowerCase();
 
                 if (!nuevo.cedula || !nuevo.primerNombre || !nuevo.primerApellido) {
-                    cambios.errores.push({ cedula: cedula || '(vacía)', error: 'Faltan campos requeridos' });
+                    cambios.errores.push({ cedula: cedula || '(vacía)', error: 'Faltan campos' });
                     continue;
                 }
 
-                // Buscar en local
+                if (cedulasVistas.has(cedulaKey)) {
+                    cambios.errores.push({ cedula: cedula, error: 'Duplicado en Excel' });
+                    continue;
+                }
+
                 const indexExistente = trabajadores.findIndex(t => 
-                    t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
+                    t.cedula.toString().trim().toLowerCase() === cedulaKey
                 );
 
                 if (indexExistente === -1) {
-                    // NUEVO - Agregar a local y Supabase
                     trabajadores.push(nuevo);
                     cambios.agregados.push({ cedula: cedula, nombre: `${nuevo.primerNombre} ${nuevo.primerApellido}` });
-                    
-                    // Guardar en Supabase
-                    if (supabase) {
-                        await saveToSupabase(nuevo);
-                    }
                 } else {
-                    // EXISTE - Verificar cambios
                     const actual = trabajadores[indexExistente];
-                    const camposCambiados = detectarCambiosDetallado(actual, nuevo);
+                    const hayCambios = detectarCambios(actual, nuevo);
 
-                    if (camposCambiados.length > 0) {
-                        // Actualizar local
+                    if (hayCambios) {
                         trabajadores[indexExistente] = {
                             ...nuevo,
                             id: actual.id,
                             fechaRegistro: actual.fechaRegistro,
                             hijos: actual.hijos || []
                         };
-                        
-                        cambios.actualizados.push({
-                            cedula: cedula,
-                            nombre: `${nuevo.primerNombre} ${nuevo.primerApellido}`,
-                            campos: camposCambiados
-                        });
-                        
-                        // Actualizar en Supabase
-                        if (supabase) {
-                            await saveToSupabase(trabajadores[indexExistente]);
-                        }
+                        cambios.actualizados.push({ cedula: cedula, nombre: `${nuevo.primerNombre} ${nuevo.primerApellido}` });
                     } else {
                         cambios.sinCambios.push({ cedula: cedula });
                     }
                 }
+
+                cedulasVistas.add(cedulaKey);
             }
 
             return {
@@ -1953,20 +1648,9 @@
             };
         }
 
-        function detectarCambiosDetallado(actual, nuevo) {
-            const campos = ['primerNombre', 'segundoNombre', 'primerApellido', 'segundoApellido', 
-                          'sexo', 'cargo', 'dependencia', 'direccion', 'celular', 'correo'];
-            const cambios = [];
-            
-            campos.forEach(campo => {
-                const valActual = (actual[campo] || '').toString().trim();
-                const valNuevo = (nuevo[campo] || '').toString().trim();
-                if (valActual !== valNuevo) {
-                    cambios.push(campo);
-                }
-            });
-            
-            return cambios;
+        function detectarCambios(actual, nuevo) {
+            const campos = ['primerNombre', 'segundoNombre', 'primerApellido', 'segundoApellido', 'sexo', 'cargo', 'dependencia'];
+            return campos.some(campo => (actual[campo] || '') !== (nuevo[campo] || ''));
         }
 
         function mostrarResultadoSync(resultado) {
@@ -2004,197 +1688,12 @@
             }
             if (resultado.actualizados.length > 0) {
                 logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--accent);">🔄 Actualizados:</strong>';
-                resultado.actualizados.forEach(r => logHtml += `<div class="change-item updated">${r.cedula} - ${r.nombre}<br><small>${r.campos.join(', ')}</small></div>`);
-                logHtml += '</div>';
-            }
-            if (resultado.errores.length > 0) {
-                logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--danger);">❌ Errores:</strong>';
-                resultado.errores.forEach(r => logHtml += `<div class="change-item skipped">${r.cedula}: ${r.error}</div>`);
+                resultado.actualizados.forEach(r => logHtml += `<div class="change-item updated">${r.cedula} - ${r.nombre}</div>`);
                 logHtml += '</div>';
             }
             
             logDiv.innerHTML = logHtml || '<div style="color: var(--secondary);">Sin cambios para mostrar</div>';
             logDiv.style.display = 'block';
-        }
-
-        // ============================================
-        // EXPORTAR A EXCEL (NUEVO)
-        // ============================================
-        function updateExportPreview() {
-            document.getElementById('exportTotal').textContent = trabajadores.length;
-            document.getElementById('exportLastSync').textContent = new Date().toLocaleString();
-            
-            const previewBody = document.getElementById('exportPreviewBody');
-            const previewData = trabajadores.slice(0, 10);
-            
-            previewBody.innerHTML = previewData.length ? previewData.map(t => `
-                <tr>
-                    <td>${t.cedula}</td>
-                    <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
-                    <td>${t.cargo}</td>
-                    <td>${t.dependencia}</td>
-                    <td><span class="badge badge-success">Activo</span></td>
-                </tr>
-            `).join('') : '<tr><td colspan="5" style="text-align: center;">Sin datos</td></tr>';
-        }
-
-        function exportToExcel() {
-            if (trabajadores.length === 0) {
-                showToast('No hay datos para exportar', 'error');
-                return;
-            }
-
-            showLoading(true, 'Generando Excel...');
-
-            try {
-                // Preparar datos para Excel
-                const data = trabajadores.map(t => ({
-                    'Cedula': t.cedula,
-                    'PrimerNombre': t.primerNombre,
-                    'SegundoNombre': t.segundoNombre,
-                    'PrimerApellido': t.primerApellido,
-                    'SegundoApellido': t.segundoApellido,
-                    'Sexo': t.sexo,
-                    'FechaNacimiento': t.fechaNacimiento,
-                    'EstadoCivil': t.estadoCivil,
-                    'Direccion': t.direccion,
-                    'Celular': t.celular,
-                    'Correo': t.correo,
-                    'NivelAcademico': t.nivelAcademico,
-                    'Profesion': t.profesion,
-                    'TipoPersonal': t.tipoPersonal,
-                    'FechaIngreso': t.fechaIngreso,
-                    'Cargo': t.cargo,
-                    'Codigo': t.codigo,
-                    'Dependencia': t.dependencia,
-                    'Nomina': t.nomina,
-                    'Observaciones': t.observaciones,
-                    'TotalHijos': t.hijos ? t.hijos.length : 0,
-                    'FechaRegistro': t.fechaRegistro
-                }));
-
-                // Crear workbook
-                const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.json_to_sheet(data);
-                
-                // Ajustar anchos de columna
-                const colWidths = [
-                    {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15},
-                    {wch: 10}, {wch: 15}, {wch: 12}, {wch: 30}, {wch: 15},
-                    {wch: 25}, {wch: 15}, {wch: 20}, {wch: 12}, {wch: 15},
-                    {wch: 20}, {wch: 10}, {wch: 20}, {wch: 15}, {wch: 30},
-                    {wch: 10}, {wch: 20}
-                ];
-                ws['!cols'] = colWidths;
-
-                XLSX.utils.book_append_sheet(wb, ws, 'Trabajadores');
-                
-                // Generar nombre de archivo con fecha
-                const fecha = new Date().toISOString().split('T')[0];
-                const nombreArchivo = `CP_Puerto_Miranda_Trabajadores_${fecha}.xlsx`;
-                
-                XLSX.writeFile(wb, nombreArchivo);
-                
-                showToast(`📥 Descargado: ${nombreArchivo}`);
-                
-            } catch (error) {
-                showToast('Error al exportar: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function exportFilteredExcel() {
-            const filtro = prompt('Ingrese término de búsqueda para filtrar (cédula, nombre, cargo, etc.):');
-            if (!filtro) return;
-
-            const filtrados = trabajadores.filter(t => 
-                t.cedula.toLowerCase().includes(filtro.toLowerCase()) ||
-                t.primerNombre.toLowerCase().includes(filtro.toLowerCase()) ||
-                t.primerApellido.toLowerCase().includes(filtro.toLowerCase()) ||
-                t.cargo.toLowerCase().includes(filtro.toLowerCase()) ||
-                t.dependencia.toLowerCase().includes(filtro.toLowerCase())
-            );
-
-            if (filtrados.length === 0) {
-                showToast('No se encontraron registros con ese filtro', 'error');
-                return;
-            }
-
-            // Mismo proceso pero con datos filtrados
-            const data = filtrados.map(t => ({
-                'Cedula': t.cedula,
-                'PrimerNombre': t.primerNombre,
-                'SegundoNombre': t.segundoNombre,
-                'PrimerApellido': t.primerApellido,
-                'SegundoApellido': t.segundoApellido,
-                'Sexo': t.sexo,
-                'FechaNacimiento': t.fechaNacimiento,
-                'EstadoCivil': t.estadoCivil,
-                'Direccion': t.direccion,
-                'Celular': t.celular,
-                'Correo': t.correo,
-                'NivelAcademico': t.nivelAcademico,
-                'Profesion': t.profesion,
-                'TipoPersonal': t.tipoPersonal,
-                'FechaIngreso': t.fechaIngreso,
-                'Cargo': t.cargo,
-                'Codigo': t.codigo,
-                'Dependencia': t.dependencia,
-                'Nomina': t.nomina,
-                'Observaciones': t.observaciones,
-                'TotalHijos': t.hijos ? t.hijos.length : 0
-            }));
-
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(data);
-            ws['!cols'] = [{wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 15}, {wch: 12}, {wch: 30}, {wch: 15}, {wch: 25}, {wch: 15}, {wch: 20}, {wch: 12}, {wch: 15}, {wch: 20}, {wch: 10}, {wch: 20}, {wch: 15}, {wch: 30}, {wch: 10}];
-
-            XLSX.utils.book_append_sheet(wb, ws, 'Filtrados');
-            
-            const fecha = new Date().toISOString().split('T')[0];
-            XLSX.writeFile(wb, `CP_Puerto_Miranda_Filtrado_${fecha}.xlsx`);
-            
-            showToast(`📥 Exportados ${filtrados.length} registros filtrados`);
-        }
-
-        // ============================================
-        // FUNCIONES UTILITARIAS
-        // ============================================
-        function showLoading(show, text = 'Cargando...') {
-            document.getElementById('loadingOverlay').classList.toggle('active', show);
-            document.getElementById('loadingText').textContent = text;
-        }
-
-        function showToast(msg, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.className = 'toast ' + (type === 'error' ? 'error' : '');
-            toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', 3000);
-        }
-
-        function updateCloudStatus(status, text) {
-            const statusEl = document.getElementById('cloudStatus');
-            const textEl = document.getElementById('cloudText');
-            
-            statusEl.className = 'cloud-status ' + status;
-            textEl.textContent = text;
-        }
-
-        function saveLocalData() {
-            localStorage.setItem('cp_trabajadores', JSON.stringify(trabajadores));
-        }
-
-        function loadLocalData() {
-            const local = localStorage.getItem('cp_trabajadores');
-            if (local) {
-                try {
-                    trabajadores = JSON.parse(local);
-                } catch (e) {
-                    trabajadores = [];
-                }
-            }
         }
 
         function normalizeTrabajador(data) {
@@ -2240,6 +1739,37 @@
         }
 
         // ============================================
+        // FUNCIONES UTILITARIAS
+        // ============================================
+        function showLoading(show, text = 'Cargando...') {
+            document.getElementById('loadingOverlay').classList.toggle('active', show);
+            document.getElementById('loadingText').textContent = text;
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast ' + (type === 'error' ? 'error' : '');
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+
+        function saveLocalData() {
+            localStorage.setItem('cp_trabajadores', JSON.stringify(trabajadores));
+        }
+
+        function loadLocalData() {
+            const local = localStorage.getItem('cp_trabajadores');
+            if (local) {
+                try {
+                    trabajadores = JSON.parse(local);
+                } catch (e) {
+                    trabajadores = [];
+                }
+            }
+        }
+
+        // ============================================
         // UI Y NAVEGACIÓN
         // ============================================
         function showSection(sectionId) {
@@ -2251,7 +1781,6 @@
             const titles = {
                 'dashboard': 'Dashboard',
                 'migration': 'Sincronizar Excel',
-                'export': 'Exportar Datos',
                 'trabajadores': 'Trabajadores',
                 'registrar': 'Nuevo Registro',
                 'consulta': 'Consulta'
@@ -2263,8 +1792,6 @@
                 loadRecent();
             } else if (sectionId === 'trabajadores') {
                 loadTrabajadores();
-            } else if (sectionId === 'export') {
-                updateExportPreview();
             }
         }
 
@@ -2348,7 +1875,7 @@
             container.appendChild(div);
         }
 
-        async function saveTrabajador(e) {
+        function saveTrabajador(e) {
             e.preventDefault();
             const form = e.target;
             const formData = new FormData(form);
@@ -2402,24 +1929,11 @@
             
             trabajadores.push(trabajador);
             saveLocalData();
-            
-            // Guardar en Supabase
-            if (supabase) {
-                const ok = await saveToSupabase(trabajador);
-                if (ok) {
-                    showToast('Guardado en Supabase ✅');
-                } else {
-                    showToast('Guardado localmente (error Supabase)', 'error');
-                }
-            } else {
-                showToast('Guardado localmente');
-            }
-            
             form.reset();
             document.getElementById('hijosContainer').innerHTML = '';
             resetCedulaValidation();
+            showToast('Trabajador guardado');
             updateStats();
-            updateExportPreview();
         }
 
         function consultaAvanzada() {
@@ -2486,7 +2000,7 @@
             document.getElementById('editModal').classList.add('active');
         }
 
-        async function updateTrabajador(e) {
+        function updateTrabajador(e) {
             e.preventDefault();
             const form = e.target;
             const formData = new FormData(form);
@@ -2502,39 +2016,20 @@
                 };
                 
                 saveLocalData();
-                
-                // Actualizar en Supabase
-                if (supabase) {
-                    await saveToSupabase(trabajadores[index]);
-                }
-                
                 closeModal();
                 loadTrabajadores();
-                updateExportPreview();
                 showToast('Actualizado correctamente');
             }
         }
 
-        async function deleteTrabajador(id) {
-            if (!confirm('¿Eliminar este trabajador?')) return;
-            
-            const t = trabajadores.find(x => x.id === id);
-            trabajadores = trabajadores.filter(t => t.id !== id);
-            saveLocalData();
-            
-            // Eliminar de Supabase
-            if (supabase && t) {
-                try {
-                    await supabase.from('trabajadores').delete().eq('cedula', t.cedula);
-                } catch (e) {
-                    console.error('Error eliminando de Supabase:', e);
-                }
+        function deleteTrabajador(id) {
+            if (confirm('¿Eliminar este trabajador?')) {
+                trabajadores = trabajadores.filter(t => t.id !== id);
+                saveLocalData();
+                loadTrabajadores();
+                updateStats();
+                showToast('Eliminado');
             }
-            
-            loadTrabajadores();
-            updateStats();
-            updateExportPreview();
-            showToast('Eliminado');
         }
 
         function openModal() {
@@ -2543,7 +2038,7 @@
             resetCedulaValidation();
             showSection('registrar');
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            document.querySelector('a[onclick="showSection(\'registrar\')"]').classList.add('active');
+            event.target.closest('.nav-link').classList.add('active');
         }
 
         function closeModal() {
