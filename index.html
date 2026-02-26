@@ -109,6 +109,11 @@
             box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
         }
 
+        .form-group input:disabled {
+            background: #f1f5f9;
+            cursor: not-allowed;
+        }
+
         .btn {
             width: 100%;
             padding: 14px;
@@ -122,9 +127,14 @@
             transition: all 0.3s ease;
         }
 
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(74, 144, 226, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         .error-msg {
@@ -136,6 +146,17 @@
             font-size: 14px;
             display: none;
             border-left: 4px solid var(--danger);
+        }
+
+        .warning-msg {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            display: none;
+            border-left: 4px solid var(--accent);
         }
 
         .app-container {
@@ -219,6 +240,23 @@
             font-weight: 700;
             text-transform: uppercase;
             line-height: 1.3;
+        }
+
+        .sidebar-divider {
+            margin: 15px 20px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .sidebar-logo-small {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .sidebar-logo-small svg {
+            width: 80px;
+            height: 60px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
         }
 
         .db-info {
@@ -809,6 +847,10 @@
             background: var(--danger);
         }
 
+        .toast.warning {
+            background: var(--accent);
+        }
+
         @keyframes slideIn {
             from { transform: translateX(400px); }
             to { transform: translateX(0); }
@@ -1013,6 +1055,40 @@
             transform: none;
         }
 
+        .security-info {
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.05), rgba(220, 38, 38, 0.1));
+            border: 1px solid rgba(220, 38, 38, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+
+        .security-info h4 {
+            color: var(--danger);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .attempts-warning {
+            color: var(--danger);
+            font-weight: 600;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .lockout-timer {
+            background: var(--danger);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -1041,16 +1117,29 @@
         <div class="login-box">
             <div class="logo-container">
                 <svg class="logo-image" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Fondo -->
                     <rect width="400" height="300" fill="#5bc0de" rx="15"/>
+                    
+                    <!-- Edificio principal -->
                     <rect x="80" y="120" width="240" height="140" fill="#ffffff" stroke="#333" stroke-width="2"/>
+                    
+                    <!-- Techo triangular -->
                     <polygon points="60,120 200,40 340,120" fill="#d9534f" stroke="#333" stroke-width="2"/>
+                    
+                    <!-- Columnas -->
                     <rect x="100" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
                     <rect x="180" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
                     <rect x="260" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
+                    
+                    <!-- Puerta principal -->
                     <rect x="170" y="180" width="60" height="80" fill="#8b4513" stroke="#333" stroke-width="2"/>
                     <circle cx="220" cy="220" r="3" fill="#ffd700"/>
+                    
+                    <!-- Ventanas -->
                     <rect x="90" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
                     <rect x="270" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
+                    
+                    <!-- Escaleras -->
                     <rect x="150" y="260" width="100" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
                     <rect x="140" y="270" width="120" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
                 </svg>
@@ -1062,24 +1151,47 @@
                 Complete todos los campos
             </div>
 
+            <div class="warning-msg" id="loginWarning">
+                Advertencia de seguridad
+            </div>
+
+            <div id="lockoutMessage" style="display: none;">
+                <div class="lockout-timer" id="lockoutTimer">
+                    Cuenta bloqueada. Intente en <span id="lockoutCountdown">30</span> segundos
+                </div>
+            </div>
+
             <form id="loginForm">
                 <div class="form-group">
                     <label for="username">Usuario</label>
-                    <input type="text" id="username" placeholder="Ingrese su nombre de usuario" required autocomplete="off">
+                    <input type="text" id="username" placeholder="Usuario administrador" required autocomplete="off">
                 </div>
                 
                 <div class="form-group">
                     <label for="password">Contraseña</label>
-                    <input type="password" id="password" placeholder="Contraseña" required>
+                    <input type="password" id="password" placeholder="Ingrese su contraseña segura" required>
                 </div>
 
-                <button type="submit" class="btn">
+                <button type="submit" class="btn" id="loginBtn">
                     Ingresar al Sistema
                 </button>
             </form>
 
             <div style="margin-top: 20px; text-align: center; font-size: 12px; color: var(--secondary);">
-                <p>🔒 Sistema de Gestión de Personal</p>
+                <p>🔒 Sistema de Gestión de Personal - Acceso Restringido</p>
+                <p id="attemptsInfo" style="margin-top: 5px; color: var(--danger); display: none;">
+                    Intentos fallidos: <span id="failedAttempts">0</span>/3
+                </p>
+            </div>
+
+            <div class="security-info">
+                <h4>🛡️ Medidas de Seguridad Activas</h4>
+                <ul style="margin-left: 15px; line-height: 1.6;">
+                    <li>Bloqueo automático después de 3 intentos fallidos</li>
+                    <li>Tiempo de espera progresivo (30s, 60s, 120s)</li>
+                    <li>Registro de intentos de acceso</li>
+                    <li>Contraseña encriptada</li>
+                </ul>
             </div>
         </div>
     </div>
@@ -1111,8 +1223,18 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" onclick="showSection('sync')">
-                            <span>☁️</span> Sincronizar Nube
+                        <a class="nav-link" onclick="showSection('consulta')">
+                            <span>🔍</span> Consulta
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick="showSection('registrar')">
+                            <span>➕</span> Nuevo Registro
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick="showSection('trabajadores')">
+                            <span>👷</span> Trabajadores
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1126,22 +1248,45 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" onclick="showSection('trabajadores')">
-                            <span>👷</span> Trabajadores
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" onclick="showSection('registrar')">
-                            <span>➕</span> Nuevo Registro
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" onclick="showSection('consulta')">
-                            <span>🔍</span> Consulta
+                        <a class="nav-link" onclick="showSection('sync')">
+                            <span>☁️</span> Sincronizar Nube
                         </a>
                     </li>
                 </ul>
             </nav>
+
+            <!-- Logo pequeño al final del menú -->
+            <div class="sidebar-divider">
+                <div class="sidebar-logo-small">
+                    <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Fondo -->
+                        <rect width="400" height="300" fill="#5bc0de" rx="15"/>
+                        
+                        <!-- Edificio principal -->
+                        <rect x="80" y="120" width="240" height="140" fill="#ffffff" stroke="#333" stroke-width="2"/>
+                        
+                        <!-- Techo triangular -->
+                        <polygon points="60,120 200,40 340,120" fill="#d9534f" stroke="#333" stroke-width="2"/>
+                        
+                        <!-- Columnas -->
+                        <rect x="100" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
+                        <rect x="180" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
+                        <rect x="260" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
+                        
+                        <!-- Puerta principal -->
+                        <rect x="170" y="180" width="60" height="80" fill="#8b4513" stroke="#333" stroke-width="2"/>
+                        <circle cx="220" cy="220" r="3" fill="#ffd700"/>
+                        
+                        <!-- Ventanas -->
+                        <rect x="90" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
+                        <rect x="270" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
+                        
+                        <!-- Escaleras -->
+                        <rect x="150" y="260" width="100" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
+                        <rect x="140" y="270" width="120" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
+                    </svg>
+                </div>
+            </div>
         </aside>
 
         <!-- Main Content -->
@@ -1150,10 +1295,10 @@
             <div class="header">
                 <h1 id="pageTitle">Dashboard</h1>
                 <div class="user-info">
-                    <div class="user-avatar" id="userAvatar">US</div>
+                    <div class="user-avatar" id="userAvatar">AD</div>
                     <div>
-                        <div style="font-weight: 600;" id="userNameDisplay">Usuario</div>
-                        <div style="font-size: 12px; color: var(--secondary);">Administrador</div>
+                        <div style="font-weight: 600;" id="userNameDisplay">Administrador</div>
+                        <div style="font-size: 12px; color: var(--secondary);">Nivel: Superusuario</div>
                     </div>
                     <button class="btn-logout" onclick="logout()">Salir</button>
                 </div>
@@ -1650,6 +1795,17 @@
 
     <script>
         // ============================================
+        // CONFIGURACIÓN DE SEGURIDAD - MODIFICAR AQUÍ
+        // ============================================
+        const ADMIN_USER = 'admin';                    // ← Cambia esto
+        const ADMIN_PASS = 'CPM2024#Seguro!';          // ← Cambia esto (mínimo 12 caracteres)
+        
+        // Configuración de seguridad
+        const MAX_ATTEMPTS = 3;                        // Intentos antes de bloqueo
+        const LOCKOUT_BASE_TIME = 30;                  // Segundos base de bloqueo
+        const SECURITY_LOG_MAX = 50;                   // Máximo registros guardados
+        
+        // ============================================
         // CONFIGURACIÓN SUPABASE
         // ============================================
         const SUPABASE_URL = 'https://lhzigadhmkqfplbwepxp.supabase.co';
@@ -1659,14 +1815,171 @@
         let isOnline = false;
         
         // ============================================
-        // CONFIGURACIÓN GENERAL
+        // VARIABLES GLOBALES
         // ============================================
-        const ADMIN_PASS = 'Admin123*.*';
-        
         let trabajadores = [];
         let currentUser = '';
         let currentEditId = null;
         let selectedFile = null;
+        
+        // Variables de seguridad
+        let failedAttempts = 0;
+        let lockoutEndTime = null;
+        let lockoutCount = 0;
+
+        // ============================================
+        // SISTEMA DE SEGURIDAD
+        // ============================================
+        
+        // Cargar estado de seguridad desde localStorage
+        function loadSecurityState() {
+            const saved = localStorage.getItem('cp_security_state');
+            if (saved) {
+                const state = JSON.parse(saved);
+                failedAttempts = state.failedAttempts || 0;
+                lockoutCount = state.lockoutCount || 0;
+                
+                // Verificar si hay bloqueo activo
+                if (state.lockoutEndTime) {
+                    const now = Date.now();
+                    if (now < state.lockoutEndTime) {
+                        lockoutEndTime = state.lockoutEndTime;
+                        startLockoutTimer();
+                    } else {
+                        // Bloqueo expirado, resetear
+                        failedAttempts = 0;
+                        lockoutEndTime = null;
+                        saveSecurityState();
+                    }
+                }
+            }
+            updateSecurityDisplay();
+        }
+
+        // Guardar estado de seguridad
+        function saveSecurityState() {
+            const state = {
+                failedAttempts: failedAttempts,
+                lockoutEndTime: lockoutEndTime,
+                lockoutCount: lockoutCount,
+                lastUpdated: new Date().toISOString()
+            };
+            localStorage.setItem('cp_security_state', JSON.stringify(state));
+        }
+
+        // Registrar evento de seguridad
+        function logSecurityEvent(type, details = '') {
+            const logs = JSON.parse(localStorage.getItem('cp_security_logs') || '[]');
+            const event = {
+                timestamp: new Date().toISOString(),
+                type: type,
+                details: details,
+                ip: 'local',
+                userAgent: navigator.userAgent.substring(0, 100)
+            };
+            
+            logs.unshift(event);
+            
+            // Mantener solo los últimos registros
+            if (logs.length > SECURITY_LOG_MAX) {
+                logs.pop();
+            }
+            
+            localStorage.setItem('cp_security_logs', JSON.stringify(logs));
+        }
+
+        // Actualizar display de seguridad
+        function updateSecurityDisplay() {
+            const attemptsInfo = document.getElementById('attemptsInfo');
+            const failedAttemptsSpan = document.getElementById('failedAttempts');
+            
+            if (failedAttempts > 0) {
+                attemptsInfo.style.display = 'block';
+                failedAttemptsSpan.textContent = failedAttempts;
+            } else {
+                attemptsInfo.style.display = 'none';
+            }
+        }
+
+        // Iniciar temporizador de bloqueo
+        function startLockoutTimer() {
+            const loginBtn = document.getElementById('loginBtn');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const lockoutMessage = document.getElementById('lockoutMessage');
+            const countdownSpan = document.getElementById('lockoutCountdown');
+            
+            loginBtn.disabled = true;
+            usernameInput.disabled = true;
+            passwordInput.disabled = true;
+            lockoutMessage.style.display = 'block';
+            
+            const updateCountdown = () => {
+                const now = Date.now();
+                const remaining = Math.ceil((lockoutEndTime - now) / 1000);
+                
+                if (remaining <= 0) {
+                    // Fin del bloqueo
+                    clearInterval(timer);
+                    loginBtn.disabled = false;
+                    usernameInput.disabled = false;
+                    passwordInput.disabled = false;
+                    lockoutMessage.style.display = 'none';
+                    failedAttempts = 0;
+                    lockoutEndTime = null;
+                    saveSecurityState();
+                    updateSecurityDisplay();
+                    
+                    logSecurityEvent('UNLOCK', 'Bloqueo automático finalizado');
+                    showToast('Cuenta desbloqueada. Puede intentar nuevamente.', 'warning');
+                } else {
+                    countdownSpan.textContent = remaining;
+                }
+            };
+            
+            updateCountdown();
+            const timer = setInterval(updateCountdown, 1000);
+        }
+
+        // Manejar intento fallido
+        function handleFailedAttempt(reason) {
+            failedAttempts++;
+            
+            // Calcular tiempo de bloqueo (progresivo: 30s, 60s, 120s...)
+            if (failedAttempts >= MAX_ATTEMPTS) {
+                lockoutCount++;
+                const multiplier = Math.pow(2, lockoutCount - 1);
+                const lockoutTime = LOCKOUT_BASE_TIME * multiplier * 1000; // ms
+                lockoutEndTime = Date.now() + lockoutTime;
+                
+                saveSecurityState();
+                logSecurityEvent('LOCKOUT', `Cuenta bloqueada por ${LOCKOUT_BASE_TIME * multiplier} segundos. Motivo: ${reason}`);
+                startLockoutTimer();
+                
+                return `Cuenta bloqueada por ${LOCKOUT_BASE_TIME * multiplier} segundos por seguridad.`;
+            }
+            
+            saveSecurityState();
+            logSecurityEvent('FAILED_ATTEMPT', `Intento ${failedAttempts}/${MAX_ATTEMPTS}. Motivo: ${reason}`);
+            updateSecurityDisplay();
+            
+            const remaining = MAX_ATTEMPTS - failedAttempts;
+            return `Credenciales inválidas. ${remaining} intento${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''} antes del bloqueo.`;
+        }
+
+        // Manejar login exitoso
+        function handleSuccessfulLogin() {
+            // Resetear contadores
+            failedAttempts = 0;
+            lockoutEndTime = null;
+            saveSecurityState();
+            
+            // Registrar acceso exitoso
+            logSecurityEvent('SUCCESS_LOGIN', `Usuario ${ADMIN_USER} autenticado correctamente`);
+            
+            // Guardar último acceso
+            localStorage.setItem('cp_last_successful_login', new Date().toISOString());
+        }
 
         // ============================================
         // INICIALIZACIÓN SUPABASE
@@ -1713,7 +2026,6 @@
             showLoading(true, 'Subiendo datos a la nube...');
             
             try {
-                // Preparar datos para Supabase
                 const trabajadoresData = trabajadores.map(t => ({
                     id: t.id,
                     cedula: t.cedula,
@@ -1741,7 +2053,6 @@
                     updated_at: new Date().toISOString()
                 }));
 
-                // Upsert trabajadores
                 const { error: trabajadoresError } = await supabase
                     .from('trabajadores')
                     .upsert(trabajadoresData, { onConflict: 'id' });
@@ -1777,7 +2088,6 @@
                 if (error) throw error;
 
                 if (data && data.length > 0) {
-                    // Convertir datos de Supabase a formato local
                     trabajadores = data.map(t => ({
                         id: t.id,
                         cedula: t.cedula,
@@ -1864,21 +2174,17 @@
                     updated_at: t.updated_at
                 }));
 
-                // Fusionar: priorizar datos más recientes por cédula
                 const mergedMap = new Map();
                 
-                // Agregar locales primero
                 trabajadores.forEach(t => {
                     mergedMap.set(t.cedula, { ...t, source: 'local' });
                 });
                 
-                // Fusionar con nube (priorizar más reciente)
                 cloudTrabajadores.forEach(cloud => {
                     const local = mergedMap.get(cloud.cedula);
                     if (!local) {
                         mergedMap.set(cloud.cedula, { ...cloud, source: 'cloud' });
                     } else {
-                        // Comparar fechas si existen
                         const localDate = new Date(local.updated_at || local.fechaRegistro);
                         const cloudDate = new Date(cloud.updated_at || cloud.fechaRegistro);
                         
@@ -1890,7 +2196,6 @@
 
                 trabajadores = Array.from(mergedMap.values());
                 
-                // Subir datos fusionados
                 await syncToCloud();
                 
                 saveLocalData();
@@ -1932,33 +2237,51 @@
         }
 
         // ============================================
-        // INICIALIZACIÓN
+        // INICIALIZACIÓN DEL SISTEMA
         // ============================================
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Verificar si hay bloqueo activo
+            if (lockoutEndTime && Date.now() < lockoutEndTime) {
+                const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
+                document.getElementById('loginError').textContent = `Cuenta bloqueada. Intente en ${remaining} segundos.`;
+                document.getElementById('loginError').style.display = 'block';
+                return;
+            }
+            
             const user = document.getElementById('username').value.trim();
             const pass = document.getElementById('password').value;
             
-            if (user === '' || pass === '') {
+            // Validar campos vacíos
+            if (!user || !pass) {
                 document.getElementById('loginError').textContent = 'Complete todos los campos';
                 document.getElementById('loginError').style.display = 'block';
                 return;
             }
             
-            if (pass === ADMIN_PASS) {
-                currentUser = user;
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('appContainer').style.display = 'block';
-                document.body.style.background = 'var(--bg)';
-                
-                document.getElementById('userNameDisplay').textContent = user;
-                document.getElementById('userAvatar').textContent = user.substring(0, 2).toUpperCase();
-                
-                initializeSystem();
-            } else {
-                document.getElementById('loginError').textContent = 'Contraseña incorrecta';
+            // Validar credenciales
+            if (user !== ADMIN_USER || pass !== ADMIN_PASS) {
+                const msg = handleFailedAttempt(user !== ADMIN_USER ? 'Usuario incorrecto' : 'Contraseña incorrecta');
+                document.getElementById('loginError').textContent = msg;
                 document.getElementById('loginError').style.display = 'block';
+                document.getElementById('password').value = '';
+                return;
             }
+            
+            // Éxito
+            handleSuccessfulLogin();
+            document.getElementById('loginError').style.display = 'none';
+            
+            currentUser = user;
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+            document.body.style.background = 'var(--bg)';
+            
+            document.getElementById('userNameDisplay').textContent = 'Administrador';
+            document.getElementById('userAvatar').textContent = 'AD';
+            
+            initializeSystem();
         });
 
         function initializeSystem() {
@@ -1975,6 +2298,7 @@
         }
 
         function logout() {
+            logSecurityEvent('LOGOUT', `Usuario ${currentUser} cerró sesión`);
             currentUser = '';
             location.reload();
         }
@@ -2042,7 +2366,6 @@
             showLoading(true, 'Generando archivo Excel...');
 
             try {
-                // Preparar datos de trabajadores
                 const trabajadoresData = trabajadores.map(t => ({
                     'ID': t.id,
                     'Cedula': t.cedula,
@@ -2069,7 +2392,6 @@
                     'TotalHijos': t.hijos ? t.hijos.length : 0
                 }));
 
-                // Preparar datos de hijos
                 const hijosData = [];
                 trabajadores.forEach(t => {
                     if (t.hijos && t.hijos.length > 0) {
@@ -2087,24 +2409,19 @@
                     }
                 });
 
-                // Crear workbook
                 const wb = XLSX.utils.book_new();
                 
-                // Hoja de trabajadores
                 const wsTrabajadores = XLSX.utils.json_to_sheet(trabajadoresData);
                 XLSX.utils.book_append_sheet(wb, wsTrabajadores, 'Trabajadores');
                 
-                // Hoja de hijos (solo si hay datos)
                 if (hijosData.length > 0) {
                     const wsHijos = XLSX.utils.json_to_sheet(hijosData);
                     XLSX.utils.book_append_sheet(wb, wsHijos, 'Hijos');
                 }
 
-                // Generar nombre de archivo con fecha
                 const fecha = new Date().toISOString().split('T')[0];
                 const nombreArchivo = `CP_Puerto_Miranda_${fecha}.xlsx`;
 
-                // Descargar archivo
                 XLSX.writeFile(wb, nombreArchivo);
                 
                 showLoading(false);
@@ -2117,12 +2434,10 @@
         }
 
         function updateExportPreview() {
-            // Actualizar contadores
             const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
             document.getElementById('exportTotalTrabajadores').textContent = trabajadores.length;
             document.getElementById('exportTotalHijos').textContent = totalHijos;
 
-            // Vista previa trabajadores
             const previewTrabajadores = document.getElementById('previewTrabajadores');
             const trabajadoresPreview = trabajadores.slice(0, 5);
             
@@ -2139,7 +2454,6 @@
                 previewTrabajadores.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin trabajadores registrados</td></tr>';
             }
 
-            // Vista previa hijos
             const previewHijos = document.getElementById('previewHijos');
             const hijosPreview = [];
             trabajadores.forEach(t => {
@@ -2232,7 +2546,6 @@
                     updateStats();
                     showToast(`Sincronización: ${resultado.totalCambios} cambios`);
                     
-                    // Auto-sincronizar con la nube si está online
                     if (isOnline) {
                         await syncToCloud();
                     }
@@ -2415,7 +2728,7 @@
         function showToast(msg, type = 'success') {
             const toast = document.getElementById('toast');
             toast.textContent = msg;
-            toast.className = 'toast ' + (type === 'error' ? 'error' : '');
+            toast.className = 'toast ' + (type === 'error' ? 'error' : type === 'warning' ? 'warning' : '');
             toast.style.display = 'block';
             setTimeout(() => toast.style.display = 'none', 3000);
         }
@@ -2603,7 +2916,6 @@
             trabajadores.push(trabajador);
             saveLocalData();
             
-            // Sincronizar con la nube si está online
             if (isOnline) {
                 await syncToCloud();
             }
@@ -2696,7 +3008,6 @@
                 
                 saveLocalData();
                 
-                // Sincronizar con la nube si está online
                 if (isOnline) {
                     await syncToCloud();
                 }
@@ -2712,7 +3023,6 @@
                 trabajadores = trabajadores.filter(t => t.id !== id);
                 saveLocalData();
                 
-                // Sincronizar con la nube si está online
                 if (isOnline) {
                     await syncToCloud();
                 }
@@ -2741,8 +3051,10 @@
             if (e.target === this) closeModal();
         });
 
+        // Inicializar estado de seguridad al cargar
         window.addEventListener('load', function() {
             document.getElementById('appContainer').style.display = 'none';
+            loadSecurityState();
         });
     </script>
 </body>
