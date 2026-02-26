@@ -28,6 +28,7 @@
             --border: #e2e8f0;
             --cp-blue: #4a90e2;
             --cp-cyan: #5bc0de;
+            --basic: #8b5cf6;
         }
 
         body {
@@ -94,7 +95,7 @@
             font-size: 14px;
         }
 
-        .form-group input {
+        .form-group input, .form-group select {
             width: 100%;
             padding: 12px 16px;
             border: 2px solid var(--border);
@@ -103,7 +104,7 @@
             transition: all 0.3s ease;
         }
 
-        .form-group input:focus {
+        .form-group input:focus, .form-group select:focus {
             outline: none;
             border-color: var(--cp-blue);
             box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
@@ -291,6 +292,10 @@
             margin-bottom: 5px;
         }
 
+        .nav-item.hidden {
+            display: none;
+        }
+
         .nav-link {
             display: flex;
             align-items: center;
@@ -314,10 +319,25 @@
             color: white;
         }
 
+        .nav-link.basic-user {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--basic);
+        }
+
+        .nav-link.basic-user.active {
+            background: var(--basic);
+            color: white;
+        }
+
         .main-content {
             margin-left: 280px;
             padding: 80px 30px 30px;
             min-height: 100vh;
+        }
+
+        .main-content.basic-view {
+            margin-left: 0;
+            padding-top: 30px;
         }
 
         .header {
@@ -344,13 +364,38 @@
         .user-avatar {
             width: 40px;
             height: 40px;
-            background: var(--cp-blue);
-            color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 600;
+            color: white;
+        }
+
+        .user-avatar.admin {
+            background: var(--cp-blue);
+        }
+
+        .user-avatar.basic {
+            background: var(--basic);
+        }
+
+        .user-role-badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .user-role-badge.admin {
+            background: rgba(74, 144, 226, 0.1);
+            color: var(--cp-blue);
+        }
+
+        .user-role-badge.basic {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--basic);
         }
 
         .btn-logout {
@@ -732,6 +777,7 @@
         .badge-cloud { background: rgba(99, 102, 241, 0.1); color: var(--cloud); }
         .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
         .badge-danger { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
+        .badge-basic { background: rgba(139, 92, 246, 0.1); color: var(--basic); }
 
         .sync-panel {
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
@@ -1089,6 +1135,70 @@
             font-weight: 600;
         }
 
+        .form-group.optional label::after {
+            content: " (opcional)";
+            color: var(--secondary);
+            font-weight: 400;
+            font-size: 12px;
+        }
+
+        .form-group.required label::after {
+            content: " *";
+            color: var(--danger);
+        }
+
+        /* Estilos para vista básica */
+        .basic-search-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .basic-info-banner {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .basic-info-banner h2 {
+            color: var(--basic);
+            margin-bottom: 10px;
+        }
+
+        .basic-info-banner p {
+            color: var(--secondary);
+            font-size: 14px;
+        }
+
+        .basic-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .basic-stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .basic-stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--basic);
+        }
+
+        .basic-stat-label {
+            font-size: 12px;
+            color: var(--secondary);
+            margin-top: 5px;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -1098,7 +1208,13 @@
             .main-content {
                 margin-left: 0;
             }
+            .main-content.basic-view {
+                padding: 20px;
+            }
             .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .basic-stats {
                 grid-template-columns: 1fr;
             }
         }
@@ -1117,29 +1233,16 @@
         <div class="login-box">
             <div class="logo-container">
                 <svg class="logo-image" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Fondo -->
                     <rect width="400" height="300" fill="#5bc0de" rx="15"/>
-                    
-                    <!-- Edificio principal -->
                     <rect x="80" y="120" width="240" height="140" fill="#ffffff" stroke="#333" stroke-width="2"/>
-                    
-                    <!-- Techo triangular -->
                     <polygon points="60,120 200,40 340,120" fill="#d9534f" stroke="#333" stroke-width="2"/>
-                    
-                    <!-- Columnas -->
                     <rect x="100" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
                     <rect x="180" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
                     <rect x="260" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
-                    
-                    <!-- Puerta principal -->
                     <rect x="170" y="180" width="60" height="80" fill="#8b4513" stroke="#333" stroke-width="2"/>
                     <circle cx="220" cy="220" r="3" fill="#ffd700"/>
-                    
-                    <!-- Ventanas -->
                     <rect x="90" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
                     <rect x="270" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
-                    
-                    <!-- Escaleras -->
                     <rect x="150" y="260" width="100" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
                     <rect x="140" y="270" width="120" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
                 </svg>
@@ -1164,12 +1267,20 @@
             <form id="loginForm">
                 <div class="form-group">
                     <label for="username">Usuario</label>
-                    <input type="text" id="username" placeholder="Usuario administrador" required autocomplete="off">
+                    <input type="text" id="username" placeholder="Usuario" required autocomplete="off">
                 </div>
                 
                 <div class="form-group">
                     <label for="password">Contraseña</label>
-                    <input type="password" id="password" placeholder="Ingrese su contraseña segura" required>
+                    <input type="password" id="password" placeholder="Contraseña" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="userRole">Tipo de Acceso</label>
+                    <select id="userRole" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px;">
+                        <option value="admin">Administrador</option>
+                        <option value="basic">Consulta Básica</option>
+                    </select>
                 </div>
 
                 <button type="submit" class="btn" id="loginBtn">
@@ -1198,14 +1309,14 @@
 
     <!-- Main Application -->
     <div class="app-container" id="appContainer">
-        <!-- Cloud Status -->
-        <div class="cloud-status offline" id="cloudStatus" onclick="testConnection()">
+        <!-- Cloud Status - Solo visible para admin -->
+        <div class="cloud-status offline" id="cloudStatus" onclick="testConnection()" style="display: none;">
             <div class="status-dot"></div>
             <span id="cloudText">Verificando...</span>
         </div>
 
-        <!-- Sidebar -->
-        <aside class="sidebar">
+        <!-- Sidebar - Solo visible para admin -->
+        <aside class="sidebar" id="sidebar" style="display: none;">
             <div class="sidebar-logo">
                 <h3>Consultorio Popular<br>Tipo II<br>Puerto Miranda</h3>
             </div>
@@ -1216,38 +1327,38 @@
             </div>
             
             <nav>
-                <ul class="nav-menu">
-                    <li class="nav-item">
+                <ul class="nav-menu" id="navMenu">
+                    <li class="nav-item admin-only">
                         <a class="nav-link active" onclick="showSection('dashboard')">
                             <span>📊</span> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" onclick="showSection('consulta')">
+                        <a class="nav-link" onclick="showSection('consulta')" id="navConsulta">
                             <span>🔍</span> Consulta
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item admin-only">
                         <a class="nav-link" onclick="showSection('registrar')">
                             <span>➕</span> Nuevo Registro
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item admin-only">
                         <a class="nav-link" onclick="showSection('trabajadores')">
                             <span>👷</span> Trabajadores
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item admin-only">
                         <a class="nav-link" onclick="showSection('migration')">
                             <span>🔄</span> Importar Excel
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item admin-only">
                         <a class="nav-link" onclick="showSection('export')">
                             <span>📥</span> Exportar Excel
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item admin-only">
                         <a class="nav-link" onclick="showSection('sync')">
                             <span>☁️</span> Sincronizar Nube
                         </a>
@@ -1255,33 +1366,19 @@
                 </ul>
             </nav>
 
-            <!-- Logo pequeño al final del menú -->
             <div class="sidebar-divider">
                 <div class="sidebar-logo-small">
                     <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Fondo -->
                         <rect width="400" height="300" fill="#5bc0de" rx="15"/>
-                        
-                        <!-- Edificio principal -->
                         <rect x="80" y="120" width="240" height="140" fill="#ffffff" stroke="#333" stroke-width="2"/>
-                        
-                        <!-- Techo triangular -->
                         <polygon points="60,120 200,40 340,120" fill="#d9534f" stroke="#333" stroke-width="2"/>
-                        
-                        <!-- Columnas -->
                         <rect x="100" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
                         <rect x="180" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
                         <rect x="260" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
-                        
-                        <!-- Puerta principal -->
                         <rect x="170" y="180" width="60" height="80" fill="#8b4513" stroke="#333" stroke-width="2"/>
                         <circle cx="220" cy="220" r="3" fill="#ffd700"/>
-                        
-                        <!-- Ventanas -->
                         <rect x="90" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
                         <rect x="270" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
-                        
-                        <!-- Escaleras -->
                         <rect x="150" y="260" width="100" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
                         <rect x="140" y="270" width="120" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
                     </svg>
@@ -1290,7 +1387,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main-content" id="mainContent">
             <!-- Header -->
             <div class="header">
                 <h1 id="pageTitle">Dashboard</h1>
@@ -1298,14 +1395,16 @@
                     <div class="user-avatar" id="userAvatar">AD</div>
                     <div>
                         <div style="font-weight: 600;" id="userNameDisplay">Administrador</div>
-                        <div style="font-size: 12px; color: var(--secondary);">Nivel: Superusuario</div>
+                        <div style="font-size: 12px; color: var(--secondary);">
+                            <span class="user-role-badge" id="userRoleBadge">Superusuario</span>
+                        </div>
                     </div>
                     <button class="btn-logout" onclick="logout()">Salir</button>
                 </div>
             </div>
 
-            <!-- Dashboard Section -->
-            <div class="content-section active" id="dashboard">
+            <!-- Dashboard Section - Admin Only -->
+            <div class="content-section active admin-only" id="dashboard">
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-header">
@@ -1362,8 +1461,8 @@
                 </div>
             </div>
 
-            <!-- Sync Section -->
-            <div class="content-section" id="sync">
+            <!-- Sync Section - Admin Only -->
+            <div class="content-section admin-only" id="sync">
                 <div class="sync-panel">
                     <h3>☁️ Sincronización con Supabase</h3>
                     <p style="margin-bottom: 15px; color: var(--secondary);">
@@ -1418,13 +1517,14 @@
                 </div>
             </div>
 
-            <!-- Migration Section -->
-            <div class="content-section" id="migration">
+            <!-- Migration Section - Admin Only -->
+            <div class="content-section admin-only" id="migration">
                 <div class="sync-panel">
                     <h3>🔄 Importar desde Excel</h3>
                     <p style="margin-bottom: 15px; color: var(--secondary);">
                         Importa o actualiza trabajadores desde un archivo Excel. 
                         El sistema detecta automáticamente cambios y mantiene la cédula como identificador único.
+                        También importa los hijos desde la hoja "Hijos" vinculados por cédula del padre/madre.
                     </p>
 
                     <div class="sync-constant-info">
@@ -1433,6 +1533,7 @@
                             <li><strong>Nuevos:</strong> Cédulas que no existen se agregan</li>
                             <li><strong>Actualizar:</strong> Datos modificados se actualizan automáticamente</li>
                             <li><strong>Preservar:</strong> Se mantienen hijos y datos manuales</li>
+                            <li><strong>Hijos:</strong> Se importan desde hoja "Hijos" vinculados por cédula</li>
                         </ul>
                     </div>
 
@@ -1442,7 +1543,8 @@
                             <div class="step-content">
                                 <h4>Seleccionar archivo Excel</h4>
                                 <div style="background: #f8fafc; padding: 10px; border-radius: 6px; font-size: 11px; font-family: monospace; margin: 10px 0;">
-                                    Columnas: Cedula, PrimerNombre, SegundoNombre, PrimerApellido, SegundoApellido, Sexo, FechaNacimiento, EstadoCivil, Direccion, Celular, Correo, NivelAcademico, Profesion, TipoPersonal, FechaIngreso, Cargo, Codigo, Dependencia, Nomina, Observaciones
+                                    <strong>Hoja 1 - Trabajadores:</strong> Cedula, PrimerNombre, SegundoNombre, PrimerApellido, SegundoApellido, Sexo, FechaNacimiento, EstadoCivil, Direccion, Celular, Correo, NivelAcademico, Profesion, TipoPersonal, FechaIngreso, Cargo, Codigo, Dependencia, Nomina, Observaciones<br><br>
+                                    <strong>Hoja 2 - Hijos:</strong> CedulaPadreMadre, NombresApellidosHijo, CedulaHijo, Sexo, FechaNacimiento
                                 </div>
                                 <div class="file-input-wrapper">
                                     <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleFileSelect(this)">
@@ -1478,8 +1580,8 @@
                 </div>
             </div>
 
-            <!-- Export Section -->
-            <div class="content-section" id="export">
+            <!-- Export Section - Admin Only -->
+            <div class="content-section admin-only" id="export">
                 <div class="export-panel">
                     <h3>📥 Exportar a Excel</h3>
                     <p style="margin-bottom: 15px; color: var(--secondary);">
@@ -1562,8 +1664,8 @@
                 </div>
             </div>
 
-            <!-- Trabajadores List Section -->
-            <div class="content-section" id="trabajadores">
+            <!-- Trabajadores List Section - Admin Only -->
+            <div class="content-section admin-only" id="trabajadores">
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">Lista de Trabajadores</div>
@@ -1594,8 +1696,8 @@
                 </div>
             </div>
 
-            <!-- Registrar Section -->
-            <div class="content-section" id="registrar">
+            <!-- Registrar Section - Admin Only -->
+            <div class="content-section admin-only" id="registrar">
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">Registrar Nuevo Trabajador</div>
@@ -1604,50 +1706,50 @@
                     <div class="card-body">
                         <form id="trabajadorForm" onsubmit="saveTrabajador(event)">
                             <div class="form-grid">
-                                <div class="form-group cedula-unique">
-                                    <label>Cédula * <span style="color: var(--danger); font-size: 11px;">(ÚNICA)</span></label>
+                                <div class="form-group required cedula-unique">
+                                    <label>Cédula <span style="color: var(--danger);">*</span> <span style="color: var(--danger); font-size: 11px;">(ÚNICA - REQUERIDA)</span></label>
                                     <input type="text" name="cedula" id="cedulaInput" required placeholder="V-12345678" onblur="validateCedulaUnica(this.value)">
                                     <span class="validation-icon" id="cedulaValidation"></span>
                                     <div id="cedulaError" style="color: var(--danger); font-size: 12px; margin-top: 5px; display: none;"></div>
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Primer Nombre *</label>
-                                    <input type="text" name="primerNombre" required>
+                                <div class="form-group optional">
+                                    <label>Primer Nombre</label>
+                                    <input type="text" name="primerNombre" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional">
                                     <label>Segundo Nombre</label>
-                                    <input type="text" name="segundoNombre">
+                                    <input type="text" name="segundoNombre" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Primer Apellido *</label>
-                                    <input type="text" name="primerApellido" required>
+                                <div class="form-group optional">
+                                    <label>Primer Apellido</label>
+                                    <input type="text" name="primerApellido" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional">
                                     <label>Segundo Apellido</label>
-                                    <input type="text" name="segundoApellido">
+                                    <input type="text" name="segundoApellido" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Sexo *</label>
-                                    <select name="sexo" required>
+                                <div class="form-group optional">
+                                    <label>Sexo</label>
+                                    <select name="sexo">
                                         <option value="">Seleccione...</option>
                                         <option value="Masculino">Masculino</option>
                                         <option value="Femenino">Femenino</option>
                                     </select>
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Fecha de Nacimiento *</label>
-                                    <input type="date" name="fechaNacimiento" required>
+                                <div class="form-group optional">
+                                    <label>Fecha de Nacimiento</label>
+                                    <input type="date" name="fechaNacimiento">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Estado Civil *</label>
-                                    <select name="estadoCivil" required>
+                                <div class="form-group optional">
+                                    <label>Estado Civil</label>
+                                    <select name="estadoCivil">
                                         <option value="">Seleccione...</option>
                                         <option value="Soltero">Soltero/a</option>
                                         <option value="Casado">Casado/a</option>
@@ -1656,22 +1758,22 @@
                                     </select>
                                 </div>
                                 
-                                <div class="form-group" style="grid-column: 1 / -1;">
+                                <div class="form-group optional" style="grid-column: 1 / -1;">
                                     <label>Dirección</label>
-                                    <input type="text" name="direccion">
+                                    <input type="text" name="direccion" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional">
                                     <label>Celular</label>
-                                    <input type="tel" name="celular">
+                                    <input type="tel" name="celular" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional">
                                     <label>Correo Electrónico</label>
-                                    <input type="email" name="correo">
+                                    <input type="email" name="correo" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional">
                                     <label>Nivel Académico</label>
                                     <select name="nivelAcademico">
                                         <option value="">Seleccione...</option>
@@ -1685,14 +1787,14 @@
                                     </select>
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional">
                                     <label>Profesión</label>
-                                    <input type="text" name="profesion">
+                                    <input type="text" name="profesion" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Tipo de Personal *</label>
-                                    <select name="tipoPersonal" required>
+                                <div class="form-group optional">
+                                    <label>Tipo de Personal</label>
+                                    <select name="tipoPersonal">
                                         <option value="">Seleccione...</option>
                                         <option value="Fijo">Fijo</option>
                                         <option value="Contratado">Contratado</option>
@@ -1701,34 +1803,34 @@
                                     </select>
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Fecha de Ingreso *</label>
-                                    <input type="date" name="fechaIngreso" required>
+                                <div class="form-group optional">
+                                    <label>Fecha de Ingreso</label>
+                                    <input type="date" name="fechaIngreso">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Cargo *</label>
-                                    <input type="text" name="cargo" required>
+                                <div class="form-group optional">
+                                    <label>Cargo</label>
+                                    <input type="text" name="cargo" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional">
                                     <label>Código</label>
-                                    <input type="text" name="codigo">
+                                    <input type="text" name="codigo" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Dependencia *</label>
-                                    <input type="text" name="dependencia" required>
+                                <div class="form-group optional">
+                                    <label>Dependencia</label>
+                                    <input type="text" name="dependencia" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional">
                                     <label>Nómina</label>
-                                    <input type="text" name="nomina">
+                                    <input type="text" name="nomina" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group" style="grid-column: 1 / -1;">
+                                <div class="form-group optional" style="grid-column: 1 / -1;">
                                     <label>Observaciones</label>
-                                    <textarea name="observaciones" rows="3"></textarea>
+                                    <textarea name="observaciones" rows="3" placeholder="Opcional"></textarea>
                                 </div>
                             </div>
 
@@ -1751,11 +1853,34 @@
                 </div>
             </div>
 
-            <!-- Consulta Section -->
+            <!-- Consulta Section - Disponible para todos -->
             <div class="content-section" id="consulta">
+                <!-- Vista para usuario básico -->
+                <div id="basicView" style="display: none;">
+                    <div class="basic-info-banner">
+                        <h2>🔍 Consulta de Trabajadores</h2>
+                        <p>Modo de solo lectura - No puede modificar datos</p>
+                    </div>
+                    
+                    <div class="basic-stats">
+                        <div class="basic-stat-card">
+                            <div class="basic-stat-value" id="basicStatTotal">0</div>
+                            <div class="basic-stat-label">Total Trabajadores</div>
+                        </div>
+                        <div class="basic-stat-card">
+                            <div class="basic-stat-value" id="basicStatHijos">0</div>
+                            <div class="basic-stat-label">Total Hijos</div>
+                        </div>
+                        <div class="basic-stat-card">
+                            <div class="basic-stat-value" id="basicStatDeps">0</div>
+                            <div class="basic-stat-label">Dependencias</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">Consulta de Trabajadores</div>
+                        <div class="card-title">Buscar Trabajador</div>
                     </div>
                     <div class="card-body">
                         <div class="search-box">
@@ -1770,7 +1895,7 @@
         </main>
     </div>
 
-    <!-- Modal para Editar -->
+    <!-- Modal para Editar - Admin Only -->
     <div class="modal" id="editModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1795,15 +1920,29 @@
 
     <script>
         // ============================================
-        // CONFIGURACIÓN DE SEGURIDAD - MODIFICAR AQUÍ
+        // CONFIGURACIÓN DE USUARIOS - MODIFICAR AQUÍ
         // ============================================
-        const ADMIN_USER = 'admin';                    // ← Cambia esto
-        const ADMIN_PASS = 'CPM2024#Seguro!';          // ← Cambia esto (mínimo 12 caracteres)
+        const USERS = {
+            admin: {
+                username: 'admin',
+                password: 'CPM2024#Seguro!',
+                role: 'admin',
+                name: 'Administrador',
+                avatar: 'AD'
+            },
+            basic: {
+                username: 'consulta',
+                password: 'Consulta2024!',
+                role: 'basic',
+                name: 'Usuario Consulta',
+                avatar: 'UC'
+            }
+        };
         
         // Configuración de seguridad
-        const MAX_ATTEMPTS = 3;                        // Intentos antes de bloqueo
-        const LOCKOUT_BASE_TIME = 30;                  // Segundos base de bloqueo
-        const SECURITY_LOG_MAX = 50;                   // Máximo registros guardados
+        const MAX_ATTEMPTS = 3;
+        const LOCKOUT_BASE_TIME = 30;
+        const SECURITY_LOG_MAX = 50;
         
         // ============================================
         // CONFIGURACIÓN SUPABASE
@@ -1818,7 +1957,7 @@
         // VARIABLES GLOBALES
         // ============================================
         let trabajadores = [];
-        let currentUser = '';
+        let currentUser = null;
         let currentEditId = null;
         let selectedFile = null;
         
@@ -1831,7 +1970,6 @@
         // SISTEMA DE SEGURIDAD
         // ============================================
         
-        // Cargar estado de seguridad desde localStorage
         function loadSecurityState() {
             const saved = localStorage.getItem('cp_security_state');
             if (saved) {
@@ -1839,14 +1977,12 @@
                 failedAttempts = state.failedAttempts || 0;
                 lockoutCount = state.lockoutCount || 0;
                 
-                // Verificar si hay bloqueo activo
                 if (state.lockoutEndTime) {
                     const now = Date.now();
                     if (now < state.lockoutEndTime) {
                         lockoutEndTime = state.lockoutEndTime;
                         startLockoutTimer();
                     } else {
-                        // Bloqueo expirado, resetear
                         failedAttempts = 0;
                         lockoutEndTime = null;
                         saveSecurityState();
@@ -1856,7 +1992,6 @@
             updateSecurityDisplay();
         }
 
-        // Guardar estado de seguridad
         function saveSecurityState() {
             const state = {
                 failedAttempts: failedAttempts,
@@ -1867,7 +2002,6 @@
             localStorage.setItem('cp_security_state', JSON.stringify(state));
         }
 
-        // Registrar evento de seguridad
         function logSecurityEvent(type, details = '') {
             const logs = JSON.parse(localStorage.getItem('cp_security_logs') || '[]');
             const event = {
@@ -1879,16 +2013,10 @@
             };
             
             logs.unshift(event);
-            
-            // Mantener solo los últimos registros
-            if (logs.length > SECURITY_LOG_MAX) {
-                logs.pop();
-            }
-            
+            if (logs.length > SECURITY_LOG_MAX) logs.pop();
             localStorage.setItem('cp_security_logs', JSON.stringify(logs));
         }
 
-        // Actualizar display de seguridad
         function updateSecurityDisplay() {
             const attemptsInfo = document.getElementById('attemptsInfo');
             const failedAttemptsSpan = document.getElementById('failedAttempts');
@@ -1901,7 +2029,6 @@
             }
         }
 
-        // Iniciar temporizador de bloqueo
         function startLockoutTimer() {
             const loginBtn = document.getElementById('loginBtn');
             const usernameInput = document.getElementById('username');
@@ -1919,7 +2046,6 @@
                 const remaining = Math.ceil((lockoutEndTime - now) / 1000);
                 
                 if (remaining <= 0) {
-                    // Fin del bloqueo
                     clearInterval(timer);
                     loginBtn.disabled = false;
                     usernameInput.disabled = false;
@@ -1929,7 +2055,6 @@
                     lockoutEndTime = null;
                     saveSecurityState();
                     updateSecurityDisplay();
-                    
                     logSecurityEvent('UNLOCK', 'Bloqueo automático finalizado');
                     showToast('Cuenta desbloqueada. Puede intentar nuevamente.', 'warning');
                 } else {
@@ -1941,15 +2066,13 @@
             const timer = setInterval(updateCountdown, 1000);
         }
 
-        // Manejar intento fallido
         function handleFailedAttempt(reason) {
             failedAttempts++;
             
-            // Calcular tiempo de bloqueo (progresivo: 30s, 60s, 120s...)
             if (failedAttempts >= MAX_ATTEMPTS) {
                 lockoutCount++;
                 const multiplier = Math.pow(2, lockoutCount - 1);
-                const lockoutTime = LOCKOUT_BASE_TIME * multiplier * 1000; // ms
+                const lockoutTime = LOCKOUT_BASE_TIME * multiplier * 1000;
                 lockoutEndTime = Date.now() + lockoutTime;
                 
                 saveSecurityState();
@@ -1967,17 +2090,11 @@
             return `Credenciales inválidas. ${remaining} intento${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''} antes del bloqueo.`;
         }
 
-        // Manejar login exitoso
-        function handleSuccessfulLogin() {
-            // Resetear contadores
+        function handleSuccessfulLogin(userRole) {
             failedAttempts = 0;
             lockoutEndTime = null;
             saveSecurityState();
-            
-            // Registrar acceso exitoso
-            logSecurityEvent('SUCCESS_LOGIN', `Usuario ${ADMIN_USER} autenticado correctamente`);
-            
-            // Guardar último acceso
+            logSecurityEvent('SUCCESS_LOGIN', `Usuario ${userRole} autenticado correctamente`);
             localStorage.setItem('cp_last_successful_login', new Date().toISOString());
         }
 
@@ -2000,13 +2117,10 @@
             
             try {
                 const { data, error } = await supabase.from('trabajadores').select('count');
-                
                 if (error) throw error;
-                
                 isOnline = true;
                 updateCloudStatus('online', 'Conectado');
                 updateSyncStats();
-                
             } catch (error) {
                 isOnline = false;
                 updateCloudStatus('offline', 'Sin conexión');
@@ -2081,10 +2195,7 @@
             showLoading(true, 'Descargando datos de la nube...');
             
             try {
-                const { data, error } = await supabase
-                    .from('trabajadores')
-                    .select('*');
-
+                const { data, error } = await supabase.from('trabajadores').select('*');
                 if (error) throw error;
 
                 if (data && data.length > 0) {
@@ -2141,10 +2252,7 @@
             showLoading(true, 'Fusionando datos locales y de la nube...');
             
             try {
-                const { data: cloudData, error } = await supabase
-                    .from('trabajadores')
-                    .select('*');
-
+                const { data: cloudData, error } = await supabase.from('trabajadores').select('*');
                 if (error) throw error;
 
                 const cloudTrabajadores = cloudData.map(t => ({
@@ -2195,9 +2303,7 @@
                 });
 
                 trabajadores = Array.from(mergedMap.values());
-                
                 await syncToCloud();
-                
                 saveLocalData();
                 updateStats();
                 loadTrabajadores();
@@ -2237,12 +2343,11 @@
         }
 
         // ============================================
-        // INICIALIZACIÓN DEL SISTEMA
+        // INICIALIZACIÓN DEL SISTEMA Y LOGIN
         // ============================================
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // Verificar si hay bloqueo activo
             if (lockoutEndTime && Date.now() < lockoutEndTime) {
                 const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
                 document.getElementById('loginError').textContent = `Cuenta bloqueada. Intente en ${remaining} segundos.`;
@@ -2252,17 +2357,24 @@
             
             const user = document.getElementById('username').value.trim();
             const pass = document.getElementById('password').value;
+            const selectedRole = document.getElementById('userRole').value;
             
-            // Validar campos vacíos
             if (!user || !pass) {
                 document.getElementById('loginError').textContent = 'Complete todos los campos';
                 document.getElementById('loginError').style.display = 'block';
                 return;
             }
             
-            // Validar credenciales
-            if (user !== ADMIN_USER || pass !== ADMIN_PASS) {
-                const msg = handleFailedAttempt(user !== ADMIN_USER ? 'Usuario incorrecto' : 'Contraseña incorrecta');
+            // Buscar usuario según rol seleccionado
+            let userConfig = null;
+            if (selectedRole === 'admin' && user === USERS.admin.username && pass === USERS.admin.password) {
+                userConfig = USERS.admin;
+            } else if (selectedRole === 'basic' && user === USERS.basic.username && pass === USERS.basic.password) {
+                userConfig = USERS.basic;
+            }
+            
+            if (!userConfig) {
+                const msg = handleFailedAttempt('Credenciales incorrectas');
                 document.getElementById('loginError').textContent = msg;
                 document.getElementById('loginError').style.display = 'block';
                 document.getElementById('password').value = '';
@@ -2270,36 +2382,94 @@
             }
             
             // Éxito
-            handleSuccessfulLogin();
+            handleSuccessfulLogin(userConfig.role);
             document.getElementById('loginError').style.display = 'none';
             
-            currentUser = user;
+            currentUser = userConfig;
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('appContainer').style.display = 'block';
             document.body.style.background = 'var(--bg)';
-            
-            document.getElementById('userNameDisplay').textContent = 'Administrador';
-            document.getElementById('userAvatar').textContent = 'AD';
             
             initializeSystem();
         });
 
         function initializeSystem() {
-            initSupabase();
+            // Configurar UI según rol
+            setupUserInterface();
+            
+            // Cargar datos
             loadLocalData();
             updateStats();
-            loadRecent();
-            loadTrabajadores();
             
-            const lastSync = localStorage.getItem('cp_last_sync');
-            if (lastSync) {
-                document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
+            if (currentUser.role === 'admin') {
+                initSupabase();
+                loadRecent();
+                loadTrabajadores();
+                const lastSync = localStorage.getItem('cp_last_sync');
+                if (lastSync) {
+                    document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
+                }
+            } else {
+                // Usuario básico: mostrar solo consulta
+                showSection('consulta');
+                updateBasicStats();
+            }
+        }
+
+        function setupUserInterface() {
+            const isAdmin = currentUser.role === 'admin';
+            
+            // Configurar header
+            document.getElementById('userNameDisplay').textContent = currentUser.name;
+            const avatarEl = document.getElementById('userAvatar');
+            avatarEl.textContent = currentUser.avatar;
+            avatarEl.className = 'user-avatar ' + currentUser.role;
+            
+            const roleBadge = document.getElementById('userRoleBadge');
+            roleBadge.textContent = isAdmin ? 'Superusuario' : 'Solo Consulta';
+            roleBadge.className = 'user-role-badge ' + currentUser.role;
+            
+            if (isAdmin) {
+                // Mostrar elementos de admin
+                document.getElementById('sidebar').style.display = 'block';
+                document.getElementById('cloudStatus').style.display = 'flex';
+                document.getElementById('mainContent').classList.remove('basic-view');
+                
+                // Mostrar todas las secciones admin
+                document.querySelectorAll('.admin-only').forEach(el => {
+                    el.style.display = 'block';
+                });
+                
+                // Ocultar vista básica
+                document.getElementById('basicView').style.display = 'none';
+                
+            } else {
+                // Usuario básico: ocultar sidebar y mostrar solo consulta
+                document.getElementById('sidebar').style.display = 'none';
+                document.getElementById('cloudStatus').style.display = 'none';
+                document.getElementById('mainContent').classList.add('basic-view');
+                
+                // Ocultar todas las secciones admin
+                document.querySelectorAll('.admin-only').forEach(el => {
+                    el.style.display = 'none';
+                });
+                
+                // Ocultar items del menú admin (por si acaso)
+                document.querySelectorAll('.nav-item.admin-only').forEach(el => {
+                    el.classList.add('hidden');
+                });
+                
+                // Mostrar vista básica
+                document.getElementById('basicView').style.display = 'block';
+                
+                // Cambiar título
+                document.getElementById('pageTitle').textContent = 'Consulta de Trabajadores';
             }
         }
 
         function logout() {
-            logSecurityEvent('LOGOUT', `Usuario ${currentUser} cerró sesión`);
-            currentUser = '';
+            logSecurityEvent('LOGOUT', `Usuario ${currentUser.name} cerró sesión`);
+            currentUser = null;
             location.reload();
         }
 
@@ -2311,6 +2481,18 @@
             statusEl.className = 'cloud-status ' + status;
             textEl.textContent = text;
             dbStatus.textContent = text;
+        }
+
+        // ============================================
+        // FUNCIONES PARA USUARIO BÁSICO
+        // ============================================
+        function updateBasicStats() {
+            const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
+            const deps = [...new Set(trabajadores.map(t => t.dependencia).filter(Boolean))];
+            
+            document.getElementById('basicStatTotal').textContent = trabajadores.length;
+            document.getElementById('basicStatHijos').textContent = totalHijos;
+            document.getElementById('basicStatDeps').textContent = deps.length;
         }
 
         // ============================================
@@ -2369,23 +2551,23 @@
                 const trabajadoresData = trabajadores.map(t => ({
                     'ID': t.id,
                     'Cedula': t.cedula,
-                    'PrimerNombre': t.primerNombre,
+                    'PrimerNombre': t.primerNombre || '',
                     'SegundoNombre': t.segundoNombre || '',
-                    'PrimerApellido': t.primerApellido,
+                    'PrimerApellido': t.primerApellido || '',
                     'SegundoApellido': t.segundoApellido || '',
-                    'Sexo': t.sexo,
-                    'FechaNacimiento': t.fechaNacimiento,
-                    'EstadoCivil': t.estadoCivil,
+                    'Sexo': t.sexo || '',
+                    'FechaNacimiento': t.fechaNacimiento || '',
+                    'EstadoCivil': t.estadoCivil || '',
                     'Direccion': t.direccion || '',
                     'Celular': t.celular || '',
                     'Correo': t.correo || '',
                     'NivelAcademico': t.nivelAcademico || '',
                     'Profesion': t.profesion || '',
-                    'TipoPersonal': t.tipoPersonal,
-                    'FechaIngreso': t.fechaIngreso,
-                    'Cargo': t.cargo,
+                    'TipoPersonal': t.tipoPersonal || '',
+                    'FechaIngreso': t.fechaIngreso || '',
+                    'Cargo': t.cargo || '',
                     'Codigo': t.codigo || '',
-                    'Dependencia': t.dependencia,
+                    'Dependencia': t.dependencia || '',
                     'Nomina': t.nomina || '',
                     'Observaciones': t.observaciones || '',
                     'FechaRegistro': t.fechaRegistro,
@@ -2399,8 +2581,8 @@
                             hijosData.push({
                                 'ID': `${t.id}_${index}`,
                                 'CedulaPadreMadre': t.cedula,
-                                'NombrePadreMadre': `${t.primerNombre} ${t.primerApellido}`,
-                                'NombresApellidosHijo': h.nombresApellidos,
+                                'NombrePadreMadre': `${t.primerNombre || ''} ${t.primerApellido || ''}`.trim(),
+                                'NombresApellidosHijo': h.nombresApellidos || '',
                                 'CedulaHijo': h.cedula || '',
                                 'Sexo': h.sexo || '',
                                 'FechaNacimiento': h.fechaNacimiento || ''
@@ -2445,9 +2627,9 @@
                 previewTrabajadores.innerHTML = trabajadoresPreview.map(t => `
                     <tr>
                         <td>${t.cedula}</td>
-                        <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
-                        <td>${t.cargo}</td>
-                        <td>${t.dependencia}</td>
+                        <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+                        <td>${t.cargo || '-'}</td>
+                        <td>${t.dependencia || '-'}</td>
                     </tr>
                 `).join('');
             } else {
@@ -2473,7 +2655,7 @@
                 previewHijos.innerHTML = hijosLimitados.map(h => `
                     <tr>
                         <td>${h.cedulaPadre}</td>
-                        <td>${h.nombresApellidos}</td>
+                        <td>${h.nombresApellidos || '-'}</td>
                         <td>${h.sexo || '-'}</td>
                         <td>${h.fechaNacimiento || '-'}</td>
                     </tr>
@@ -2515,18 +2697,35 @@
             try {
                 const data = await selectedFile.arrayBuffer();
                 const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-                if (jsonData.length < 2) {
-                    throw new Error('El archivo no tiene datos suficientes');
+                
+                let trabajadoresSheet = workbook.Sheets[workbook.SheetNames[0]];
+                let trabajadoresData = XLSX.utils.sheet_to_json(trabajadoresSheet, { header: 1 });
+                
+                let hijosSheet = null;
+                let hijosDataRaw = [];
+                
+                for (let sheetName of workbook.SheetNames) {
+                    if (sheetName.toLowerCase().includes('hijo') || sheetName.toLowerCase().includes('depend')) {
+                        hijosSheet = workbook.Sheets[sheetName];
+                        hijosDataRaw = XLSX.utils.sheet_to_json(hijosSheet, { header: 1 });
+                        break;
+                    }
+                }
+                
+                if (!hijosSheet && workbook.SheetNames.length > 1) {
+                    hijosSheet = workbook.Sheets[workbook.SheetNames[1]];
+                    hijosDataRaw = XLSX.utils.sheet_to_json(hijosSheet, { header: 1 });
                 }
 
-                const headers = jsonData[0].map(h => h.toString().trim());
-                const excelData = [];
+                if (trabajadoresData.length < 2) {
+                    throw new Error('El archivo no tiene datos suficientes de trabajadores');
+                }
+
+                const headers = trabajadoresData[0].map(h => h.toString().trim());
+                const excelTrabajadores = [];
                 
-                for (let i = 1; i < jsonData.length; i++) {
-                    const row = jsonData[i];
+                for (let i = 1; i < trabajadoresData.length; i++) {
+                    const row = trabajadoresData[i];
                     if (!row || row.length === 0) continue;
                     
                     const obj = {};
@@ -2534,10 +2733,27 @@
                         obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
                     });
                     
-                    excelData.push(normalizeTrabajador(obj));
+                    excelTrabajadores.push(normalizeTrabajador(obj));
                 }
 
-                const resultado = sincronizarDatos(excelData);
+                let excelHijos = [];
+                if (hijosDataRaw.length > 1) {
+                    const hijosHeaders = hijosDataRaw[0].map(h => h.toString().trim());
+                    
+                    for (let i = 1; i < hijosDataRaw.length; i++) {
+                        const row = hijosDataRaw[i];
+                        if (!row || row.length === 0) continue;
+                        
+                        const obj = {};
+                        hijosHeaders.forEach((h, idx) => {
+                            obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
+                        });
+                        
+                        excelHijos.push(normalizeHijo(obj));
+                    }
+                }
+
+                const resultado = sincronizarDatosConHijos(excelTrabajadores, excelHijos);
                 mostrarResultadoSync(resultado);
                 
                 if (resultado.totalCambios > 0) {
@@ -2567,22 +2783,48 @@
             }
         }
 
-        function sincronizarDatos(excelData) {
+        function normalizeHijo(data) {
+            const parseDate = (val) => {
+                if (!val) return '';
+                if (typeof val === 'number') {
+                    const epoch = new Date(1899, 11, 30);
+                    const d = new Date(epoch.getTime() + val * 24 * 60 * 60 * 1000);
+                    return d.toISOString().split('T')[0];
+                }
+                if (typeof val === 'string' && val.includes('/')) {
+                    const p = val.split('/');
+                    if (p.length === 3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+                }
+                return val;
+            };
+
+            return {
+                cedulaPadreMadre: (data.CedulaPadreMadre || data.cedulaPadreMadre || data.Cedula || '').toString().trim(),
+                nombresApellidos: (data.NombresApellidosHijo || data.nombresApellidosHijo || data.NombresApellidos || data.nombresApellidos || '').toString().trim(),
+                cedula: (data.CedulaHijo || data.cedulaHijo || data.Cedula || '').toString().trim(),
+                sexo: (data.Sexo || data.sexo || '').toString().trim(),
+                fechaNacimiento: parseDate(data.FechaNacimiento || data.fechaNacimiento)
+            };
+        }
+
+        function sincronizarDatosConHijos(excelTrabajadores, excelHijos) {
             const cambios = {
                 agregados: [],
                 actualizados: [],
                 sinCambios: [],
-                errores: []
+                errores: [],
+                hijosAgregados: 0,
+                hijosActualizados: 0
             };
 
             const cedulasVistas = new Set();
 
-            for (const nuevo of excelData) {
+            for (const nuevo of excelTrabajadores) {
                 const cedula = nuevo.cedula.toString().trim();
                 const cedulaKey = cedula.toLowerCase();
 
-                if (!nuevo.cedula || !nuevo.primerNombre || !nuevo.primerApellido) {
-                    cambios.errores.push({ cedula: cedula || '(vacía)', error: 'Faltan campos' });
+                if (!nuevo.cedula) {
+                    cambios.errores.push({ cedula: '(vacía)', error: 'Falta cédula' });
                     continue;
                 }
 
@@ -2596,22 +2838,111 @@
                 );
 
                 if (indexExistente === -1) {
+                    const hijosDelTrabajador = excelHijos.filter(h => 
+                        h.cedulaPadreMadre.toLowerCase() === cedulaKey
+                    );
+                    
+                    nuevo.hijos = hijosDelTrabajador.map(h => ({
+                        nombresApellidos: h.nombresApellidos,
+                        cedula: h.cedula,
+                        sexo: h.sexo,
+                        fechaNacimiento: h.fechaNacimiento
+                    }));
+                    
                     trabajadores.push(nuevo);
-                    cambios.agregados.push({ cedula: cedula, nombre: `${nuevo.primerNombre} ${nuevo.primerApellido}` });
+                    cambios.agregados.push({ 
+                        cedula: cedula, 
+                        nombre: `${nuevo.primerNombre || ''} ${nuevo.primerApellido || ''}`.trim() || 'Sin nombre',
+                        hijos: nuevo.hijos.length
+                    });
+                    cambios.hijosAgregados += nuevo.hijos.length;
                 } else {
                     const actual = trabajadores[indexExistente];
                     const hayCambios = detectarCambios(actual, nuevo);
 
                     if (hayCambios) {
+                        const hijosDelExcel = excelHijos.filter(h => 
+                            h.cedulaPadreMadre.toLowerCase() === cedulaKey
+                        );
+                        
+                        let hijosFinales = actual.hijos || [];
+                        
+                        if (hijosDelExcel.length > 0) {
+                            hijosDelExcel.forEach(hijoExcel => {
+                                const idxExistente = hijosFinales.findIndex(h => 
+                                    (h.cedula && h.cedula === hijoExcel.cedula) ||
+                                    (h.nombresApellidos === hijoExcel.nombresApellidos)
+                                );
+                                
+                                if (idxExistente === -1) {
+                                    hijosFinales.push({
+                                        nombresApellidos: hijoExcel.nombresApellidos,
+                                        cedula: hijoExcel.cedula,
+                                        sexo: hijoExcel.sexo,
+                                        fechaNacimiento: hijoExcel.fechaNacimiento
+                                    });
+                                    cambios.hijosAgregados++;
+                                } else {
+                                    if (hijoExcel.cedula) hijosFinales[idxExistente].cedula = hijoExcel.cedula;
+                                    if (hijoExcel.sexo) hijosFinales[idxExistente].sexo = hijoExcel.sexo;
+                                    if (hijoExcel.fechaNacimiento) hijosFinales[idxExistente].fechaNacimiento = hijoExcel.fechaNacimiento;
+                                    cambios.hijosActualizados++;
+                                }
+                            });
+                        }
+
                         trabajadores[indexExistente] = {
                             ...nuevo,
                             id: actual.id,
                             fechaRegistro: actual.fechaRegistro,
-                            hijos: actual.hijos || []
+                            hijos: hijosFinales
                         };
-                        cambios.actualizados.push({ cedula: cedula, nombre: `${nuevo.primerNombre} ${nuevo.primerApellido}` });
+                        cambios.actualizados.push({ 
+                            cedula: cedula, 
+                            nombre: `${nuevo.primerNombre || ''} ${nuevo.primerApellido || ''}`.trim() || 'Sin nombre',
+                            hijos: hijosFinales.length
+                        });
                     } else {
-                        cambios.sinCambios.push({ cedula: cedula });
+                        const hijosDelExcel = excelHijos.filter(h => 
+                            h.cedulaPadreMadre.toLowerCase() === cedulaKey
+                        );
+                        
+                        if (hijosDelExcel.length > 0) {
+                            let hijosFinales = actual.hijos || [];
+                            let nuevosHijos = 0;
+                            
+                            hijosDelExcel.forEach(hijoExcel => {
+                                const existe = hijosFinales.some(h => 
+                                    (h.cedula && h.cedula === hijoExcel.cedula) ||
+                                    (h.nombresApellidos === hijoExcel.nombresApellidos)
+                                );
+                                
+                                if (!existe) {
+                                    hijosFinales.push({
+                                        nombresApellidos: hijoExcel.nombresApellidos,
+                                        cedula: hijoExcel.cedula,
+                                        sexo: hijoExcel.sexo,
+                                        fechaNacimiento: hijoExcel.fechaNacimiento
+                                    });
+                                    nuevosHijos++;
+                                }
+                            });
+                            
+                            if (nuevosHijos > 0) {
+                                trabajadores[indexExistente].hijos = hijosFinales;
+                                cambios.hijosAgregados += nuevosHijos;
+                                cambios.actualizados.push({
+                                    cedula: cedula,
+                                    nombre: `${actual.primerNombre || ''} ${actual.primerApellido || ''}`.trim() || 'Sin nombre',
+                                    hijos: hijosFinales.length,
+                                    soloHijos: true
+                                });
+                            } else {
+                                cambios.sinCambios.push({ cedula: cedula });
+                            }
+                        } else {
+                            cambios.sinCambios.push({ cedula: cedula });
+                        }
                     }
                 }
 
@@ -2623,6 +2954,8 @@
                 actualizados: cambios.actualizados,
                 sinCambios: cambios.sinCambios,
                 errores: cambios.errores,
+                hijosAgregados: cambios.hijosAgregados,
+                hijosActualizados: cambios.hijosActualizados,
                 totalCambios: cambios.agregados.length + cambios.actualizados.length
             };
         }
@@ -2657,17 +2990,39 @@
                 </div>
             `;
             
+            if (resultado.hijosAgregados > 0 || resultado.hijosActualizados > 0) {
+                html += `
+                    <div style="background: rgba(74, 144, 226, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                        <div style="font-size: 18px; font-weight: 600; color: var(--cp-blue);">
+                            👶 Hijos: ${resultado.hijosAgregados} agregados, ${resultado.hijosActualizados} actualizados
+                        </div>
+                    </div>
+                `;
+            }
+            
             statusDiv.innerHTML = html;
 
             let logHtml = '';
             if (resultado.agregados.length > 0) {
                 logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--success);">➕ Agregados:</strong>';
-                resultado.agregados.forEach(r => logHtml += `<div class="change-item added">${r.cedula} - ${r.nombre}</div>`);
+                resultado.agregados.forEach(r => {
+                    logHtml += `<div class="change-item added">${r.cedula} - ${r.nombre} ${r.hijos > 0 ? `(${r.hijos} hijos)` : ''}</div>`;
+                });
                 logHtml += '</div>';
             }
             if (resultado.actualizados.length > 0) {
                 logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--accent);">🔄 Actualizados:</strong>';
-                resultado.actualizados.forEach(r => logHtml += `<div class="change-item updated">${r.cedula} - ${r.nombre}</div>`);
+                resultado.actualizados.forEach(r => {
+                    const tipo = r.soloHijos ? '(solo hijos)' : '';
+                    logHtml += `<div class="change-item updated">${r.cedula} - ${r.nombre} ${tipo} ${r.hijos > 0 ? `(${r.hijos} hijos)` : ''}</div>`;
+                });
+                logHtml += '</div>';
+            }
+            if (resultado.errores.length > 0) {
+                logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--danger);">❌ Errores:</strong>';
+                resultado.errores.forEach(r => {
+                    logHtml += `<div class="change-item" style="border-left-color: var(--danger); background: rgba(220, 38, 38, 0.1);">${r.cedula}: ${r.error}</div>`;
+                });
                 logHtml += '</div>';
             }
             
@@ -2752,10 +3107,21 @@
         // UI Y NAVEGACIÓN
         // ============================================
         function showSection(sectionId) {
+            // Si es usuario básico, solo permitir consulta
+            if (currentUser && currentUser.role === 'basic' && sectionId !== 'consulta') {
+                showToast('No tiene permisos para acceder a esta sección', 'error');
+                return;
+            }
+
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.getElementById(sectionId).classList.add('active');
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            event.target.closest('.nav-link').classList.add('active');
+            
+            // Solo actualizar navegación si es admin (basic no tiene sidebar visible)
+            if (currentUser && currentUser.role === 'admin') {
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                const activeNav = document.querySelector(`.nav-link[onclick="showSection('${sectionId}')"]`);
+                if (activeNav) activeNav.classList.add('active');
+            }
             
             const titles = {
                 'dashboard': 'Dashboard',
@@ -2777,6 +3143,8 @@
                 updateExportPreview();
             } else if (sectionId === 'sync') {
                 updateSyncStats();
+            } else if (sectionId === 'consulta' && currentUser.role === 'basic') {
+                updateBasicStats();
             }
         }
 
@@ -2795,8 +3163,8 @@
             tbody.innerHTML = recent.length ? recent.map(t => `
                 <tr>
                     <td>${t.cedula}</td>
-                    <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
-                    <td>${t.cargo}</td>
+                    <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+                    <td>${t.cargo || '-'}</td>
                     <td><span class="badge badge-success">Activo</span></td>
                 </tr>
             `).join('') : '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin registros</td></tr>';
@@ -2807,9 +3175,9 @@
             tbody.innerHTML = trabajadores.length ? trabajadores.map(t => `
                 <tr>
                     <td><strong>${t.cedula}</strong></td>
-                    <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
-                    <td>${t.cargo}</td>
-                    <td>${t.dependencia}</td>
+                    <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+                    <td>${t.cargo || '-'}</td>
+                    <td>${t.dependencia || '-'}</td>
                     <td>${t.hijos ? t.hijos.length : 0}</td>
                     <td>
                         <button class="btn-warning" onclick="editTrabajador(${t.id})">✏️</button>
@@ -2823,17 +3191,17 @@
             const query = document.getElementById('searchInput').value.toLowerCase();
             const filtered = trabajadores.filter(t => 
                 t.cedula.toLowerCase().includes(query) ||
-                t.primerNombre.toLowerCase().includes(query) ||
-                t.primerApellido.toLowerCase().includes(query)
+                (t.primerNombre && t.primerNombre.toLowerCase().includes(query)) ||
+                (t.primerApellido && t.primerApellido.toLowerCase().includes(query))
             );
             
             const tbody = document.getElementById('trabajadoresBody');
             tbody.innerHTML = filtered.length ? filtered.map(t => `
                 <tr>
                     <td><strong>${t.cedula}</strong></td>
-                    <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
-                    <td>${t.cargo}</td>
-                    <td>${t.dependencia}</td>
+                    <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+                    <td>${t.cargo || '-'}</td>
+                    <td>${t.dependencia || '-'}</td>
                     <td>${t.hijos ? t.hijos.length : 0}</td>
                     <td>
                         <button class="btn-warning" onclick="editTrabajador(${t.id})">✏️</button>
@@ -2848,7 +3216,7 @@
             const div = document.createElement('div');
             div.className = 'hijo-item';
             div.innerHTML = `
-                <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre" required>
+                <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre">
                 <input type="text" placeholder="Cédula" class="hijo-cedula">
                 <select class="hijo-sexo">
                     <option value="">Sexo</option>
@@ -2868,6 +3236,11 @@
             
             const cedula = formData.get('cedula').toString().trim();
             
+            if (!cedula) {
+                showToast('Error: La cédula es obligatoria', 'error');
+                return;
+            }
+            
             const existe = trabajadores.some(t => 
                 t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
             );
@@ -2879,36 +3252,39 @@
             
             const hijos = [];
             document.querySelectorAll('.hijo-item').forEach(item => {
-                hijos.push({
-                    nombresApellidos: item.querySelector('.hijo-nombre').value,
-                    cedula: item.querySelector('.hijo-cedula').value,
-                    sexo: item.querySelector('.hijo-sexo').value,
-                    fechaNacimiento: item.querySelector('.hijo-fecha').value
-                });
+                const nombre = item.querySelector('.hijo-nombre').value.trim();
+                if (nombre) {
+                    hijos.push({
+                        nombresApellidos: nombre,
+                        cedula: item.querySelector('.hijo-cedula').value.trim(),
+                        sexo: item.querySelector('.hijo-sexo').value,
+                        fechaNacimiento: item.querySelector('.hijo-fecha').value
+                    });
+                }
             });
             
             const trabajador = {
                 id: Date.now(),
                 cedula: cedula,
-                primerNombre: formData.get('primerNombre'),
-                segundoNombre: formData.get('segundoNombre'),
-                primerApellido: formData.get('primerApellido'),
-                segundoApellido: formData.get('segundoApellido'),
-                sexo: formData.get('sexo'),
-                fechaNacimiento: formData.get('fechaNacimiento'),
-                estadoCivil: formData.get('estadoCivil'),
-                direccion: formData.get('direccion'),
-                celular: formData.get('celular'),
-                correo: formData.get('correo'),
-                nivelAcademico: formData.get('nivelAcademico'),
-                profesion: formData.get('profesion'),
-                tipoPersonal: formData.get('tipoPersonal'),
-                fechaIngreso: formData.get('fechaIngreso'),
-                cargo: formData.get('cargo'),
-                codigo: formData.get('codigo'),
-                dependencia: formData.get('dependencia'),
-                nomina: formData.get('nomina'),
-                observaciones: formData.get('observaciones'),
+                primerNombre: formData.get('primerNombre') || '',
+                segundoNombre: formData.get('segundoNombre') || '',
+                primerApellido: formData.get('primerApellido') || '',
+                segundoApellido: formData.get('segundoApellido') || '',
+                sexo: formData.get('sexo') || '',
+                fechaNacimiento: formData.get('fechaNacimiento') || '',
+                estadoCivil: formData.get('estadoCivil') || '',
+                direccion: formData.get('direccion') || '',
+                celular: formData.get('celular') || '',
+                correo: formData.get('correo') || '',
+                nivelAcademico: formData.get('nivelAcademico') || '',
+                profesion: formData.get('profesion') || '',
+                tipoPersonal: formData.get('tipoPersonal') || '',
+                fechaIngreso: formData.get('fechaIngreso') || '',
+                cargo: formData.get('cargo') || '',
+                codigo: formData.get('codigo') || '',
+                dependencia: formData.get('dependencia') || '',
+                nomina: formData.get('nomina') || '',
+                observaciones: formData.get('observaciones') || '',
                 hijos: hijos,
                 fechaRegistro: new Date().toISOString()
             };
@@ -2923,7 +3299,7 @@
             form.reset();
             document.getElementById('hijosContainer').innerHTML = '';
             resetCedulaValidation();
-            showToast('Trabajador guardado');
+            showToast('Trabajador guardado correctamente');
             updateStats();
         }
 
@@ -2938,8 +3314,8 @@
             
             const encontrados = trabajadores.filter(t => 
                 t.cedula.toLowerCase().includes(query) ||
-                t.primerNombre.toLowerCase().includes(query) ||
-                t.primerApellido.toLowerCase().includes(query)
+                (t.primerNombre && t.primerNombre.toLowerCase().includes(query)) ||
+                (t.primerApellido && t.primerApellido.toLowerCase().includes(query))
             );
             
             if (encontrados.length === 0) {
@@ -2947,14 +3323,38 @@
                 return;
             }
             
+            // Si es usuario básico, mostrar vista simplificada sin botones de editar
+            const isBasic = currentUser && currentUser.role === 'basic';
+            
             resultDiv.innerHTML = encontrados.map(t => `
                 <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border);">
-                    <h3 style="color: var(--cp-blue); margin-bottom: 10px;">${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px;">
+                    <h3 style="color: var(--cp-blue); margin-bottom: 10px;">${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px; margin-bottom: 15px;">
                         <div><strong>Cédula:</strong> ${t.cedula}</div>
-                        <div><strong>Cargo:</strong> ${t.cargo}</div>
-                        <div><strong>Dependencia:</strong> ${t.dependencia}</div>
+                        <div><strong>Cargo:</strong> ${t.cargo || 'No especificado'}</div>
+                        <div><strong>Dependencia:</strong> ${t.dependencia || 'No especificada'}</div>
+                        <div><strong>Sexo:</strong> ${t.sexo || 'No especificado'}</div>
+                        <div><strong>Fecha Nac.:</strong> ${t.fechaNacimiento || 'No especificada'}</div>
+                        <div><strong>Celular:</strong> ${t.celular || 'No especificado'}</div>
+                        <div><strong>Correo:</strong> ${t.correo || 'No especificado'}</div>
+                        <div><strong>Dirección:</strong> ${t.direccion || 'No especificada'}</div>
                     </div>
+                    ${t.hijos && t.hijos.length > 0 ? `
+                        <div style="background: rgba(74, 144, 226, 0.05); padding: 15px; border-radius: 8px; margin-top: 10px;">
+                            <h4 style="color: var(--cp-blue); margin-bottom: 10px; font-size: 14px;">👶 Hijos/Dependientes (${t.hijos.length})</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+                                ${t.hijos.map(h => `
+                                    <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px;">
+                                        <div><strong>${h.nombresApellidos || 'Sin nombre'}</strong></div>
+                                        <div style="color: var(--secondary);">
+                                            ${h.sexo ? h.sexo + ' | ' : ''}${h.fechaNacimiento || 'Sin fecha'}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${isBasic ? '<div style="margin-top: 10px; padding: 10px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; text-align: center; color: var(--basic); font-size: 12px; font-weight: 600;">🔒 Modo solo lectura</div>' : ''}
                 </div>
             `).join('');
         }
@@ -2972,19 +3372,19 @@
                 </div>
                 <div class="form-group">
                     <label>Primer Nombre</label>
-                    <input type="text" name="primerNombre" value="${t.primerNombre}" required>
+                    <input type="text" name="primerNombre" value="${t.primerNombre || ''}">
                 </div>
                 <div class="form-group">
                     <label>Primer Apellido</label>
-                    <input type="text" name="primerApellido" value="${t.primerApellido}" required>
+                    <input type="text" name="primerApellido" value="${t.primerApellido || ''}">
                 </div>
                 <div class="form-group">
                     <label>Cargo</label>
-                    <input type="text" name="cargo" value="${t.cargo}" required>
+                    <input type="text" name="cargo" value="${t.cargo || ''}">
                 </div>
                 <div class="form-group">
                     <label>Dependencia</label>
-                    <input type="text" name="dependencia" value="${t.dependencia}" required>
+                    <input type="text" name="dependencia" value="${t.dependencia || ''}">
                 </div>
             `;
             
@@ -3000,10 +3400,10 @@
             if (index !== -1) {
                 trabajadores[index] = {
                     ...trabajadores[index],
-                    primerNombre: formData.get('primerNombre'),
-                    primerApellido: formData.get('primerApellido'),
-                    cargo: formData.get('cargo'),
-                    dependencia: formData.get('dependencia')
+                    primerNombre: formData.get('primerNombre') || '',
+                    primerApellido: formData.get('primerApellido') || '',
+                    cargo: formData.get('cargo') || '',
+                    dependencia: formData.get('dependencia') || ''
                 };
                 
                 saveLocalData();
