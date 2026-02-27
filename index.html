@@ -28,7 +28,7 @@
             --border: #e2e8f0;
             --cp-blue: #4a90e2;
             --cp-cyan: #5bc0de;
-            --usuario: #8b5cf6;
+            --viewer: #8b5cf6;
         }
 
         body {
@@ -315,6 +315,16 @@
             color: white;
         }
 
+        .nav-link.viewer-only {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .nav-link.viewer-only:hover {
+            background: transparent;
+            color: var(--secondary);
+        }
+
         .main-content {
             margin-left: 280px;
             padding: 80px 30px 30px;
@@ -357,8 +367,8 @@
             background: var(--cp-blue);
         }
 
-        .user-avatar.usuario {
-            background: var(--usuario);
+        .user-avatar.viewer {
+            background: var(--viewer);
         }
 
         .btn-logout {
@@ -432,7 +442,7 @@
         .stat-icon.green { background: rgba(5, 150, 105, 0.1); color: var(--success); }
         .stat-icon.cloud { background: rgba(99, 102, 241, 0.1); color: var(--cloud); }
         .stat-icon.orange { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
-        .stat-icon.purple { background: rgba(139, 92, 246, 0.1); color: var(--usuario); }
+        .stat-icon.purple { background: rgba(139, 92, 246, 0.1); color: var(--viewer); }
 
         .stat-value {
             font-size: 32px;
@@ -741,7 +751,7 @@
         .badge-cloud { background: rgba(99, 102, 241, 0.1); color: var(--cloud); }
         .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
         .badge-danger { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
-        .badge-usuario { background: rgba(139, 92, 246, 0.1); color: var(--usuario); }
+        .badge-viewer { background: rgba(139, 92, 246, 0.1); color: var(--viewer); }
 
         .sync-panel {
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
@@ -1138,6 +1148,47 @@
             font-weight: normal;
         }
 
+        .user-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .user-type-btn {
+            padding: 10px 20px;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .user-type-btn:hover {
+            border-color: var(--cp-blue);
+        }
+
+        .user-type-btn.active {
+            background: var(--cp-blue);
+            color: white;
+            border-color: var(--cp-blue);
+        }
+
+        .user-type-btn.viewer {
+            border-color: var(--viewer);
+            color: var(--viewer);
+        }
+
+        .user-type-btn.viewer:hover {
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .user-type-btn.viewer.active {
+            background: var(--viewer);
+            color: white;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -1183,6 +1234,16 @@
                 <div class="logo-subtitle">Puerto Miranda</div>
             </div>
             
+            <!-- Selector de tipo de usuario -->
+            <div class="user-selector">
+                <button type="button" class="user-type-btn active" onclick="selectUserType('admin')" id="btnAdmin">
+                    👨‍💼 Administrador
+                </button>
+                <button type="button" class="user-type-btn viewer" onclick="selectUserType('viewer')" id="btnViewer">
+                    👁️ Solo Lectura
+                </button>
+            </div>
+
             <div class="error-msg" id="loginError">
                 Complete todos los campos
             </div>
@@ -1200,7 +1261,7 @@
             <form id="loginForm">
                 <div class="form-group">
                     <label for="username">Usuario</label>
-                    <input type="text" id="username" placeholder="Ingrese su usuario" required autocomplete="off">
+                    <input type="text" id="username" placeholder="Usuario" required autocomplete="off">
                 </div>
                 
                 <div class="form-group">
@@ -1848,14 +1909,14 @@
                 avatar: 'AD',
                 color: 'admin'
             },
-            usuario: {
-                username: 'usuario',
+            viewer: {
+                username: 'consulta',
                 password: 'Ver2024#',
-                name: 'Usuario',
+                name: 'Usuario Consulta',
                 level: 'Solo Lectura',
-                type: 'usuario',
-                avatar: 'US',
-                color: 'usuario'
+                type: 'viewer',
+                avatar: '👁️',
+                color: 'viewer'
             }
         };
 
@@ -1878,6 +1939,7 @@
         // ============================================
         let trabajadores = [];
         let currentUser = null;
+        let currentUserType = 'admin';
         let currentEditId = null;
         let selectedFile = null;
         
@@ -1959,6 +2021,20 @@
         // ============================================
         // SISTEMA DE SEGURIDAD
         // ============================================
+        function selectUserType(type) {
+            currentUserType = type;
+            document.getElementById('btnAdmin').classList.toggle('active', type === 'admin');
+            document.getElementById('btnViewer').classList.toggle('active', type === 'viewer');
+            
+            // Actualizar placeholder según el tipo
+            const usernameInput = document.getElementById('username');
+            if (type === 'viewer') {
+                usernameInput.placeholder = 'Usuario de consulta';
+            } else {
+                usernameInput.placeholder = 'Usuario administrador';
+            }
+        }
+
         function loadSecurityState() {
             const saved = localStorage.getItem('cp_security_state');
             if (saved) {
@@ -2370,12 +2446,12 @@
                 return;
             }
             
-            // Detectar automáticamente el tipo de usuario según credenciales
+            // Determinar qué usuario se está intentando loguear
             let userConfig = null;
-            if (user === USERS.admin.username && pass === USERS.admin.password) {
+            if (currentUserType === 'admin' && user === USERS.admin.username && pass === USERS.admin.password) {
                 userConfig = USERS.admin;
-            } else if (user === USERS.usuario.username && pass === USERS.usuario.password) {
-                userConfig = USERS.usuario;
+            } else if (currentUserType === 'viewer' && user === USERS.viewer.username && pass === USERS.viewer.password) {
+                userConfig = USERS.viewer;
             }
             
             if (!userConfig) {
@@ -2394,6 +2470,7 @@
             document.getElementById('appContainer').style.display = 'block';
             document.body.style.background = 'var(--bg)';
             
+            // Configurar UI según tipo de usuario
             setupUserInterface();
             initializeSystem();
         });
@@ -2408,8 +2485,8 @@
             nameDisplay.textContent = currentUser.name;
             levelDisplay.textContent = `Nivel: ${currentUser.level}`;
             
-            // Si es usuario (solo lectura), ocultar opciones de administración
-            if (currentUser.type === 'usuario') {
+            // Si es viewer, ocultar opciones de administración
+            if (currentUser.type === 'viewer') {
                 document.querySelectorAll('.admin-only').forEach(el => {
                     el.style.display = 'none';
                 });
@@ -2925,8 +3002,8 @@
         // UI Y NAVEGACIÓN
         // ============================================
         function showSection(sectionId) {
-            // Si es usuario y quiere ir a sección no permitida, redirigir a dashboard
-            if (currentUser && currentUser.type === 'usuario') {
+            // Si es viewer y quiere ir a sección no permitida, redirigir a dashboard
+            if (currentUser && currentUser.type === 'viewer') {
                 const allowedSections = ['dashboard', 'consulta'];
                 if (!allowedSections.includes(sectionId)) {
                     showToast('No tiene permisos para acceder a esta sección', 'error');
@@ -3192,7 +3269,7 @@
         // ============================================
         function editTrabajador(id) {
             // Verificar permisos
-            if (currentUser && currentUser.type === 'usuario') {
+            if (currentUser && currentUser.type === 'viewer') {
                 showToast('No tiene permisos para editar trabajadores', 'error');
                 return;
             }
@@ -3442,7 +3519,7 @@
 
         async function deleteTrabajador(id) {
             // Verificar permisos
-            if (currentUser && currentUser.type === 'usuario') {
+            if (currentUser && currentUser.type === 'viewer') {
                 showToast('No tiene permisos para eliminar trabajadores', 'error');
                 return;
             }
