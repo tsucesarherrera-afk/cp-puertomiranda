@@ -1089,6 +1089,18 @@
             font-weight: 600;
         }
 
+        /* Nuevo estilo para campos opcionales */
+        .optional-field {
+            opacity: 0.8;
+        }
+        
+        .optional-field label::after {
+            content: " (opcional)";
+            font-size: 11px;
+            color: var(--secondary);
+            font-weight: normal;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -1594,7 +1606,7 @@
                 </div>
             </div>
 
-            <!-- Registrar Section -->
+            <!-- Registrar Section - MODIFICADO: Solo requiere cédula -->
             <div class="content-section" id="registrar">
                 <div class="card">
                     <div class="card-header">
@@ -1603,51 +1615,55 @@
                     </div>
                     <div class="card-body">
                         <form id="trabajadorForm" onsubmit="saveTrabajador(event)">
+                            <!-- Campo requerido: Solo Cédula -->
                             <div class="form-grid">
-                                <div class="form-group cedula-unique">
-                                    <label>Cédula * <span style="color: var(--danger); font-size: 11px;">(ÚNICA)</span></label>
+                                <div class="form-group cedula-unique" style="grid-column: 1 / -1;">
+                                    <label>Cédula * <span style="color: var(--danger); font-size: 11px;">(ÚNICO - REQUERIDO)</span></label>
                                     <input type="text" name="cedula" id="cedulaInput" required placeholder="V-12345678" onblur="validateCedulaUnica(this.value)">
                                     <span class="validation-icon" id="cedulaValidation"></span>
                                     <div id="cedulaError" style="color: var(--danger); font-size: 12px; margin-top: 5px; display: none;"></div>
                                 </div>
-                                
-                                <div class="form-group">
-                                    <label>Primer Nombre *</label>
-                                    <input type="text" name="primerNombre" required>
+                            </div>
+
+                            <!-- Campos opcionales -->
+                            <div class="form-grid" style="margin-top: 20px;">
+                                <div class="form-group optional-field">
+                                    <label>Primer Nombre</label>
+                                    <input type="text" name="primerNombre" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional-field">
                                     <label>Segundo Nombre</label>
-                                    <input type="text" name="segundoNombre">
+                                    <input type="text" name="segundoNombre" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Primer Apellido *</label>
-                                    <input type="text" name="primerApellido" required>
+                                <div class="form-group optional-field">
+                                    <label>Primer Apellido</label>
+                                    <input type="text" name="primerApellido" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional-field">
                                     <label>Segundo Apellido</label>
-                                    <input type="text" name="segundoApellido">
+                                    <input type="text" name="segundoApellido" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Sexo *</label>
-                                    <select name="sexo" required>
+                                <div class="form-group optional-field">
+                                    <label>Sexo</label>
+                                    <select name="sexo">
                                         <option value="">Seleccione...</option>
                                         <option value="Masculino">Masculino</option>
                                         <option value="Femenino">Femenino</option>
                                     </select>
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Fecha de Nacimiento *</label>
-                                    <input type="date" name="fechaNacimiento" required>
+                                <div class="form-group optional-field">
+                                    <label>Fecha de Nacimiento</label>
+                                    <input type="date" name="fechaNacimiento">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Estado Civil *</label>
-                                    <select name="estadoCivil" required>
+                                <div class="form-group optional-field">
+                                    <label>Estado Civil</label>
+                                    <select name="estadoCivil">
                                         <option value="">Seleccione...</option>
                                         <option value="Soltero">Soltero/a</option>
                                         <option value="Casado">Casado/a</option>
@@ -1656,22 +1672,22 @@
                                     </select>
                                 </div>
                                 
-                                <div class="form-group" style="grid-column: 1 / -1;">
+                                <div class="form-group optional-field" style="grid-column: 1 / -1;">
                                     <label>Dirección</label>
-                                    <input type="text" name="direccion">
+                                    <input type="text" name="direccion" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional-field">
                                     <label>Celular</label>
-                                    <input type="tel" name="celular">
+                                    <input type="tel" name="celular" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional-field">
                                     <label>Correo Electrónico</label>
-                                    <input type="email" name="correo">
+                                    <input type="email" name="correo" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional-field">
                                     <label>Nivel Académico</label>
                                     <select name="nivelAcademico">
                                         <option value="">Seleccione...</option>
@@ -1685,14 +1701,14 @@
                                     </select>
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional-field">
                                     <label>Profesión</label>
-                                    <input type="text" name="profesion">
+                                    <input type="text" name="profesion" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Tipo de Personal *</label>
-                                    <select name="tipoPersonal" required>
+                                <div class="form-group optional-field">
+                                    <label>Tipo de Personal</label>
+                                    <select name="tipoPersonal">
                                         <option value="">Seleccione...</option>
                                         <option value="Fijo">Fijo</option>
                                         <option value="Contratado">Contratado</option>
@@ -1701,40 +1717,40 @@
                                     </select>
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Fecha de Ingreso *</label>
-                                    <input type="date" name="fechaIngreso" required>
+                                <div class="form-group optional-field">
+                                    <label>Fecha de Ingreso</label>
+                                    <input type="date" name="fechaIngreso">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Cargo *</label>
-                                    <input type="text" name="cargo" required>
+                                <div class="form-group optional-field">
+                                    <label>Cargo</label>
+                                    <input type="text" name="cargo" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional-field">
                                     <label>Código</label>
-                                    <input type="text" name="codigo">
+                                    <input type="text" name="codigo" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label>Dependencia *</label>
-                                    <input type="text" name="dependencia" required>
+                                <div class="form-group optional-field">
+                                    <label>Dependencia</label>
+                                    <input type="text" name="dependencia" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group">
+                                <div class="form-group optional-field">
                                     <label>Nómina</label>
-                                    <input type="text" name="nomina">
+                                    <input type="text" name="nomina" placeholder="Opcional">
                                 </div>
                                 
-                                <div class="form-group" style="grid-column: 1 / -1;">
+                                <div class="form-group optional-field" style="grid-column: 1 / -1;">
                                     <label>Observaciones</label>
-                                    <textarea name="observaciones" rows="3"></textarea>
+                                    <textarea name="observaciones" rows="3" placeholder="Opcional"></textarea>
                                 </div>
                             </div>
 
                             <div class="hijos-section">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                                    <h3 style="color: var(--cp-blue);">👶 Hijos/Dependientes</h3>
+                                    <h3 style="color: var(--cp-blue);">👶 Hijos/Dependientes (Opcional)</h3>
                                     <button type="button" class="btn-primary" onclick="addHijo()" style="width: auto; padding: 8px 16px; font-size: 13px;">
                                         + Agregar Hijo
                                     </button>
@@ -2861,6 +2877,9 @@
             container.appendChild(div);
         }
 
+        // ============================================
+        // GUARDAR TRABAJADOR - MODIFICADO: Solo requiere cédula
+        // ============================================
         async function saveTrabajador(e) {
             e.preventDefault();
             const form = e.target;
@@ -2868,6 +2887,13 @@
             
             const cedula = formData.get('cedula').toString().trim();
             
+            // Validar que la cédula no esté vacía
+            if (!cedula) {
+                showToast('Error: La cédula es requerida', 'error');
+                return;
+            }
+            
+            // Validar que la cédula sea única
             const existe = trabajadores.some(t => 
                 t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
             );
@@ -2877,38 +2903,43 @@
                 return;
             }
             
+            // Procesar hijos (opcional)
             const hijos = [];
             document.querySelectorAll('.hijo-item').forEach(item => {
-                hijos.push({
-                    nombresApellidos: item.querySelector('.hijo-nombre').value,
-                    cedula: item.querySelector('.hijo-cedula').value,
-                    sexo: item.querySelector('.hijo-sexo').value,
-                    fechaNacimiento: item.querySelector('.hijo-fecha').value
-                });
+                const nombre = item.querySelector('.hijo-nombre').value.trim();
+                if (nombre) { // Solo agregar si tiene nombre
+                    hijos.push({
+                        nombresApellidos: nombre,
+                        cedula: item.querySelector('.hijo-cedula').value,
+                        sexo: item.querySelector('.hijo-sexo').value,
+                        fechaNacimiento: item.querySelector('.hijo-fecha').value
+                    });
+                }
             });
             
+            // Crear objeto trabajador - solo cédula es requerida, el resto puede estar vacío
             const trabajador = {
                 id: Date.now(),
                 cedula: cedula,
-                primerNombre: formData.get('primerNombre'),
-                segundoNombre: formData.get('segundoNombre'),
-                primerApellido: formData.get('primerApellido'),
-                segundoApellido: formData.get('segundoApellido'),
-                sexo: formData.get('sexo'),
-                fechaNacimiento: formData.get('fechaNacimiento'),
-                estadoCivil: formData.get('estadoCivil'),
-                direccion: formData.get('direccion'),
-                celular: formData.get('celular'),
-                correo: formData.get('correo'),
-                nivelAcademico: formData.get('nivelAcademico'),
-                profesion: formData.get('profesion'),
-                tipoPersonal: formData.get('tipoPersonal'),
-                fechaIngreso: formData.get('fechaIngreso'),
-                cargo: formData.get('cargo'),
-                codigo: formData.get('codigo'),
-                dependencia: formData.get('dependencia'),
-                nomina: formData.get('nomina'),
-                observaciones: formData.get('observaciones'),
+                primerNombre: formData.get('primerNombre') || '',
+                segundoNombre: formData.get('segundoNombre') || '',
+                primerApellido: formData.get('primerApellido') || '',
+                segundoApellido: formData.get('segundoApellido') || '',
+                sexo: formData.get('sexo') || '',
+                fechaNacimiento: formData.get('fechaNacimiento') || '',
+                estadoCivil: formData.get('estadoCivil') || '',
+                direccion: formData.get('direccion') || '',
+                celular: formData.get('celular') || '',
+                correo: formData.get('correo') || '',
+                nivelAcademico: formData.get('nivelAcademico') || '',
+                profesion: formData.get('profesion') || '',
+                tipoPersonal: formData.get('tipoPersonal') || '',
+                fechaIngreso: formData.get('fechaIngreso') || '',
+                cargo: formData.get('cargo') || '',
+                codigo: formData.get('codigo') || '',
+                dependencia: formData.get('dependencia') || '',
+                nomina: formData.get('nomina') || '',
+                observaciones: formData.get('observaciones') || '',
                 hijos: hijos,
                 fechaRegistro: new Date().toISOString()
             };
@@ -2923,7 +2954,7 @@
             form.reset();
             document.getElementById('hijosContainer').innerHTML = '';
             resetCedulaValidation();
-            showToast('Trabajador guardado');
+            showToast('Trabajador guardado correctamente');
             updateStats();
         }
 
@@ -2938,8 +2969,8 @@
             
             const encontrados = trabajadores.filter(t => 
                 t.cedula.toLowerCase().includes(query) ||
-                t.primerNombre.toLowerCase().includes(query) ||
-                t.primerApellido.toLowerCase().includes(query)
+                (t.primerNombre && t.primerNombre.toLowerCase().includes(query)) ||
+                (t.primerApellido && t.primerApellido.toLowerCase().includes(query))
             );
             
             if (encontrados.length === 0) {
@@ -2952,8 +2983,8 @@
                     <h3 style="color: var(--cp-blue); margin-bottom: 10px;">${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px;">
                         <div><strong>Cédula:</strong> ${t.cedula}</div>
-                        <div><strong>Cargo:</strong> ${t.cargo}</div>
-                        <div><strong>Dependencia:</strong> ${t.dependencia}</div>
+                        <div><strong>Cargo:</strong> ${t.cargo || 'No especificado'}</div>
+                        <div><strong>Dependencia:</strong> ${t.dependencia || 'No especificada'}</div>
                     </div>
                 </div>
             `).join('');
@@ -2972,19 +3003,19 @@
                 </div>
                 <div class="form-group">
                     <label>Primer Nombre</label>
-                    <input type="text" name="primerNombre" value="${t.primerNombre}" required>
+                    <input type="text" name="primerNombre" value="${t.primerNombre}">
                 </div>
                 <div class="form-group">
                     <label>Primer Apellido</label>
-                    <input type="text" name="primerApellido" value="${t.primerApellido}" required>
+                    <input type="text" name="primerApellido" value="${t.primerApellido}">
                 </div>
                 <div class="form-group">
                     <label>Cargo</label>
-                    <input type="text" name="cargo" value="${t.cargo}" required>
+                    <input type="text" name="cargo" value="${t.cargo}">
                 </div>
                 <div class="form-group">
                     <label>Dependencia</label>
-                    <input type="text" name="dependencia" value="${t.dependencia}" required>
+                    <input type="text" name="dependencia" value="${t.dependencia}">
                 </div>
             `;
             
