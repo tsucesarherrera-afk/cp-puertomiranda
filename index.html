@@ -28,6 +28,7 @@
             --border: #e2e8f0;
             --cp-blue: #4a90e2;
             --cp-cyan: #5bc0de;
+            --usuario: #8b5cf6;
         }
 
         body {
@@ -344,13 +345,20 @@
         .user-avatar {
             width: 40px;
             height: 40px;
-            background: var(--cp-blue);
-            color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 600;
+            color: white;
+        }
+
+        .user-avatar.admin {
+            background: var(--cp-blue);
+        }
+
+        .user-avatar.usuario {
+            background: var(--usuario);
         }
 
         .btn-logout {
@@ -424,6 +432,7 @@
         .stat-icon.green { background: rgba(5, 150, 105, 0.1); color: var(--success); }
         .stat-icon.cloud { background: rgba(99, 102, 241, 0.1); color: var(--cloud); }
         .stat-icon.orange { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
+        .stat-icon.purple { background: rgba(139, 92, 246, 0.1); color: var(--usuario); }
 
         .stat-value {
             font-size: 32px;
@@ -732,6 +741,7 @@
         .badge-cloud { background: rgba(99, 102, 241, 0.1); color: var(--cloud); }
         .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
         .badge-danger { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
+        .badge-usuario { background: rgba(139, 92, 246, 0.1); color: var(--usuario); }
 
         .sync-panel {
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
@@ -1089,13 +1099,12 @@
             font-weight: 600;
         }
 
-        /* Nuevo estilo para campos opcionales */
         .optional-field {
             opacity: 0.8;
         }
         
         .optional-field label::after {
-            content: " ()";
+            content: " (opcional)";
             font-size: 11px;
             color: var(--secondary);
             font-weight: normal;
@@ -1105,6 +1114,28 @@
             content: " *";
             color: var(--danger);
             font-weight: bold;
+        }
+
+        .calculated-field {
+            background: rgba(74, 144, 226, 0.05);
+            border: 2px solid var(--cp-blue);
+        }
+
+        .calculated-field input {
+            background: white;
+            color: var(--cp-blue);
+            font-weight: 600;
+        }
+
+        .calculated-field label {
+            color: var(--cp-blue);
+        }
+
+        .calculated-field label::after {
+            content: " (calculado automáticamente)";
+            font-size: 11px;
+            color: var(--secondary);
+            font-weight: normal;
         }
 
         @media (max-width: 768px) {
@@ -1135,29 +1166,16 @@
         <div class="login-box">
             <div class="logo-container">
                 <svg class="logo-image" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Fondo -->
                     <rect width="400" height="300" fill="#5bc0de" rx="15"/>
-                    
-                    <!-- Edificio principal -->
                     <rect x="80" y="120" width="240" height="140" fill="#ffffff" stroke="#333" stroke-width="2"/>
-                    
-                    <!-- Techo triangular -->
                     <polygon points="60,120 200,40 340,120" fill="#d9534f" stroke="#333" stroke-width="2"/>
-                    
-                    <!-- Columnas -->
                     <rect x="100" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
                     <rect x="180" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
                     <rect x="260" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
-                    
-                    <!-- Puerta principal -->
                     <rect x="170" y="180" width="60" height="80" fill="#8b4513" stroke="#333" stroke-width="2"/>
                     <circle cx="220" cy="220" r="3" fill="#ffd700"/>
-                    
-                    <!-- Ventanas -->
                     <rect x="90" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
                     <rect x="270" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
-                    
-                    <!-- Escaleras -->
                     <rect x="150" y="260" width="100" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
                     <rect x="140" y="270" width="120" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
                 </svg>
@@ -1182,12 +1200,12 @@
             <form id="loginForm">
                 <div class="form-group">
                     <label for="username">Usuario</label>
-                    <input type="text" id="username" placeholder="Usuario administrador" required autocomplete="off">
+                    <input type="text" id="username" placeholder="Ingrese su usuario" required autocomplete="off">
                 </div>
                 
                 <div class="form-group">
                     <label for="password">Contraseña</label>
-                    <input type="password" id="password" placeholder="Ingrese su contraseña segura" required>
+                    <input type="password" id="password" placeholder="Ingrese su contraseña" required>
                 </div>
 
                 <button type="submit" class="btn" id="loginBtn">
@@ -1234,7 +1252,7 @@
             </div>
             
             <nav>
-                <ul class="nav-menu">
+                <ul class="nav-menu" id="navMenu">
                     <li class="nav-item">
                         <a class="nav-link active" onclick="showSection('dashboard')">
                             <span>📊</span> Dashboard
@@ -1245,27 +1263,27 @@
                             <span>🔍</span> Consulta
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item admin-only">
                         <a class="nav-link" onclick="showSection('registrar')">
                             <span>➕</span> Nuevo Registro
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item admin-only">
                         <a class="nav-link" onclick="showSection('trabajadores')">
                             <span>👷</span> Trabajadores
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item admin-only">
                         <a class="nav-link" onclick="showSection('migration')">
                             <span>🔄</span> Importar Excel
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item admin-only">
                         <a class="nav-link" onclick="showSection('export')">
                             <span>📥</span> Exportar Excel
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item admin-only">
                         <a class="nav-link" onclick="showSection('sync')">
                             <span>☁️</span> Sincronizar Nube
                         </a>
@@ -1273,33 +1291,19 @@
                 </ul>
             </nav>
 
-            <!-- Logo pequeño al final del menú -->
             <div class="sidebar-divider">
                 <div class="sidebar-logo-small">
                     <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Fondo -->
                         <rect width="400" height="300" fill="#5bc0de" rx="15"/>
-                        
-                        <!-- Edificio principal -->
                         <rect x="80" y="120" width="240" height="140" fill="#ffffff" stroke="#333" stroke-width="2"/>
-                        
-                        <!-- Techo triangular -->
                         <polygon points="60,120 200,40 340,120" fill="#d9534f" stroke="#333" stroke-width="2"/>
-                        
-                        <!-- Columnas -->
                         <rect x="100" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
                         <rect x="180" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
                         <rect x="260" y="120" width="20" height="140" fill="#ffffff" stroke="#333" stroke-width="1"/>
-                        
-                        <!-- Puerta principal -->
                         <rect x="170" y="180" width="60" height="80" fill="#8b4513" stroke="#333" stroke-width="2"/>
                         <circle cx="220" cy="220" r="3" fill="#ffd700"/>
-                        
-                        <!-- Ventanas -->
                         <rect x="90" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
                         <rect x="270" y="150" width="40" height="40" fill="#87ceeb" stroke="#333" stroke-width="2"/>
-                        
-                        <!-- Escaleras -->
                         <rect x="150" y="260" width="100" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
                         <rect x="140" y="270" width="120" height="10" fill="#a0522d" stroke="#333" stroke-width="1"/>
                     </svg>
@@ -1316,7 +1320,7 @@
                     <div class="user-avatar" id="userAvatar">AD</div>
                     <div>
                         <div style="font-weight: 600;" id="userNameDisplay">Administrador</div>
-                        <div style="font-size: 12px; color: var(--secondary);">Nivel: Superusuario</div>
+                        <div style="font-size: 12px; color: var(--secondary);" id="userLevel">Nivel: Superusuario</div>
                     </div>
                     <button class="btn-logout" onclick="logout()">Salir</button>
                 </div>
@@ -1369,11 +1373,13 @@
                                     <th>Cédula</th>
                                     <th>Nombre</th>
                                     <th>Cargo</th>
+                                    <th>Edad</th>
+                                    <th>Años Serv.</th>
                                     <th>Estado</th>
                                 </tr>
                             </thead>
                             <tbody id="recentBody">
-                                <tr><td colspan="4" style="text-align: center; color: var(--secondary);">Cargando...</td></tr>
+                                <tr><td colspan="6" style="text-align: center; color: var(--secondary);">Cargando...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1551,11 +1557,12 @@
                                         <th>Cédula</th>
                                         <th>Nombre</th>
                                         <th>Cargo</th>
-                                        <th>Dependencia</th>
+                                        <th>Edad</th>
+                                        <th>Años Serv.</th>
                                     </tr>
                                 </thead>
                                 <tbody id="previewTrabajadores">
-                                    <tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin datos</td></tr>
+                                    <tr><td colspan="5" style="text-align: center; color: var(--secondary);">Sin datos</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1599,20 +1606,21 @@
                                     <th>Cédula</th>
                                     <th>Nombre Completo</th>
                                     <th>Cargo</th>
-                                    <th>Dependencia</th>
+                                    <th>Edad</th>
+                                    <th>Años Serv.</th>
                                     <th>Hijos</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="trabajadoresBody">
-                                <tr><td colspan="6" style="text-align: center; color: var(--secondary); padding: 40px;">Cargando...</td></tr>
+                                <tr><td colspan="7" style="text-align: center; color: var(--secondary); padding: 40px;">Cargando...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Registrar Section - MODIFICADO: Solo requiere cédula -->
+            <!-- Registrar Section -->
             <div class="content-section" id="registrar">
                 <div class="card">
                     <div class="card-header">
@@ -1664,7 +1672,13 @@
                                 
                                 <div class="form-group optional-field">
                                     <label>Fecha de Nacimiento</label>
-                                    <input type="date" name="fechaNacimiento">
+                                    <input type="date" name="fechaNacimiento" id="fechaNacimiento" onchange="calcularEdad()">
+                                </div>
+                                
+                                <!-- Campo calculado: Edad -->
+                                <div class="form-group calculated-field">
+                                    <label>Edad</label>
+                                    <input type="text" name="edad" id="edadCalculada" readonly placeholder="Se calcula automáticamente">
                                 </div>
                                 
                                 <div class="form-group optional-field">
@@ -1724,7 +1738,13 @@
                                 
                                 <div class="form-group optional-field">
                                     <label>Fecha de Ingreso</label>
-                                    <input type="date" name="fechaIngreso">
+                                    <input type="date" name="fechaIngreso" id="fechaIngreso" onchange="calcularAnosServicio()">
+                                </div>
+                                
+                                <!-- Campo calculado: Años de Servicio -->
+                                <div class="form-group calculated-field">
+                                    <label>Años de Servicio</label>
+                                    <input type="text" name="anosServicio" id="anosServicioCalculado" readonly placeholder="Se calcula automáticamente">
                                 </div>
                                 
                                 <div class="form-group optional-field">
@@ -1816,15 +1836,33 @@
 
     <script>
         // ============================================
-        // CONFIGURACIÓN DE SEGURIDAD - MODIFICAR AQUÍ
+        // CONFIGURACIÓN DE USUARIOS
         // ============================================
-        const ADMIN_USER = 'admin';                    // ← Cambia esto
-        const ADMIN_PASS = 'CPM2024#Seguro!';          // ← Cambia esto (mínimo 12 caracteres)
-        
+        const USERS = {
+            admin: {
+                username: 'admin',
+                password: 'CPM2024#Seguro!',
+                name: 'Administrador',
+                level: 'Superusuario',
+                type: 'admin',
+                avatar: 'AD',
+                color: 'admin'
+            },
+            usuario: {
+                username: 'usuario',
+                password: 'Ver2024#',
+                name: 'Usuario',
+                level: 'Solo Lectura',
+                type: 'usuario',
+                avatar: 'US',
+                color: 'usuario'
+            }
+        };
+
         // Configuración de seguridad
-        const MAX_ATTEMPTS = 3;                        // Intentos antes de bloqueo
-        const LOCKOUT_BASE_TIME = 30;                  // Segundos base de bloqueo
-        const SECURITY_LOG_MAX = 50;                   // Máximo registros guardados
+        const MAX_ATTEMPTS = 3;
+        const LOCKOUT_BASE_TIME = 30;
+        const SECURITY_LOG_MAX = 50;
         
         // ============================================
         // CONFIGURACIÓN SUPABASE
@@ -1839,7 +1877,7 @@
         // VARIABLES GLOBALES
         // ============================================
         let trabajadores = [];
-        let currentUser = '';
+        let currentUser = null;
         let currentEditId = null;
         let selectedFile = null;
         
@@ -1849,10 +1887,78 @@
         let lockoutCount = 0;
 
         // ============================================
+        // FUNCIONES DE CÁLCULO DE EDAD Y AÑOS DE SERVICIO
+        // ============================================
+        function calcularEdad(fechaNacimiento) {
+            if (!fechaNacimiento) return null;
+            
+            const hoy = new Date();
+            const nacimiento = new Date(fechaNacimiento);
+            
+            let edad = hoy.getFullYear() - nacimiento.getFullYear();
+            const mes = hoy.getMonth() - nacimiento.getMonth();
+            
+            // Ajustar si aún no ha cumplido años este año
+            if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+                edad--;
+            }
+            
+            return edad >= 0 ? edad : 0;
+        }
+
+        function calcularAnosServicio(fechaIngreso) {
+            if (!fechaIngreso) return null;
+            
+            const hoy = new Date();
+            const ingreso = new Date(fechaIngreso);
+            
+            let anos = hoy.getFullYear() - ingreso.getFullYear();
+            const mes = hoy.getMonth() - ingreso.getMonth();
+            
+            // Ajustar si aún no ha cumplido años este año
+            if (mes < 0 || (mes === 0 && hoy.getDate() < ingreso.getDate())) {
+                anos--;
+            }
+            
+            return anos >= 0 ? anos : 0;
+        }
+
+        function calcularEdadEnTiempoReal() {
+            const fechaNac = document.getElementById('fechaNacimiento').value;
+            const edadInput = document.getElementById('edadCalculada');
+            
+            if (fechaNac) {
+                const edad = calcularEdad(fechaNac);
+                edadInput.value = edad !== null ? `${edad} años` : '';
+            } else {
+                edadInput.value = '';
+            }
+        }
+
+        function calcularAnosServicioEnTiempoReal() {
+            const fechaIng = document.getElementById('fechaIngreso').value;
+            const anosInput = document.getElementById('anosServicioCalculado');
+            
+            if (fechaIng) {
+                const anos = calcularAnosServicio(fechaIng);
+                anosInput.value = anos !== null ? `${anos} años` : '';
+            } else {
+                anosInput.value = '';
+            }
+        }
+
+        // Alias para los event handlers del HTML
+        function calcularEdad() {
+            calcularEdadEnTiempoReal();
+        }
+
+        function calcularAnosServicio() {
+            calcularAnosServicioEnTiempoReal();
+        }
+
+        // ============================================
         // SISTEMA DE SEGURIDAD
         // ============================================
-        
-        // Cargar estado de seguridad desde localStorage
         function loadSecurityState() {
             const saved = localStorage.getItem('cp_security_state');
             if (saved) {
@@ -1860,14 +1966,12 @@
                 failedAttempts = state.failedAttempts || 0;
                 lockoutCount = state.lockoutCount || 0;
                 
-                // Verificar si hay bloqueo activo
                 if (state.lockoutEndTime) {
                     const now = Date.now();
                     if (now < state.lockoutEndTime) {
                         lockoutEndTime = state.lockoutEndTime;
                         startLockoutTimer();
                     } else {
-                        // Bloqueo expirado, resetear
                         failedAttempts = 0;
                         lockoutEndTime = null;
                         saveSecurityState();
@@ -1877,7 +1981,6 @@
             updateSecurityDisplay();
         }
 
-        // Guardar estado de seguridad
         function saveSecurityState() {
             const state = {
                 failedAttempts: failedAttempts,
@@ -1888,7 +1991,6 @@
             localStorage.setItem('cp_security_state', JSON.stringify(state));
         }
 
-        // Registrar evento de seguridad
         function logSecurityEvent(type, details = '') {
             const logs = JSON.parse(localStorage.getItem('cp_security_logs') || '[]');
             const event = {
@@ -1901,7 +2003,6 @@
             
             logs.unshift(event);
             
-            // Mantener solo los últimos registros
             if (logs.length > SECURITY_LOG_MAX) {
                 logs.pop();
             }
@@ -1909,7 +2010,6 @@
             localStorage.setItem('cp_security_logs', JSON.stringify(logs));
         }
 
-        // Actualizar display de seguridad
         function updateSecurityDisplay() {
             const attemptsInfo = document.getElementById('attemptsInfo');
             const failedAttemptsSpan = document.getElementById('failedAttempts');
@@ -1922,7 +2022,6 @@
             }
         }
 
-        // Iniciar temporizador de bloqueo
         function startLockoutTimer() {
             const loginBtn = document.getElementById('loginBtn');
             const usernameInput = document.getElementById('username');
@@ -1940,7 +2039,6 @@
                 const remaining = Math.ceil((lockoutEndTime - now) / 1000);
                 
                 if (remaining <= 0) {
-                    // Fin del bloqueo
                     clearInterval(timer);
                     loginBtn.disabled = false;
                     usernameInput.disabled = false;
@@ -1962,15 +2060,13 @@
             const timer = setInterval(updateCountdown, 1000);
         }
 
-        // Manejar intento fallido
         function handleFailedAttempt(reason) {
             failedAttempts++;
             
-            // Calcular tiempo de bloqueo (progresivo: 30s, 60s, 120s...)
             if (failedAttempts >= MAX_ATTEMPTS) {
                 lockoutCount++;
                 const multiplier = Math.pow(2, lockoutCount - 1);
-                const lockoutTime = LOCKOUT_BASE_TIME * multiplier * 1000; // ms
+                const lockoutTime = LOCKOUT_BASE_TIME * multiplier * 1000;
                 lockoutEndTime = Date.now() + lockoutTime;
                 
                 saveSecurityState();
@@ -1988,17 +2084,12 @@
             return `Credenciales inválidas. ${remaining} intento${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''} antes del bloqueo.`;
         }
 
-        // Manejar login exitoso
         function handleSuccessfulLogin() {
-            // Resetear contadores
             failedAttempts = 0;
             lockoutEndTime = null;
             saveSecurityState();
             
-            // Registrar acceso exitoso
-            logSecurityEvent('SUCCESS_LOGIN', `Usuario ${ADMIN_USER} autenticado correctamente`);
-            
-            // Guardar último acceso
+            logSecurityEvent('SUCCESS_LOGIN', `Usuario ${currentUser.name} autenticado correctamente`);
             localStorage.setItem('cp_last_successful_login', new Date().toISOString());
         }
 
@@ -2263,7 +2354,6 @@
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // Verificar si hay bloqueo activo
             if (lockoutEndTime && Date.now() < lockoutEndTime) {
                 const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
                 document.getElementById('loginError').textContent = `Cuenta bloqueada. Intente en ${remaining} segundos.`;
@@ -2274,36 +2364,57 @@
             const user = document.getElementById('username').value.trim();
             const pass = document.getElementById('password').value;
             
-            // Validar campos vacíos
             if (!user || !pass) {
                 document.getElementById('loginError').textContent = 'Complete todos los campos';
                 document.getElementById('loginError').style.display = 'block';
                 return;
             }
             
-            // Validar credenciales
-            if (user !== ADMIN_USER || pass !== ADMIN_PASS) {
-                const msg = handleFailedAttempt(user !== ADMIN_USER ? 'Usuario incorrecto' : 'Contraseña incorrecta');
+            // Detectar automáticamente el tipo de usuario según credenciales
+            let userConfig = null;
+            if (user === USERS.admin.username && pass === USERS.admin.password) {
+                userConfig = USERS.admin;
+            } else if (user === USERS.usuario.username && pass === USERS.usuario.password) {
+                userConfig = USERS.usuario;
+            }
+            
+            if (!userConfig) {
+                const msg = handleFailedAttempt('Credenciales incorrectas');
                 document.getElementById('loginError').textContent = msg;
                 document.getElementById('loginError').style.display = 'block';
                 document.getElementById('password').value = '';
                 return;
             }
             
-            // Éxito
             handleSuccessfulLogin();
             document.getElementById('loginError').style.display = 'none';
             
-            currentUser = user;
+            currentUser = userConfig;
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('appContainer').style.display = 'block';
             document.body.style.background = 'var(--bg)';
             
-            document.getElementById('userNameDisplay').textContent = 'Administrador';
-            document.getElementById('userAvatar').textContent = 'AD';
-            
+            setupUserInterface();
             initializeSystem();
         });
+
+        function setupUserInterface() {
+            const avatar = document.getElementById('userAvatar');
+            const nameDisplay = document.getElementById('userNameDisplay');
+            const levelDisplay = document.getElementById('userLevel');
+            
+            avatar.textContent = currentUser.avatar;
+            avatar.className = `user-avatar ${currentUser.color}`;
+            nameDisplay.textContent = currentUser.name;
+            levelDisplay.textContent = `Nivel: ${currentUser.level}`;
+            
+            // Si es usuario (solo lectura), ocultar opciones de administración
+            if (currentUser.type === 'usuario') {
+                document.querySelectorAll('.admin-only').forEach(el => {
+                    el.style.display = 'none';
+                });
+            }
+        }
 
         function initializeSystem() {
             initSupabase();
@@ -2319,8 +2430,8 @@
         }
 
         function logout() {
-            logSecurityEvent('LOGOUT', `Usuario ${currentUser} cerró sesión`);
-            currentUser = '';
+            logSecurityEvent('LOGOUT', `Usuario ${currentUser.name} cerró sesión`);
+            currentUser = null;
             location.reload();
         }
 
@@ -2373,10 +2484,12 @@
             document.getElementById('cedulaValidation').textContent = '';
             document.getElementById('cedulaError').style.display = 'none';
             document.getElementById('btnSubmit').disabled = false;
+            document.getElementById('edadCalculada').value = '';
+            document.getElementById('anosServicioCalculado').value = '';
         }
 
         // ============================================
-        // EXPORTAR A EXCEL - MODIFICADO: Dos hojas (Trabajadores e Hijos)
+        // EXPORTAR A EXCEL
         // ============================================
         function exportToExcel() {
             if (trabajadores.length === 0) {
@@ -2387,7 +2500,6 @@
             showLoading(true, 'Generando archivo Excel...');
 
             try {
-                // HOJA 1: Trabajadores
                 const trabajadoresData = trabajadores.map(t => ({
                     'ID': t.id,
                     'Cedula': t.cedula,
@@ -2397,6 +2509,7 @@
                     'SegundoApellido': t.segundoApellido || '',
                     'Sexo': t.sexo || '',
                     'FechaNacimiento': t.fechaNacimiento || '',
+                    'Edad': calcularEdad(t.fechaNacimiento) || '',
                     'EstadoCivil': t.estadoCivil || '',
                     'Direccion': t.direccion || '',
                     'Celular': t.celular || '',
@@ -2405,6 +2518,7 @@
                     'Profesion': t.profesion || '',
                     'TipoPersonal': t.tipoPersonal || '',
                     'FechaIngreso': t.fechaIngreso || '',
+                    'AnosServicio': calcularAnosServicio(t.fechaIngreso) || '',
                     'Cargo': t.cargo || '',
                     'Codigo': t.codigo || '',
                     'Dependencia': t.dependencia || '',
@@ -2414,7 +2528,6 @@
                     'TotalHijos': t.hijos ? t.hijos.length : 0
                 }));
 
-                // HOJA 2: Hijos
                 const hijosData = [];
                 trabajadores.forEach(t => {
                     if (t.hijos && t.hijos.length > 0) {
@@ -2432,22 +2545,17 @@
                     }
                 });
 
-                // Crear libro de Excel
                 const wb = XLSX.utils.book_new();
                 
-                // Agregar hoja de trabajadores
                 const wsTrabajadores = XLSX.utils.json_to_sheet(trabajadoresData);
                 XLSX.utils.book_append_sheet(wb, wsTrabajadores, 'Trabajadores');
                 
-                // Agregar hoja de hijos (aunque esté vacía)
                 const wsHijos = XLSX.utils.json_to_sheet(hijosData.length > 0 ? hijosData : [{Mensaje: 'No hay hijos registrados'}]);
                 XLSX.utils.book_append_sheet(wb, wsHijos, 'Hijos');
 
-                // Generar nombre de archivo
                 const fecha = new Date().toISOString().split('T')[0];
                 const nombreArchivo = `CP_Puerto_Miranda_${fecha}.xlsx`;
 
-                // Descargar archivo
                 XLSX.writeFile(wb, nombreArchivo);
                 
                 showLoading(false);
@@ -2473,11 +2581,12 @@
                         <td>${t.cedula}</td>
                         <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
                         <td>${t.cargo || 'No especificado'}</td>
-                        <td>${t.dependencia || 'No especificada'}</td>
+                        <td>${calcularEdad(t.fechaNacimiento) || '-'} ${calcularEdad(t.fechaNacimiento) ? 'años' : ''}</td>
+                        <td>${calcularAnosServicio(t.fechaIngreso) || '-'} ${calcularAnosServicio(t.fechaIngreso) ? 'años' : ''}</td>
                     </tr>
                 `).join('');
             } else {
-                previewTrabajadores.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin trabajadores registrados</td></tr>';
+                previewTrabajadores.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--secondary);">Sin trabajadores registrados</td></tr>';
             }
 
             const previewHijos = document.getElementById('previewHijos');
@@ -2510,7 +2619,7 @@
         }
 
         // ============================================
-        // SINCRONIZACIÓN EXCEL - MODIFICADO: Leer dos hojas
+        // SINCRONIZACIÓN EXCEL
         // ============================================
         function handleFileSelect(input) {
             const label = document.getElementById('fileLabel');
@@ -2542,11 +2651,9 @@
                 const data = await selectedFile.arrayBuffer();
                 const workbook = XLSX.read(data, { type: 'array' });
                 
-                // Leer hoja de trabajadores
                 const trabajadoresSheet = workbook.Sheets['Trabajadores'] || workbook.Sheets[workbook.SheetNames[0]];
                 const trabajadoresData = XLSX.utils.sheet_to_json(trabajadoresSheet, { header: 1 });
 
-                // Leer hoja de hijos (si existe)
                 let hijosData = [];
                 if (workbook.SheetNames.includes('Hijos')) {
                     const hijosSheet = workbook.Sheets['Hijos'];
@@ -2581,7 +2688,6 @@
                         obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
                     });
                     
-                    // Buscar hijos de este trabajador
                     const cedulaTrabajador = obj.Cedula || obj.cedula || '';
                     const hijosDelTrabajador = hijosData.filter(h => 
                         (h.CedulaPadreMadre || h.cedulaPadreMadre || '').toString().trim() === cedulaTrabajador
@@ -2663,7 +2769,6 @@
                     const hayCambios = detectarCambios(actual, nuevo);
 
                     if (hayCambios) {
-                        // Preservar hijos si no vienen en el Excel o si vienen vacíos
                         const hijosFinales = (nuevo.hijos && nuevo.hijos.length > 0) ? nuevo.hijos : (actual.hijos || []);
                         
                         trabajadores[indexExistente] = {
@@ -2820,6 +2925,15 @@
         // UI Y NAVEGACIÓN
         // ============================================
         function showSection(sectionId) {
+            // Si es usuario y quiere ir a sección no permitida, redirigir a dashboard
+            if (currentUser && currentUser.type === 'usuario') {
+                const allowedSections = ['dashboard', 'consulta'];
+                if (!allowedSections.includes(sectionId)) {
+                    showToast('No tiene permisos para acceder a esta sección', 'error');
+                    sectionId = 'dashboard';
+                }
+            }
+
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.getElementById(sectionId).classList.add('active');
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -2865,9 +2979,11 @@
                     <td>${t.cedula}</td>
                     <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
                     <td>${t.cargo || 'No especificado'}</td>
+                    <td>${calcularEdad(t.fechaNacimiento) || '-'}</td>
+                    <td>${calcularAnosServicio(t.fechaIngreso) || '-'}</td>
                     <td><span class="badge badge-success">Activo</span></td>
                 </tr>
-            `).join('') : '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin registros</td></tr>';
+            `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary);">Sin registros</td></tr>';
         }
 
         function loadTrabajadores() {
@@ -2877,14 +2993,15 @@
                     <td><strong>${t.cedula}</strong></td>
                     <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
                     <td>${t.cargo || 'No especificado'}</td>
-                    <td>${t.dependencia || 'No especificada'}</td>
+                    <td>${calcularEdad(t.fechaNacimiento) || '-'}</td>
+                    <td>${calcularAnosServicio(t.fechaIngreso) || '-'}</td>
                     <td>${t.hijos ? t.hijos.length : 0}</td>
                     <td>
                         <button class="btn-warning" onclick="editTrabajador(${t.id})" title="Editar">✏️</button>
                         <button class="btn-danger" onclick="deleteTrabajador(${t.id})" title="Eliminar">🗑️</button>
                     </td>
                 </tr>
-            `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary); padding: 40px;">Sin trabajadores</td></tr>';
+            `).join('') : '<tr><td colspan="7" style="text-align: center; color: var(--secondary); padding: 40px;">Sin trabajadores</td></tr>';
         }
 
         function searchTrabajadores() {
@@ -2901,14 +3018,15 @@
                     <td><strong>${t.cedula}</strong></td>
                     <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
                     <td>${t.cargo || 'No especificado'}</td>
-                    <td>${t.dependencia || 'No especificada'}</td>
+                    <td>${calcularEdad(t.fechaNacimiento) || '-'}</td>
+                    <td>${calcularAnosServicio(t.fechaIngreso) || '-'}</td>
                     <td>${t.hijos ? t.hijos.length : 0}</td>
                     <td>
                         <button class="btn-warning" onclick="editTrabajador(${t.id})" title="Editar">✏️</button>
                         <button class="btn-danger" onclick="deleteTrabajador(${t.id})" title="Eliminar">🗑️</button>
                     </td>
                 </tr>
-            `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary);">No encontrado</td></tr>';
+            `).join('') : '<tr><td colspan="7" style="text-align: center; color: var(--secondary);">No encontrado</td></tr>';
         }
 
         function addHijo() {
@@ -2930,7 +3048,7 @@
         }
 
         // ============================================
-        // GUARDAR TRABAJADOR - MODIFICADO: Solo requiere cédula
+        // GUARDAR TRABAJADOR
         // ============================================
         async function saveTrabajador(e) {
             e.preventDefault();
@@ -2939,13 +3057,11 @@
             
             const cedula = formData.get('cedula').toString().trim();
             
-            // Validar que la cédula no esté vacía
             if (!cedula) {
                 showToast('Error: La cédula es requerida', 'error');
                 return;
             }
             
-            // Validar que la cédula sea única
             const existe = trabajadores.some(t => 
                 t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
             );
@@ -2955,11 +3071,10 @@
                 return;
             }
             
-            // Procesar hijos 
             const hijos = [];
             document.querySelectorAll('.hijo-item').forEach(item => {
                 const nombre = item.querySelector('.hijo-nombre').value.trim();
-                if (nombre) { // Solo agregar si tiene nombre
+                if (nombre) {
                     hijos.push({
                         nombresApellidos: nombre,
                         cedula: item.querySelector('.hijo-cedula').value,
@@ -2969,7 +3084,6 @@
                 }
             });
             
-            // Crear objeto trabajador - solo cédula es requerida, el resto puede estar vacío
             const trabajador = {
                 id: Date.now(),
                 cedula: cedula,
@@ -3030,19 +3144,26 @@
                 return;
             }
             
+            // Determinar si mostrar botones de edición/eliminación
+            const showActions = currentUser && currentUser.type === 'admin';
+            
             resultDiv.innerHTML = encontrados.map(t => `
                 <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border);">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
                         <h3 style="color: var(--cp-blue);">${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</h3>
-                        <div>
-                            <button class="btn-warning" onclick="editTrabajador(${t.id})" style="margin-right: 5px;">✏️ Editar</button>
-                            <button class="btn-danger" onclick="deleteTrabajador(${t.id})">🗑️ Eliminar</button>
-                        </div>
+                        ${showActions ? `
+                            <div>
+                                <button class="btn-warning" onclick="editTrabajador(${t.id})" style="margin-right: 5px;">✏️ Editar</button>
+                                <button class="btn-danger" onclick="deleteTrabajador(${t.id})">🗑️ Eliminar</button>
+                            </div>
+                        ` : ''}
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px;">
                         <div><strong>Cédula:</strong> ${t.cedula}</div>
                         <div><strong>Cargo:</strong> ${t.cargo || 'No especificado'}</div>
                         <div><strong>Dependencia:</strong> ${t.dependencia || 'No especificada'}</div>
+                        <div><strong>Edad:</strong> ${calcularEdad(t.fechaNacimiento) || 'No especificada'} ${calcularEdad(t.fechaNacimiento) ? 'años' : ''}</div>
+                        <div><strong>Años de Servicio:</strong> ${calcularAnosServicio(t.fechaIngreso) || 'No especificado'} ${calcularAnosServicio(t.fechaIngreso) ? 'años' : ''}</div>
                         <div><strong>Celular:</strong> ${t.celular || 'No especificado'}</div>
                         <div><strong>Correo:</strong> ${t.correo || 'No especificado'}</div>
                         <div><strong>Hijos:</strong> ${t.hijos ? t.hijos.length : 0}</div>
@@ -3067,16 +3188,25 @@
         }
 
         // ============================================
-        // EDITAR Y ELIMINAR TRABAJADOR - MEJORADO
+        // EDITAR Y ELIMINAR TRABAJADOR
         // ============================================
         function editTrabajador(id) {
+            // Verificar permisos
+            if (currentUser && currentUser.type === 'usuario') {
+                showToast('No tiene permisos para editar trabajadores', 'error');
+                return;
+            }
+
             const t = trabajadores.find(x => x.id === id);
             if (!t) return;
             
             currentEditId = id;
             const content = document.getElementById('editFormContent');
             
-            // Generar campos del formulario de edición con todos los datos
+            // Calcular valores actuales
+            const edadActual = calcularEdad(t.fechaNacimiento);
+            const anosServicioActual = calcularAnosServicio(t.fechaIngreso);
+            
             content.innerHTML = `
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label>Cédula (No editable)</label>
@@ -3108,7 +3238,11 @@
                 </div>
                 <div class="form-group">
                     <label>Fecha de Nacimiento</label>
-                    <input type="date" name="fechaNacimiento" value="${t.fechaNacimiento || ''}">
+                    <input type="date" name="fechaNacimiento" value="${t.fechaNacimiento || ''}" onchange="updateEdadEdit(this.value)">
+                </div>
+                <div class="form-group calculated-field">
+                    <label>Edad</label>
+                    <input type="text" id="edadEdit" value="${edadActual !== null ? edadActual + ' años' : ''}" readonly>
                 </div>
                 <div class="form-group">
                     <label>Estado Civil</label>
@@ -3161,7 +3295,11 @@
                 </div>
                 <div class="form-group">
                     <label>Fecha de Ingreso</label>
-                    <input type="date" name="fechaIngreso" value="${t.fechaIngreso || ''}">
+                    <input type="date" name="fechaIngreso" value="${t.fechaIngreso || ''}" onchange="updateAnosServicioEdit(this.value)">
+                </div>
+                <div class="form-group calculated-field">
+                    <label>Años de Servicio</label>
+                    <input type="text" id="anosServicioEdit" value="${anosServicioActual !== null ? anosServicioActual + ' años' : ''}" readonly>
                 </div>
                 <div class="form-group">
                     <label>Cargo</label>
@@ -3184,7 +3322,6 @@
                     <textarea name="observaciones" rows="3">${t.observaciones || ''}</textarea>
                 </div>
                 
-                <!-- Sección de hijos en edición -->
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <div class="hijos-section">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -3215,6 +3352,16 @@
             document.getElementById('editModal').classList.add('active');
         }
 
+        function updateEdadEdit(fechaNacimiento) {
+            const edad = calcularEdad(fechaNacimiento);
+            document.getElementById('edadEdit').value = edad !== null ? edad + ' años' : '';
+        }
+
+        function updateAnosServicioEdit(fechaIngreso) {
+            const anos = calcularAnosServicio(fechaIngreso);
+            document.getElementById('anosServicioEdit').value = anos !== null ? anos + ' años' : '';
+        }
+
         function addHijoEdit() {
             const container = document.getElementById('hijosContainerEdit');
             const noHijosMsg = document.getElementById('noHijosMsg');
@@ -3243,7 +3390,6 @@
             
             const index = trabajadores.findIndex(t => t.id === currentEditId);
             if (index !== -1) {
-                // Procesar hijos editados
                 const hijos = [];
                 document.querySelectorAll('#hijosContainerEdit .hijo-item').forEach(item => {
                     const nombre = item.querySelector('.hijo-nombre-edit').value.trim();
@@ -3295,6 +3441,12 @@
         }
 
         async function deleteTrabajador(id) {
+            // Verificar permisos
+            if (currentUser && currentUser.type === 'usuario') {
+                showToast('No tiene permisos para eliminar trabajadores', 'error');
+                return;
+            }
+
             const t = trabajadores.find(x => x.id === id);
             const nombre = t ? `${t.primerNombre || ''} ${t.primerApellido || ''}`.trim() || t.cedula : 'este trabajador';
             
@@ -3318,7 +3470,6 @@
             resetCedulaValidation();
             showSection('registrar');
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            // Encontrar el nav-link de registrar y activarlo
             document.querySelectorAll('.nav-link').forEach(l => {
                 if (l.textContent.includes('Nuevo Registro')) {
                     l.classList.add('active');
@@ -3335,7 +3486,6 @@
             if (e.target === this) closeModal();
         });
 
-        // Inicializar estado de seguridad al cargar
         window.addEventListener('load', function() {
             document.getElementById('appContainer').style.display = 'none';
             loadSecurityState();
@@ -3343,6 +3493,3 @@
     </script>
 </body>
 </html>
-
-
-
