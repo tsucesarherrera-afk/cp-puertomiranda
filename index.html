@@ -1095,10 +1095,16 @@
         }
         
         .optional-field label::after {
-            content: " ";
+            content: " (opcional)";
             font-size: 11px;
             color: var(--secondary);
             font-weight: normal;
+        }
+
+        .required-field label::after {
+            content: " *";
+            color: var(--danger);
+            font-weight: bold;
         }
 
         @media (max-width: 768px) {
@@ -1454,7 +1460,7 @@
                             <div class="step-content">
                                 <h4>Seleccionar archivo Excel</h4>
                                 <div style="background: #f8fafc; padding: 10px; border-radius: 6px; font-size: 11px; font-family: monospace; margin: 10px 0;">
-                                    Columnas: Cedula, PrimerNombre, SegundoNombre, PrimerApellido, SegundoApellido, Sexo, FechaNacimiento, EstadoCivil, Direccion, Celular, Correo, NivelAcademico, Profesion, TipoPersonal, FechaIngreso, Cargo, Codigo, Dependencia, Nomina, Observaciones
+                                    El archivo debe tener DOS hojas: "Trabajadores" e "Hijos"
                                 </div>
                                 <div class="file-input-wrapper">
                                     <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleFileSelect(this)">
@@ -1617,8 +1623,8 @@
                         <form id="trabajadorForm" onsubmit="saveTrabajador(event)">
                             <!-- Campo requerido: Solo Cédula -->
                             <div class="form-grid">
-                                <div class="form-group cedula-unique" style="grid-column: 1 / -1;">
-                                    <label>Cédula * <span style="color: var(--danger); font-size: 11px;">(ÚNICO - REQUERIDO)</span></label>
+                                <div class="form-group cedula-unique required-field" style="grid-column: 1 / -1;">
+                                    <label>Cédula <span style="color: var(--danger); font-size: 11px;">(ÚNICO - REQUERIDO)</span></label>
                                     <input type="text" name="cedula" id="cedulaInput" required placeholder="V-12345678" onblur="validateCedulaUnica(this.value)">
                                     <span class="validation-icon" id="cedulaValidation"></span>
                                     <div id="cedulaError" style="color: var(--danger); font-size: 12px; margin-top: 5px; display: none;"></div>
@@ -2371,7 +2377,7 @@
         }
 
         // ============================================
-        // EXPORTAR A EXCEL
+        // EXPORTAR A EXCEL - MODIFICADO: Dos hojas (Trabajadores e Hijos)
         // ============================================
         function exportToExcel() {
             if (trabajadores.length === 0) {
@@ -2382,32 +2388,34 @@
             showLoading(true, 'Generando archivo Excel...');
 
             try {
+                // HOJA 1: Trabajadores
                 const trabajadoresData = trabajadores.map(t => ({
                     'ID': t.id,
                     'Cedula': t.cedula,
-                    'PrimerNombre': t.primerNombre,
+                    'PrimerNombre': t.primerNombre || '',
                     'SegundoNombre': t.segundoNombre || '',
-                    'PrimerApellido': t.primerApellido,
+                    'PrimerApellido': t.primerApellido || '',
                     'SegundoApellido': t.segundoApellido || '',
-                    'Sexo': t.sexo,
-                    'FechaNacimiento': t.fechaNacimiento,
-                    'EstadoCivil': t.estadoCivil,
+                    'Sexo': t.sexo || '',
+                    'FechaNacimiento': t.fechaNacimiento || '',
+                    'EstadoCivil': t.estadoCivil || '',
                     'Direccion': t.direccion || '',
                     'Celular': t.celular || '',
                     'Correo': t.correo || '',
                     'NivelAcademico': t.nivelAcademico || '',
                     'Profesion': t.profesion || '',
-                    'TipoPersonal': t.tipoPersonal,
-                    'FechaIngreso': t.fechaIngreso,
-                    'Cargo': t.cargo,
+                    'TipoPersonal': t.tipoPersonal || '',
+                    'FechaIngreso': t.fechaIngreso || '',
+                    'Cargo': t.cargo || '',
                     'Codigo': t.codigo || '',
-                    'Dependencia': t.dependencia,
+                    'Dependencia': t.dependencia || '',
                     'Nomina': t.nomina || '',
                     'Observaciones': t.observaciones || '',
                     'FechaRegistro': t.fechaRegistro,
                     'TotalHijos': t.hijos ? t.hijos.length : 0
                 }));
 
+                // HOJA 2: Hijos
                 const hijosData = [];
                 trabajadores.forEach(t => {
                     if (t.hijos && t.hijos.length > 0) {
@@ -2415,8 +2423,8 @@
                             hijosData.push({
                                 'ID': `${t.id}_${index}`,
                                 'CedulaPadreMadre': t.cedula,
-                                'NombrePadreMadre': `${t.primerNombre} ${t.primerApellido}`,
-                                'NombresApellidosHijo': h.nombresApellidos,
+                                'NombrePadreMadre': `${t.primerNombre || ''} ${t.primerApellido || ''}`.trim(),
+                                'NombresApellidosHijo': h.nombresApellidos || '',
                                 'CedulaHijo': h.cedula || '',
                                 'Sexo': h.sexo || '',
                                 'FechaNacimiento': h.fechaNacimiento || ''
@@ -2425,19 +2433,22 @@
                     }
                 });
 
+                // Crear libro de Excel
                 const wb = XLSX.utils.book_new();
                 
+                // Agregar hoja de trabajadores
                 const wsTrabajadores = XLSX.utils.json_to_sheet(trabajadoresData);
                 XLSX.utils.book_append_sheet(wb, wsTrabajadores, 'Trabajadores');
                 
-                if (hijosData.length > 0) {
-                    const wsHijos = XLSX.utils.json_to_sheet(hijosData);
-                    XLSX.utils.book_append_sheet(wb, wsHijos, 'Hijos');
-                }
+                // Agregar hoja de hijos (aunque esté vacía)
+                const wsHijos = XLSX.utils.json_to_sheet(hijosData.length > 0 ? hijosData : [{Mensaje: 'No hay hijos registrados'}]);
+                XLSX.utils.book_append_sheet(wb, wsHijos, 'Hijos');
 
+                // Generar nombre de archivo
                 const fecha = new Date().toISOString().split('T')[0];
                 const nombreArchivo = `CP_Puerto_Miranda_${fecha}.xlsx`;
 
+                // Descargar archivo
                 XLSX.writeFile(wb, nombreArchivo);
                 
                 showLoading(false);
@@ -2461,9 +2472,9 @@
                 previewTrabajadores.innerHTML = trabajadoresPreview.map(t => `
                     <tr>
                         <td>${t.cedula}</td>
-                        <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
-                        <td>${t.cargo}</td>
-                        <td>${t.dependencia}</td>
+                        <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+                        <td>${t.cargo || 'No especificado'}</td>
+                        <td>${t.dependencia || 'No especificada'}</td>
                     </tr>
                 `).join('');
             } else {
@@ -2489,7 +2500,7 @@
                 previewHijos.innerHTML = hijosLimitados.map(h => `
                     <tr>
                         <td>${h.cedulaPadre}</td>
-                        <td>${h.nombresApellidos}</td>
+                        <td>${h.nombresApellidos || ''}</td>
                         <td>${h.sexo || '-'}</td>
                         <td>${h.fechaNacimiento || '-'}</td>
                     </tr>
@@ -2500,7 +2511,7 @@
         }
 
         // ============================================
-        // SINCRONIZACIÓN EXCEL
+        // SINCRONIZACIÓN EXCEL - MODIFICADO: Leer dos hojas
         // ============================================
         function handleFileSelect(input) {
             const label = document.getElementById('fileLabel');
@@ -2531,18 +2542,39 @@
             try {
                 const data = await selectedFile.arrayBuffer();
                 const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                
+                // Leer hoja de trabajadores
+                const trabajadoresSheet = workbook.Sheets['Trabajadores'] || workbook.Sheets[workbook.SheetNames[0]];
+                const trabajadoresData = XLSX.utils.sheet_to_json(trabajadoresSheet, { header: 1 });
 
-                if (jsonData.length < 2) {
+                // Leer hoja de hijos (si existe)
+                let hijosData = [];
+                if (workbook.SheetNames.includes('Hijos')) {
+                    const hijosSheet = workbook.Sheets['Hijos'];
+                    const hijosRaw = XLSX.utils.sheet_to_json(hijosSheet, { header: 1 });
+                    if (hijosRaw.length > 1) {
+                        const headers = hijosRaw[0].map(h => h.toString().trim());
+                        for (let i = 1; i < hijosRaw.length; i++) {
+                            const row = hijosRaw[i];
+                            if (!row || row.length === 0) continue;
+                            const obj = {};
+                            headers.forEach((h, idx) => {
+                                obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
+                            });
+                            hijosData.push(obj);
+                        }
+                    }
+                }
+
+                if (trabajadoresData.length < 2) {
                     throw new Error('El archivo no tiene datos suficientes');
                 }
 
-                const headers = jsonData[0].map(h => h.toString().trim());
-                const excelData = [];
+                const headers = trabajadoresData[0].map(h => h.toString().trim());
+                const excelTrabajadores = [];
                 
-                for (let i = 1; i < jsonData.length; i++) {
-                    const row = jsonData[i];
+                for (let i = 1; i < trabajadoresData.length; i++) {
+                    const row = trabajadoresData[i];
                     if (!row || row.length === 0) continue;
                     
                     const obj = {};
@@ -2550,10 +2582,23 @@
                         obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
                     });
                     
-                    excelData.push(normalizeTrabajador(obj));
+                    // Buscar hijos de este trabajador
+                    const cedulaTrabajador = obj.Cedula || obj.cedula || '';
+                    const hijosDelTrabajador = hijosData.filter(h => 
+                        (h.CedulaPadreMadre || h.cedulaPadreMadre || '').toString().trim() === cedulaTrabajador
+                    ).map(h => ({
+                        nombresApellidos: h.NombresApellidosHijo || h.nombresApellidosHijo || '',
+                        cedula: h.CedulaHijo || h.cedulaHijo || '',
+                        sexo: h.Sexo || h.sexo || '',
+                        fechaNacimiento: h.FechaNacimiento || h.fechaNacimiento || ''
+                    }));
+
+                    const trabajador = normalizeTrabajador(obj);
+                    trabajador.hijos = hijosDelTrabajador;
+                    excelTrabajadores.push(trabajador);
                 }
 
-                const resultado = sincronizarDatos(excelData);
+                const resultado = sincronizarDatos(excelTrabajadores);
                 mostrarResultadoSync(resultado);
                 
                 if (resultado.totalCambios > 0) {
@@ -2597,8 +2642,8 @@
                 const cedula = nuevo.cedula.toString().trim();
                 const cedulaKey = cedula.toLowerCase();
 
-                if (!nuevo.cedula || !nuevo.primerNombre || !nuevo.primerApellido) {
-                    cambios.errores.push({ cedula: cedula || '(vacía)', error: 'Faltan campos' });
+                if (!nuevo.cedula) {
+                    cambios.errores.push({ cedula: cedula || '(vacía)', error: 'Falta cédula' });
                     continue;
                 }
 
@@ -2613,19 +2658,22 @@
 
                 if (indexExistente === -1) {
                     trabajadores.push(nuevo);
-                    cambios.agregados.push({ cedula: cedula, nombre: `${nuevo.primerNombre} ${nuevo.primerApellido}` });
+                    cambios.agregados.push({ cedula: cedula, nombre: `${nuevo.primerNombre || ''} ${nuevo.primerApellido || ''}`.trim() || 'Sin nombre' });
                 } else {
                     const actual = trabajadores[indexExistente];
                     const hayCambios = detectarCambios(actual, nuevo);
 
                     if (hayCambios) {
+                        // Preservar hijos si no vienen en el Excel o si vienen vacíos
+                        const hijosFinales = (nuevo.hijos && nuevo.hijos.length > 0) ? nuevo.hijos : (actual.hijos || []);
+                        
                         trabajadores[indexExistente] = {
                             ...nuevo,
                             id: actual.id,
                             fechaRegistro: actual.fechaRegistro,
-                            hijos: actual.hijos || []
+                            hijos: hijosFinales
                         };
-                        cambios.actualizados.push({ cedula: cedula, nombre: `${nuevo.primerNombre} ${nuevo.primerApellido}` });
+                        cambios.actualizados.push({ cedula: cedula, nombre: `${nuevo.primerNombre || ''} ${nuevo.primerApellido || ''}`.trim() || 'Sin nombre' });
                     } else {
                         cambios.sinCambios.push({ cedula: cedula });
                     }
@@ -2644,7 +2692,7 @@
         }
 
         function detectarCambios(actual, nuevo) {
-            const campos = ['primerNombre', 'segundoNombre', 'primerApellido', 'segundoApellido', 'sexo', 'cargo', 'dependencia'];
+            const campos = ['primerNombre', 'segundoNombre', 'primerApellido', 'segundoApellido', 'sexo', 'cargo', 'dependencia', 'direccion', 'celular', 'correo'];
             return campos.some(campo => (actual[campo] || '') !== (nuevo[campo] || ''));
         }
 
@@ -2684,6 +2732,11 @@
             if (resultado.actualizados.length > 0) {
                 logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--accent);">🔄 Actualizados:</strong>';
                 resultado.actualizados.forEach(r => logHtml += `<div class="change-item updated">${r.cedula} - ${r.nombre}</div>`);
+                logHtml += '</div>';
+            }
+            if (resultado.errores.length > 0) {
+                logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--danger);">❌ Errores:</strong>';
+                resultado.errores.forEach(r => logHtml += `<div class="change-item skipped">${r.cedula}: ${r.error}</div>`);
                 logHtml += '</div>';
             }
             
@@ -2811,8 +2864,8 @@
             tbody.innerHTML = recent.length ? recent.map(t => `
                 <tr>
                     <td>${t.cedula}</td>
-                    <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
-                    <td>${t.cargo}</td>
+                    <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+                    <td>${t.cargo || 'No especificado'}</td>
                     <td><span class="badge badge-success">Activo</span></td>
                 </tr>
             `).join('') : '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin registros</td></tr>';
@@ -2823,13 +2876,13 @@
             tbody.innerHTML = trabajadores.length ? trabajadores.map(t => `
                 <tr>
                     <td><strong>${t.cedula}</strong></td>
-                    <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
-                    <td>${t.cargo}</td>
-                    <td>${t.dependencia}</td>
+                    <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+                    <td>${t.cargo || 'No especificado'}</td>
+                    <td>${t.dependencia || 'No especificada'}</td>
                     <td>${t.hijos ? t.hijos.length : 0}</td>
                     <td>
-                        <button class="btn-warning" onclick="editTrabajador(${t.id})">✏️</button>
-                        <button class="btn-danger" onclick="deleteTrabajador(${t.id})">🗑️</button>
+                        <button class="btn-warning" onclick="editTrabajador(${t.id})" title="Editar">✏️</button>
+                        <button class="btn-danger" onclick="deleteTrabajador(${t.id})" title="Eliminar">🗑️</button>
                     </td>
                 </tr>
             `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary); padding: 40px;">Sin trabajadores</td></tr>';
@@ -2839,21 +2892,21 @@
             const query = document.getElementById('searchInput').value.toLowerCase();
             const filtered = trabajadores.filter(t => 
                 t.cedula.toLowerCase().includes(query) ||
-                t.primerNombre.toLowerCase().includes(query) ||
-                t.primerApellido.toLowerCase().includes(query)
+                (t.primerNombre && t.primerNombre.toLowerCase().includes(query)) ||
+                (t.primerApellido && t.primerApellido.toLowerCase().includes(query))
             );
             
             const tbody = document.getElementById('trabajadoresBody');
             tbody.innerHTML = filtered.length ? filtered.map(t => `
                 <tr>
                     <td><strong>${t.cedula}</strong></td>
-                    <td>${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</td>
-                    <td>${t.cargo}</td>
-                    <td>${t.dependencia}</td>
+                    <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+                    <td>${t.cargo || 'No especificado'}</td>
+                    <td>${t.dependencia || 'No especificada'}</td>
                     <td>${t.hijos ? t.hijos.length : 0}</td>
                     <td>
-                        <button class="btn-warning" onclick="editTrabajador(${t.id})">✏️</button>
-                        <button class="btn-danger" onclick="deleteTrabajador(${t.id})">🗑️</button>
+                        <button class="btn-warning" onclick="editTrabajador(${t.id})" title="Editar">✏️</button>
+                        <button class="btn-danger" onclick="deleteTrabajador(${t.id})" title="Eliminar">🗑️</button>
                     </td>
                 </tr>
             `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary);">No encontrado</td></tr>';
@@ -2980,46 +3033,208 @@
             
             resultDiv.innerHTML = encontrados.map(t => `
                 <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border);">
-                    <h3 style="color: var(--cp-blue); margin-bottom: 10px;">${t.primerNombre} ${t.segundoNombre || ''} ${t.primerApellido}</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                        <h3 style="color: var(--cp-blue);">${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</h3>
+                        <div>
+                            <button class="btn-warning" onclick="editTrabajador(${t.id})" style="margin-right: 5px;">✏️ Editar</button>
+                            <button class="btn-danger" onclick="deleteTrabajador(${t.id})">🗑️ Eliminar</button>
+                        </div>
+                    </div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px;">
                         <div><strong>Cédula:</strong> ${t.cedula}</div>
                         <div><strong>Cargo:</strong> ${t.cargo || 'No especificado'}</div>
                         <div><strong>Dependencia:</strong> ${t.dependencia || 'No especificada'}</div>
+                        <div><strong>Celular:</strong> ${t.celular || 'No especificado'}</div>
+                        <div><strong>Correo:</strong> ${t.correo || 'No especificado'}</div>
+                        <div><strong>Hijos:</strong> ${t.hijos ? t.hijos.length : 0}</div>
                     </div>
+                    ${t.hijos && t.hijos.length > 0 ? `
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
+                            <h4 style="color: var(--success); margin-bottom: 10px; font-size: 14px;">👶 Hijos/Dependientes:</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+                                ${t.hijos.map(h => `
+                                    <div style="background: rgba(74, 144, 226, 0.05); padding: 10px; border-radius: 6px; font-size: 12px;">
+                                        <div><strong>${h.nombresApellidos}</strong></div>
+                                        <div style="color: var(--secondary);">
+                                            ${h.sexo ? h.sexo + ' - ' : ''}${h.fechaNacimiento || 'Sin fecha'}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
                 </div>
             `).join('');
         }
 
+        // ============================================
+        // EDITAR Y ELIMINAR TRABAJADOR - MEJORADO
+        // ============================================
         function editTrabajador(id) {
             const t = trabajadores.find(x => x.id === id);
             if (!t) return;
             
             currentEditId = id;
             const content = document.getElementById('editFormContent');
+            
+            // Generar campos del formulario de edición con todos los datos
             content.innerHTML = `
-                <div class="form-group">
-                    <label>Cédula</label>
-                    <input type="text" value="${t.cedula}" disabled style="background: #f1f5f9;">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Cédula (No editable)</label>
+                    <input type="text" value="${t.cedula}" disabled style="background: #f1f5f9; color: var(--secondary);">
                 </div>
                 <div class="form-group">
                     <label>Primer Nombre</label>
-                    <input type="text" name="primerNombre" value="${t.primerNombre}">
+                    <input type="text" name="primerNombre" value="${t.primerNombre || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Segundo Nombre</label>
+                    <input type="text" name="segundoNombre" value="${t.segundoNombre || ''}">
                 </div>
                 <div class="form-group">
                     <label>Primer Apellido</label>
-                    <input type="text" name="primerApellido" value="${t.primerApellido}">
+                    <input type="text" name="primerApellido" value="${t.primerApellido || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Segundo Apellido</label>
+                    <input type="text" name="segundoApellido" value="${t.segundoApellido || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Sexo</label>
+                    <select name="sexo">
+                        <option value="">Seleccione...</option>
+                        <option value="Masculino" ${t.sexo === 'Masculino' ? 'selected' : ''}>Masculino</option>
+                        <option value="Femenino" ${t.sexo === 'Femenino' ? 'selected' : ''}>Femenino</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fecha de Nacimiento</label>
+                    <input type="date" name="fechaNacimiento" value="${t.fechaNacimiento || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Estado Civil</label>
+                    <select name="estadoCivil">
+                        <option value="">Seleccione...</option>
+                        <option value="Soltero" ${t.estadoCivil === 'Soltero' ? 'selected' : ''}>Soltero/a</option>
+                        <option value="Casado" ${t.estadoCivil === 'Casado' ? 'selected' : ''}>Casado/a</option>
+                        <option value="Divorciado" ${t.estadoCivil === 'Divorciado' ? 'selected' : ''}>Divorciado/a</option>
+                        <option value="Viudo" ${t.estadoCivil === 'Viudo' ? 'selected' : ''}>Viudo/a</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Dirección</label>
+                    <input type="text" name="direccion" value="${t.direccion || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Celular</label>
+                    <input type="tel" name="celular" value="${t.celular || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email" name="correo" value="${t.correo || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Nivel Académico</label>
+                    <select name="nivelAcademico">
+                        <option value="">Seleccione...</option>
+                        <option value="Primaria" ${t.nivelAcademico === 'Primaria' ? 'selected' : ''}>Primaria</option>
+                        <option value="Secundaria" ${t.nivelAcademico === 'Secundaria' ? 'selected' : ''}>Secundaria</option>
+                        <option value="Técnico Medio" ${t.nivelAcademico === 'Técnico Medio' ? 'selected' : ''}>Técnico Medio</option>
+                        <option value="Universitario" ${t.nivelAcademico === 'Universitario' ? 'selected' : ''}>Universitario</option>
+                        <option value="Especialización" ${t.nivelAcademico === 'Especialización' ? 'selected' : ''}>Especialización</option>
+                        <option value="Maestría" ${t.nivelAcademico === 'Maestría' ? 'selected' : ''}>Maestría</option>
+                        <option value="Doctorado" ${t.nivelAcademico === 'Doctorado' ? 'selected' : ''}>Doctorado</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Profesión</label>
+                    <input type="text" name="profesion" value="${t.profesion || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Personal</label>
+                    <select name="tipoPersonal">
+                        <option value="">Seleccione...</option>
+                        <option value="Fijo" ${t.tipoPersonal === 'Fijo' ? 'selected' : ''}>Fijo</option>
+                        <option value="Contratado" ${t.tipoPersonal === 'Contratado' ? 'selected' : ''}>Contratado</option>
+                        <option value="Obrero" ${t.tipoPersonal === 'Obrero' ? 'selected' : ''}>Obrero</option>
+                        <option value="Temporal" ${t.tipoPersonal === 'Temporal' ? 'selected' : ''}>Temporal</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fecha de Ingreso</label>
+                    <input type="date" name="fechaIngreso" value="${t.fechaIngreso || ''}">
                 </div>
                 <div class="form-group">
                     <label>Cargo</label>
-                    <input type="text" name="cargo" value="${t.cargo}">
+                    <input type="text" name="cargo" value="${t.cargo || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Código</label>
+                    <input type="text" name="codigo" value="${t.codigo || ''}">
                 </div>
                 <div class="form-group">
                     <label>Dependencia</label>
-                    <input type="text" name="dependencia" value="${t.dependencia}">
+                    <input type="text" name="dependencia" value="${t.dependencia || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Nómina</label>
+                    <input type="text" name="nomina" value="${t.nomina || ''}">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Observaciones</label>
+                    <textarea name="observaciones" rows="3">${t.observaciones || ''}</textarea>
+                </div>
+                
+                <!-- Sección de hijos en edición -->
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <div class="hijos-section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="color: var(--cp-blue);">👶 Hijos/Dependientes</h3>
+                            <button type="button" class="btn-primary" onclick="addHijoEdit()" style="width: auto; padding: 8px 16px; font-size: 13px;">
+                                + Agregar Hijo
+                            </button>
+                        </div>
+                        <div id="hijosContainerEdit">
+                            ${t.hijos && t.hijos.length > 0 ? t.hijos.map((h, index) => `
+                                <div class="hijo-item" data-index="${index}">
+                                    <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre-edit" value="${h.nombresApellidos || ''}" required>
+                                    <input type="text" placeholder="Cédula" class="hijo-cedula-edit" value="${h.cedula || ''}">
+                                    <select class="hijo-sexo-edit">
+                                        <option value="">Sexo</option>
+                                        <option value="Masculino" ${h.sexo === 'Masculino' ? 'selected' : ''}>M</option>
+                                        <option value="Femenino" ${h.sexo === 'Femenino' ? 'selected' : ''}>F</option>
+                                    </select>
+                                    <input type="date" class="hijo-fecha-edit" value="${h.fechaNacimiento || ''}">
+                                    <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+                                </div>
+                            `).join('') : '<div id="noHijosMsg" style="text-align: center; color: var(--secondary); padding: 20px;">Sin hijos registrados</div>'}
+                        </div>
+                    </div>
                 </div>
             `;
             
             document.getElementById('editModal').classList.add('active');
+        }
+
+        function addHijoEdit() {
+            const container = document.getElementById('hijosContainerEdit');
+            const noHijosMsg = document.getElementById('noHijosMsg');
+            if (noHijosMsg) noHijosMsg.remove();
+            
+            const div = document.createElement('div');
+            div.className = 'hijo-item';
+            div.innerHTML = `
+                <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre-edit" required>
+                <input type="text" placeholder="Cédula" class="hijo-cedula-edit">
+                <select class="hijo-sexo-edit">
+                    <option value="">Sexo</option>
+                    <option value="Masculino">M</option>
+                    <option value="Femenino">F</option>
+                </select>
+                <input type="date" class="hijo-fecha-edit">
+                <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+            `;
+            container.appendChild(div);
         }
 
         async function updateTrabajador(e) {
@@ -3029,12 +3244,43 @@
             
             const index = trabajadores.findIndex(t => t.id === currentEditId);
             if (index !== -1) {
+                // Procesar hijos editados
+                const hijos = [];
+                document.querySelectorAll('#hijosContainerEdit .hijo-item').forEach(item => {
+                    const nombre = item.querySelector('.hijo-nombre-edit').value.trim();
+                    if (nombre) {
+                        hijos.push({
+                            nombresApellidos: nombre,
+                            cedula: item.querySelector('.hijo-cedula-edit').value,
+                            sexo: item.querySelector('.hijo-sexo-edit').value,
+                            fechaNacimiento: item.querySelector('.hijo-fecha-edit').value
+                        });
+                    }
+                });
+
                 trabajadores[index] = {
                     ...trabajadores[index],
-                    primerNombre: formData.get('primerNombre'),
-                    primerApellido: formData.get('primerApellido'),
-                    cargo: formData.get('cargo'),
-                    dependencia: formData.get('dependencia')
+                    primerNombre: formData.get('primerNombre') || '',
+                    segundoNombre: formData.get('segundoNombre') || '',
+                    primerApellido: formData.get('primerApellido') || '',
+                    segundoApellido: formData.get('segundoApellido') || '',
+                    sexo: formData.get('sexo') || '',
+                    fechaNacimiento: formData.get('fechaNacimiento') || '',
+                    estadoCivil: formData.get('estadoCivil') || '',
+                    direccion: formData.get('direccion') || '',
+                    celular: formData.get('celular') || '',
+                    correo: formData.get('correo') || '',
+                    nivelAcademico: formData.get('nivelAcademico') || '',
+                    profesion: formData.get('profesion') || '',
+                    tipoPersonal: formData.get('tipoPersonal') || '',
+                    fechaIngreso: formData.get('fechaIngreso') || '',
+                    cargo: formData.get('cargo') || '',
+                    codigo: formData.get('codigo') || '',
+                    dependencia: formData.get('dependencia') || '',
+                    nomina: formData.get('nomina') || '',
+                    observaciones: formData.get('observaciones') || '',
+                    hijos: hijos,
+                    updated_at: new Date().toISOString()
                 };
                 
                 saveLocalData();
@@ -3045,12 +3291,15 @@
                 
                 closeModal();
                 loadTrabajadores();
-                showToast('Actualizado correctamente');
+                showToast('Trabajador actualizado correctamente');
             }
         }
 
         async function deleteTrabajador(id) {
-            if (confirm('¿Eliminar este trabajador?')) {
+            const t = trabajadores.find(x => x.id === id);
+            const nombre = t ? `${t.primerNombre || ''} ${t.primerApellido || ''}`.trim() || t.cedula : 'este trabajador';
+            
+            if (confirm(`¿Está seguro de eliminar a ${nombre}?\n\nEsta acción no se puede deshacer.`)) {
                 trabajadores = trabajadores.filter(t => t.id !== id);
                 saveLocalData();
                 
@@ -3060,7 +3309,7 @@
                 
                 loadTrabajadores();
                 updateStats();
-                showToast('Eliminado');
+                showToast('Trabajador eliminado correctamente');
             }
         }
 
@@ -3070,7 +3319,12 @@
             resetCedulaValidation();
             showSection('registrar');
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            event.target.closest('.nav-link').classList.add('active');
+            // Encontrar el nav-link de registrar y activarlo
+            document.querySelectorAll('.nav-link').forEach(l => {
+                if (l.textContent.includes('Nuevo Registro')) {
+                    l.classList.add('active');
+                }
+            });
         }
 
         function closeModal() {
@@ -3090,4 +3344,3 @@
     </script>
 </body>
 </html>
-
