@@ -599,3 +599,1450 @@
     <script src="js/app.js"></script>
 </body>
 </html>
+// ============================================
+// CONFIGURACIÓN DEL SISTEMA
+// ============================================
+
+const CONFIG = {
+    // Usuarios del sistema
+    USERS: {
+        admin: {
+            username: 'admin',
+            password: 'CPM2024#Seguro!',
+            role: 'admin',
+            name: 'Administrador',
+            avatar: 'AD'
+        },
+        basic: {
+            username: 'consulta',
+            password: 'Consulta2024!',
+            role: 'basic',
+            name: 'Usuario Consulta',
+            avatar: 'UC'
+        }
+    },
+    
+    // Seguridad
+    SECURITY: {
+        MAX_ATTEMPTS: 3,
+        LOCKOUT_BASE_TIME: 30,
+        SECURITY_LOG_MAX: 50
+    },
+    
+    // Supabase
+    SUPABASE: {
+        URL: 'https://lhzigadhmkqfplbwepxp.supabase.co',
+        ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoemlnYWRobWtxZnBsYndlcHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTg4ODEsImV4cCI6MjA4NzUzNDg4MX0.i0PIrrEUmvtnRsFnodIAD_NzYJD903DpQRnvJqqvfFk'
+    }
+};
+// ============================================
+// SISTEMA DE AUTENTICACIÓN Y SEGURIDAD
+// ============================================
+
+let currentUser = null;
+let failedAttempts = 0;
+let lockoutEndTime = null;
+let lockoutCount = 0;
+
+// Inicializar estado de seguridad
+function loadSecurityState() {
+    const saved = localStorage.getItem('cp_security_state');
+    if (saved) {
+        const state = JSON.parse(saved);
+        failedAttempts = state.failedAttempts || 0;
+        lockoutCount = state.lockoutCount || 0;
+        
+        if (state.lockoutEndTime) {
+            const now = Date.now();
+            if (now < state.lockoutEndTime) {
+                lockoutEndTime = state.lockoutEndTime;
+                startLockoutTimer();
+            } else {
+                failedAttempts = 0;
+                lockoutEndTime = null;
+                saveSecurityState();
+            }
+        }
+    }
+}
+
+function saveSecurityState() {
+    const state = {
+        failedAttempts: failedAttempts,
+        lockoutEndTime: lockoutEndTime,
+        lockoutCount: lockoutCount,
+        lastUpdated: new Date().toISOString()
+    };
+    localStorage.setItem('cp_security_state', JSON.stringify(state));
+}
+
+function logSecurityEvent(type, details = '') {
+    const logs = JSON.parse(localStorage.getItem('cp_security_logs') || '[]');
+    const event = {
+        timestamp: new Date().toISOString(),
+        type: type,
+        details: details,
+        ip: 'local',
+        userAgent: navigator.userAgent.substring(0, 100)
+    };
+    
+    logs.unshift(event);
+    if (logs.length > CONFIG.SECURITY.SECURITY_LOG_MAX) logs.pop();
+    localStorage.setItem('cp_security_logs', JSON.stringify(logs));
+}
+
+function startLockoutTimer() {
+    const loginBtn = document.getElementById('loginBtn');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const lockoutMessage = document.getElementById('lockoutMessage');
+    const countdownSpan = document.getElementById('lockoutCountdown');
+    
+    loginBtn.disabled = true;
+    usernameInput.disabled = true;
+    passwordInput.disabled = true;
+    lockoutMessage.style.display = 'block';
+    
+    const updateCountdown = () => {
+        const now = Date.now();
+        const remaining = Math.ceil((lockoutEndTime - now) / 1000);
+        
+        if (remaining <= 0) {
+            clearInterval(timer);
+            loginBtn.disabled = false;
+            usernameInput.disabled = false;
+            passwordInput.disabled = false;
+            lockoutMessage.style.display = 'none';
+            failedAttempts = 0;
+            lockoutEndTime = null;
+            saveSecurityState();
+            logSecurityEvent('UNLOCK', 'Bloqueo automático finalizado');
+            showToast('Cuenta desbloqueada. Puede intentar nuevamente.', 'warning');
+        } else {
+            countdownSpan.textContent = remaining;
+        }
+    };
+    
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+}
+
+function handleFailedAttempt(reason) {
+    failedAttempts++;
+    
+    if (failedAttempts >= CONFIG.SECURITY.MAX_ATTEMPTS) {
+        lockoutCount++;
+        const multiplier = Math.pow(2, lockoutCount - 1);
+        const lockoutTime = CONFIG.SECURITY.LOCKOUT_BASE_TIME * multiplier * 1000;
+        lockoutEndTime = Date.now() + lockoutTime;
+        
+        saveSecurityState();
+        logSecurityEvent('LOCKOUT', `Cuenta bloqueada por ${CONFIG.SECURITY.LOCKOUT_BASE_TIME * multiplier} segundos`);
+        startLockoutTimer();
+        
+        return `Cuenta bloqueada por ${CONFIG.SECURITY.LOCKOUT_BASE_TIME * multiplier} segundos por seguridad.`;
+    }
+    
+    saveSecurityState();
+    logSecurityEvent('FAILED_ATTEMPT', `Intento ${failedAttempts}/${CONFIG.SECURITY.MAX_ATTEMPTS}`);
+    
+    const remaining = CONFIG.SECURITY.MAX_ATTEMPTS - failedAttempts;
+    return `Credenciales inválidas. ${remaining} intento${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}.`;
+}
+
+function handleSuccessfulLogin(userRole) {
+    failedAttempts = 0;
+    lockoutEndTime = null;
+    saveSecurityState();
+    logSecurityEvent('SUCCESS_LOGIN', `Usuario ${userRole} autenticado`);
+    localStorage.setItem('cp_last_successful_login', new Date().toISOString());
+}
+
+function logout() {
+    logSecurityEvent('LOGOUT', `Usuario ${currentUser.name} cerró sesión`);
+    currentUser = null;
+    location.reload();
+}
+// ============================================
+// GESTIÓN DE BASE DE DATOS (Supabase + LocalStorage)
+// ============================================
+
+let supabase = null;
+let isOnline = false;
+let trabajadores = [];
+
+// Inicializar Supabase
+function initSupabase() {
+    try {
+        supabase = window.supabase.createClient(CONFIG.SUPABASE.URL, CONFIG.SUPABASE.ANON_KEY);
+        document.getElementById('supabaseUrl').textContent = CONFIG.SUPABASE.URL.replace('https://', '');
+        testConnection();
+    } catch (error) {
+        console.error('Error inicializando Supabase:', error);
+        updateCloudStatus('offline', 'Error de conexión');
+    }
+}
+
+async function testConnection() {
+    updateCloudStatus('syncing', 'Verificando...');
+    
+    try {
+        const { data, error } = await supabase.from('trabajadores').select('count');
+        if (error) throw error;
+        isOnline = true;
+        updateCloudStatus('online', 'Conectado');
+        updateSyncStats();
+    } catch (error) {
+        isOnline = false;
+        updateCloudStatus('offline', 'Sin conexión');
+        document.getElementById('connectionStatus').textContent = 'Desconectado';
+    }
+}
+
+function updateCloudStatus(status, text) {
+    const statusEl = document.getElementById('cloudStatus');
+    const textEl = document.getElementById('cloudText');
+    const dbStatus = document.getElementById('dbStatus');
+
+    statusEl.className = 'cloud-status ' + status;
+    textEl.textContent = text;
+    dbStatus.textContent = text;
+}
+
+// LocalStorage
+function saveLocalData() {
+    localStorage.setItem('cp_trabajadores', JSON.stringify(trabajadores));
+}
+
+function loadLocalData() {
+    const local = localStorage.getItem('cp_trabajadores');
+    if (local) {
+        try {
+            trabajadores = JSON.parse(local);
+        } catch (e) {
+            trabajadores = [];
+        }
+    }
+}
+
+// Sincronización con Supabase
+async function syncToCloud() {
+    if (!isOnline) {
+        showToast('No hay conexión con la base de datos', 'error');
+        return;
+    }
+
+    showLoading(true, 'Subiendo datos a la nube...');
+    
+    try {
+        const trabajadoresData = trabajadores.map(t => ({
+            id: t.id,
+            cedula: t.cedula,
+            primer_nombre: t.primerNombre,
+            segundo_nombre: t.segundoNombre,
+            primer_apellido: t.primerApellido,
+            segundo_apellido: t.segundoApellido,
+            sexo: t.sexo,
+            fecha_nacimiento: t.fechaNacimiento,
+            estado_civil: t.estadoCivil,
+            direccion: t.direccion,
+            celular: t.celular,
+            correo: t.correo,
+            nivel_academico: t.nivelAcademico,
+            profesion: t.profesion,
+            tipo_personal: t.tipoPersonal,
+            fecha_ingreso: t.fechaIngreso,
+            cargo: t.cargo,
+            codigo: t.codigo,
+            dependencia: t.dependencia,
+            nomina: t.nomina,
+            observaciones: t.observaciones,
+            hijos: t.hijos,
+            fecha_registro: t.fechaRegistro,
+            updated_at: new Date().toISOString()
+        }));
+
+        const { error } = await supabase
+            .from('trabajadores')
+            .upsert(trabajadoresData, { onConflict: 'id' });
+
+        if (error) throw error;
+
+        localStorage.setItem('cp_last_sync', new Date().toISOString());
+        document.getElementById('lastSync').textContent = new Date().toLocaleString();
+        
+        showLoading(false);
+        showToast(`✅ ${trabajadores.length} trabajadores sincronizados`);
+        updateSyncStats();
+        
+    } catch (error) {
+        showLoading(false);
+        showToast('Error al subir: ' + error.message, 'error');
+    }
+}
+
+async function syncFromCloud() {
+    if (!isOnline) {
+        showToast('No hay conexión', 'error');
+        return;
+    }
+
+    showLoading(true, 'Descargando datos...');
+    
+    try {
+        const { data, error } = await supabase.from('trabajadores').select('*');
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            trabajadores = data.map(t => ({
+                id: t.id,
+                cedula: t.cedula,
+                primerNombre: t.primer_nombre,
+                segundoNombre: t.segundo_nombre,
+                primerApellido: t.primer_apellido,
+                segundoApellido: t.segundo_apellido,
+                sexo: t.sexo,
+                fechaNacimiento: t.fecha_nacimiento,
+                estadoCivil: t.estado_civil,
+                direccion: t.direccion,
+                celular: t.celular,
+                correo: t.correo,
+                nivelAcademico: t.nivel_academico,
+                profesion: t.profesion,
+                tipoPersonal: t.tipo_personal,
+                fechaIngreso: t.fecha_ingreso,
+                cargo: t.cargo,
+                codigo: t.codigo,
+                dependencia: t.dependencia,
+                nomina: t.nomina,
+                observaciones: t.observaciones,
+                hijos: t.hijos || [],
+                fechaRegistro: t.fecha_registro
+            }));
+
+            saveLocalData();
+            updateStats();
+            loadTrabajadores();
+        }
+
+        showLoading(false);
+        showToast(`✅ ${data.length} trabajadores descargados`);
+        updateSyncStats();
+        
+    } catch (error) {
+        showLoading(false);
+        showToast('Error al descargar: ' + error.message, 'error');
+    }
+}
+
+async function updateSyncStats() {
+    if (!isOnline) {
+        document.getElementById('syncCloudCount').textContent = '-';
+        return;
+    }
+
+    try {
+        const { count, error } = await supabase
+            .from('trabajadores')
+            .select('*', { count: 'exact', head: true });
+
+        if (error) throw error;
+
+        document.getElementById('syncCloudCount').textContent = count || 0;
+        document.getElementById('syncLocalCount').textContent = trabajadores.length;
+        document.getElementById('syncTotalCount').textContent = trabajadores.length;
+        document.getElementById('connectionStatus').textContent = 'Conectado';
+        
+    } catch (error) {
+        document.getElementById('syncCloudCount').textContent = 'Error';
+    }
+}
+            // ============================================
+// GESTIÓN DE TRABAJADORES (CRUD)
+// ============================================
+
+let currentEditId = null;
+
+// ============================================
+// FUNCIONES DE CÁLCULO
+// ============================================
+
+function calcularEdadDesdeFecha(fechaNacimiento) {
+    if (!fechaNacimiento) return null;
+    
+    const hoy = new Date();
+    const nacimiento = new Date(fechaNacimiento);
+    
+    if (isNaN(nacimiento.getTime())) return null;
+    
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const mes = hoy.getMonth() - nacimiento.getMonth();
+    
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+        edad--;
+    }
+    
+    return edad;
+}
+
+function calcularAniosServicioDesdeFecha(fechaIngreso) {
+    if (!fechaIngreso) return null;
+    
+    const hoy = new Date();
+    const ingreso = new Date(fechaIngreso);
+    
+    if (isNaN(ingreso.getTime())) return null;
+    
+    let anios = hoy.getFullYear() - ingreso.getFullYear();
+    const mes = hoy.getMonth() - ingreso.getMonth();
+    
+    if (mes < 0 || (mes === 0 && hoy.getDate() < ingreso.getDate())) {
+        anios--;
+    }
+    
+    return anios;
+}
+
+function calcularEdad() {
+    const fechaNacimiento = document.getElementById('fechaNacimientoInput').value;
+    const edad = calcularEdadDesdeFecha(fechaNacimiento);
+    
+    const elemento = document.getElementById('edadCalculada');
+    if (edad !== null && edad >= 0) {
+        elemento.innerHTML = `${edad} años <span class="calc-badge">AUTO</span>`;
+    } else {
+        elemento.textContent = '-- años';
+    }
+}
+
+function calcularAniosServicio() {
+    const fechaIngreso = document.getElementById('fechaIngresoInput').value;
+    const anios = calcularAniosServicioDesdeFecha(fechaIngreso);
+    
+    const elemento = document.getElementById('aniosServicioCalculado');
+    if (anios !== null && anios >= 0) {
+        elemento.innerHTML = `${anios} años <span class="calc-badge">AUTO</span>`;
+    } else {
+        elemento.textContent = '-- años';
+    }
+}
+
+// ============================================
+// VALIDACIÓN DE CÉDULA
+// ============================================
+
+function validateCedulaUnica(cedula) {
+    const validationIcon = document.getElementById('cedulaValidation');
+    const cedulaError = document.getElementById('cedulaError');
+    const btnSubmit = document.getElementById('btnSubmit');
+    
+    if (!cedula || cedula.trim() === '') {
+        validationIcon.textContent = '';
+        cedulaError.style.display = 'none';
+        btnSubmit.disabled = false;
+        return true;
+    }
+    
+    const existe = trabajadores.some(t => 
+        t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
+    );
+    
+    if (existe) {
+        validationIcon.textContent = '❌';
+        validationIcon.className = 'validation-icon invalid';
+        cedulaError.textContent = '⚠️ Esta cédula ya existe';
+        cedulaError.style.display = 'block';
+        btnSubmit.disabled = true;
+        return false;
+    }
+    
+    validationIcon.textContent = '✓';
+    validationIcon.className = 'validation-icon valid';
+    cedulaError.style.display = 'none';
+    btnSubmit.disabled = false;
+    return true;
+}
+
+function resetCedulaValidation() {
+    document.getElementById('cedulaValidation').textContent = '';
+    document.getElementById('cedulaError').style.display = 'none';
+    document.getElementById('btnSubmit').disabled = false;
+}
+
+// ============================================
+// CRUD PRINCIPAL - CORREGIDO
+// ============================================
+
+// Navegar a la sección de nuevo registro
+function nuevoRegistro() {
+    // Limpiar formulario antes de mostrar
+    limpiarFormulario();
+    showSection('registrar');
+}
+
+// Limpiar formulario completamente
+function limpiarFormulario() {
+    const form = document.getElementById('trabajadorForm');
+    if (form) {
+        form.reset();
+    }
+    
+    // Limpiar contenedor de hijos
+    const hijosContainer = document.getElementById('hijosContainer');
+    if (hijosContainer) {
+        hijosContainer.innerHTML = '';
+    }
+    
+    // Resetear validaciones
+    resetCedulaValidation();
+    
+    // Limpiar campos calculados
+    document.getElementById('edadCalculada').textContent = '-- años';
+    document.getElementById('aniosServicioCalculado').textContent = '-- años';
+}
+
+// Agregar hijo al formulario
+function addHijo() {
+    const container = document.getElementById('hijosContainer');
+    const div = document.createElement('div');
+    div.className = 'hijo-item';
+    div.innerHTML = `
+        <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre">
+        <input type="text" placeholder="Cédula" class="hijo-cedula">
+        <select class="hijo-sexo">
+            <option value="">Sexo</option>
+            <option value="Masculino">M</option>
+            <option value="Femenino">F</option>
+        </select>
+        <input type="date" class="hijo-fecha">
+        <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+    `;
+    container.appendChild(div);
+}
+
+// GUARDAR TRABAJADOR - FUNCIÓN PRINCIPAL CORREGIDA
+async function guardarTrabajador() {
+    // Obtener referencias a los elementos
+    const cedulaInput = document.getElementById('cedulaInput');
+    const btnSubmit = document.getElementById('btnSubmit');
+    
+    // Validar que existe el campo cédula
+    if (!cedulaInput) {
+        showToast('Error: No se encontró el campo cédula', 'error');
+        return;
+    }
+    
+    const cedula = cedulaInput.value.toString().trim();
+    
+    // Validación básica
+    if (!cedula) {
+        showToast('Error: La cédula es obligatoria', 'error');
+        cedulaInput.focus();
+        return;
+    }
+    
+    // Verificar si la cédula ya existe
+    const existe = trabajadores.some(t => 
+        t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
+    );
+    
+    if (existe) {
+        showToast('Error: La cédula ya existe en el sistema', 'error');
+        cedulaInput.focus();
+        return;
+    }
+    
+    // Deshabilitar botón para evitar doble envío
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = '⏳ Guardando...';
+    
+    try {
+        // Recolectar datos del formulario
+        const form = document.getElementById('trabajadorForm');
+        const formData = new FormData(form);
+        
+        // Recolectar hijos
+        const hijos = [];
+        document.querySelectorAll('.hijo-item').forEach(item => {
+            const nombre = item.querySelector('.hijo-nombre').value.trim();
+            if (nombre) {
+                hijos.push({
+                    nombresApellidos: nombre,
+                    cedula: item.querySelector('.hijo-cedula').value.trim(),
+                    sexo: item.querySelector('.hijo-sexo').value,
+                    fechaNacimiento: item.querySelector('.hijo-fecha').value
+                });
+            }
+        });
+        
+        // Crear objeto trabajador
+        const trabajador = {
+            id: Date.now(),
+            cedula: cedula,
+            primerNombre: formData.get('primerNombre') || '',
+            segundoNombre: formData.get('segundoNombre') || '',
+            primerApellido: formData.get('primerApellido') || '',
+            segundoApellido: formData.get('segundoApellido') || '',
+            sexo: formData.get('sexo') || '',
+            fechaNacimiento: formData.get('fechaNacimiento') || '',
+            estadoCivil: formData.get('estadoCivil') || '',
+            direccion: formData.get('direccion') || '',
+            celular: formData.get('celular') || '',
+            correo: formData.get('correo') || '',
+            nivelAcademico: formData.get('nivelAcademico') || '',
+            profesion: formData.get('profesion') || '',
+            tipoPersonal: formData.get('tipoPersonal') || '',
+            fechaIngreso: formData.get('fechaIngreso') || '',
+            cargo: formData.get('cargo') || '',
+            codigo: formData.get('codigo') || '',
+            dependencia: formData.get('dependencia') || '',
+            nomina: formData.get('nomina') || '',
+            observaciones: formData.get('observaciones') || '',
+            hijos: hijos,
+            fechaRegistro: new Date().toISOString()
+        };
+        
+        // Guardar en array
+        trabajadores.push(trabajador);
+        
+        // Guardar en localStorage
+        saveLocalData();
+        
+        // Sincronizar con nube si está disponible
+        if (isOnline) {
+            await syncToCloud();
+        }
+        
+        // Mostrar mensaje de éxito
+        showToast(`✅ Trabajador ${trabajador.primerNombre} ${trabajador.primerApellido} guardado correctamente`);
+        
+        // Limpiar formulario
+        limpiarFormulario();
+        
+        // Actualizar estadísticas
+        updateStats();
+        
+        // Opcional: Redirigir a la lista de trabajadores después de 1 segundo
+        setTimeout(() => {
+            showSection('trabajadores');
+        }, 1000);
+        
+    } catch (error) {
+        console.error('Error al guardar:', error);
+        showToast('Error al guardar: ' + error.message, 'error');
+    } finally {
+        // Restaurar botón
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = '💾 Guardar';
+    }
+}
+
+// Cargar lista de trabajadores
+function loadTrabajadores() {
+    const tbody = document.getElementById('trabajadoresBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = trabajadores.length ? trabajadores.map(t => `
+        <tr>
+            <td><strong>${t.cedula}</strong></td>
+            <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+            <td>${t.cargo || '-'}</td>
+            <td>${t.dependencia || '-'}</td>
+            <td>${calcularEdadDesdeFecha(t.fechaNacimiento) || '-'} años</td>
+            <td>${calcularAniosServicioDesdeFecha(t.fechaIngreso) || '-'} años</td>
+            <td>${t.hijos ? t.hijos.length : 0}</td>
+            <td>
+                <button class="btn-warning" onclick="editTrabajador(${t.id})">✏️</button>
+                <button class="btn-danger" onclick="deleteTrabajador(${t.id})">🗑️</button>
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="8" style="text-align: center; color: var(--secondary); padding: 40px;">Sin trabajadores registrados</td></tr>';
+}
+
+// Buscar trabajadores
+function searchTrabajadores() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = trabajadores.filter(t => 
+        t.cedula.toLowerCase().includes(query) ||
+        (t.primerNombre && t.primerNombre.toLowerCase().includes(query)) ||
+        (t.primerApellido && t.primerApellido.toLowerCase().includes(query))
+    );
+    
+    const tbody = document.getElementById('trabajadoresBody');
+    tbody.innerHTML = filtered.length ? filtered.map(t => `
+        <tr>
+            <td><strong>${t.cedula}</strong></td>
+            <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+            <td>${t.cargo || '-'}</td>
+            <td>${t.dependencia || '-'}</td>
+            <td>${calcularEdadDesdeFecha(t.fechaNacimiento) || '-'} años</td>
+            <td>${calcularAniosServicioDesdeFecha(t.fechaIngreso) || '-'} años</td>
+            <td>${t.hijos ? t.hijos.length : 0}</td>
+            <td>
+                <button class="btn-warning" onclick="editTrabajador(${t.id})">✏️</button>
+                <button class="btn-danger" onclick="deleteTrabajador(${t.id})">🗑️</button>
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="8" style="text-align: center; color: var(--secondary);">No encontrado</td></tr>';
+}
+
+// Editar trabajador
+function editTrabajador(id) {
+    const t = trabajadores.find(x => x.id === id);
+    if (!t) return;
+    
+    currentEditId = id;
+    const content = document.getElementById('editFormContent');
+    content.innerHTML = `
+        <div class="form-group">
+            <label>Cédula</label>
+            <input type="text" value="${t.cedula}" disabled style="background: #f1f5f9;">
+        </div>
+        <div class="form-group">
+            <label>Primer Nombre</label>
+            <input type="text" name="primerNombre" value="${t.primerNombre || ''}">
+        </div>
+        <div class="form-group">
+            <label>Primer Apellido</label>
+            <input type="text" name="primerApellido" value="${t.primerApellido || ''}">
+        </div>
+        <div class="form-group">
+            <label>Cargo</label>
+            <input type="text" name="cargo" value="${t.cargo || ''}">
+        </div>
+        <div class="form-group">
+            <label>Dependencia</label>
+            <input type="text" name="dependencia" value="${t.dependencia || ''}">
+        </div>
+    `;
+    
+    document.getElementById('editModal').classList.add('active');
+}
+
+// Actualizar trabajador
+async function updateTrabajador(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    const index = trabajadores.findIndex(t => t.id === currentEditId);
+    if (index !== -1) {
+        trabajadores[index] = {
+            ...trabajadores[index],
+            primerNombre: formData.get('primerNombre') || '',
+            primerApellido: formData.get('primerApellido') || '',
+            cargo: formData.get('cargo') || '',
+            dependencia: formData.get('dependencia') || ''
+        };
+        
+        saveLocalData();
+        
+        if (isOnline) {
+            await syncToCloud();
+        }
+        
+        closeModal();
+        loadTrabajadores();
+        showToast('Actualizado correctamente');
+    }
+}
+
+// Eliminar trabajador
+async function deleteTrabajador(id) {
+    if (confirm('¿Eliminar este trabajador?')) {
+        trabajadores = trabajadores.filter(t => t.id !== id);
+        saveLocalData();
+        
+        if (isOnline) {
+            await syncToCloud();
+        }
+        
+        loadTrabajadores();
+        updateStats();
+        showToast('Eliminado correctamente');
+    }
+}
+
+function closeModal() {
+    document.getElementById('editModal').classList.remove('active');
+    currentEditId = null;
+}
+
+// Consulta avanzada
+function consultaAvanzada() {
+    const query = document.getElementById('consultaInput').value.toLowerCase();
+    const resultDiv = document.getElementById('consultaResult');
+    
+    if (!query) {
+        resultDiv.innerHTML = '<p style="text-align: center; color: var(--secondary);">Ingrese término de búsqueda</p>';
+        return;
+    }
+    
+    const encontrados = trabajadores.filter(t => 
+        t.cedula.toLowerCase().includes(query) ||
+        (t.primerNombre && t.primerNombre.toLowerCase().includes(query)) ||
+        (t.primerApellido && t.primerApellido.toLowerCase().includes(query))
+    );
+    
+    if (encontrados.length === 0) {
+        resultDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--secondary);">No se encontraron resultados</div>';
+        return;
+    }
+    
+    const isBasic = currentUser && currentUser.role === 'basic';
+    
+    resultDiv.innerHTML = encontrados.map(t => `
+        <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border);">
+            <h3 style="color: var(--cp-blue); margin-bottom: 10px;">${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px; margin-bottom: 15px;">
+                <div><strong>Cédula:</strong> ${t.cedula}</div>
+                <div><strong>Cargo:</strong> ${t.cargo || 'No especificado'}</div>
+                <div><strong>Dependencia:</strong> ${t.dependencia || 'No especificada'}</div>
+                <div><strong>Sexo:</strong> ${t.sexo || 'No especificado'}</div>
+                <div><strong>Edad:</strong> ${calcularEdadDesdeFecha(t.fechaNacimiento) || 'No calculada'} años</div>
+                <div><strong>Años de servicio:</strong> ${calcularAniosServicioDesdeFecha(t.fechaIngreso) || 'No calculados'} años</div>
+                <div><strong>Fecha Nac.:</strong> ${t.fechaNacimiento || 'No especificada'}</div>
+                <div><strong>Fecha Ingreso:</strong> ${t.fechaIngreso || 'No especificada'}</div>
+                <div><strong>Celular:</strong> ${t.celular || 'No especificado'}</div>
+                <div><strong>Correo:</strong> ${t.correo || 'No especificado'}</div>
+                <div><strong>Dirección:</strong> ${t.direccion || 'No especificada'}</div>
+            </div>
+            ${t.hijos && t.hijos.length > 0 ? `
+                <div style="background: rgba(74, 144, 226, 0.05); padding: 15px; border-radius: 8px; margin-top: 10px;">
+                    <h4 style="color: var(--cp-blue); margin-bottom: 10px; font-size: 14px;">👶 Hijos/Dependientes (${t.hijos.length})</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+                        ${t.hijos.map(h => `
+                            <div style="background: white; padding: 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px;">
+                                <div><strong>${h.nombresApellidos || 'Sin nombre'}</strong></div>
+                                <div style="color: var(--secondary);">
+                                    ${h.sexo ? h.sexo + ' | ' : ''}${h.fechaNacimiento || 'Sin fecha'}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+            ${isBasic ? '<div style="margin-top: 10px; padding: 10px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; text-align: center; color: var(--basic); font-size: 12px; font-weight: 600;">🔒 Modo solo lectura</div>' : ''}
+        </div>
+    `).join('');
+}
+        // ============================================
+// IMPORTAR/EXPORTAR EXCEL
+// ============================================
+
+let selectedFile = null;
+
+function handleFileSelect(input) {
+    const label = document.getElementById('fileLabel');
+    const btnSync = document.getElementById('btnSync');
+    
+    if (input.files && input.files[0]) {
+        selectedFile = input.files[0];
+        label.textContent = `📄 ${selectedFile.name}`;
+        label.classList.add('has-file');
+        btnSync.disabled = false;
+        document.getElementById('syncStatus').innerHTML = 'Archivo listo para sincronizar';
+    } else {
+        selectedFile = null;
+        label.textContent = '📁 Seleccionar archivo Excel (.xlsx)';
+        label.classList.remove('has-file');
+        btnSync.disabled = true;
+    }
+}
+
+async function syncFromExcel() {
+    if (!selectedFile) {
+        showToast('Selecciona un archivo primero', 'error');
+        return;
+    }
+
+    showLoading(true, 'Procesando Excel...');
+    
+    try {
+        const data = await selectedFile.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        let trabajadoresSheet = workbook.Sheets[workbook.SheetNames[0]];
+        let trabajadoresData = XLSX.utils.sheet_to_json(trabajadoresSheet, { header: 1 });
+        
+        let hijosSheet = null;
+        let hijosDataRaw = [];
+        
+        for (let sheetName of workbook.SheetNames) {
+            if (sheetName.toLowerCase().includes('hijo') || sheetName.toLowerCase().includes('depend')) {
+                hijosSheet = workbook.Sheets[sheetName];
+                hijosDataRaw = XLSX.utils.sheet_to_json(hijosSheet, { header: 1 });
+                break;
+            }
+        }
+        
+        if (!hijosSheet && workbook.SheetNames.length > 1) {
+            hijosSheet = workbook.Sheets[workbook.SheetNames[1]];
+            hijosDataRaw = XLSX.utils.sheet_to_json(hijosSheet, { header: 1 });
+        }
+
+        if (trabajadoresData.length < 2) {
+            throw new Error('El archivo no tiene datos suficientes');
+        }
+
+        const headers = trabajadoresData[0].map(h => h.toString().trim());
+        const excelTrabajadores = [];
+        
+        for (let i = 1; i < trabajadoresData.length; i++) {
+            const row = trabajadoresData[i];
+            if (!row || row.length === 0) continue;
+            
+            const obj = {};
+            headers.forEach((h, idx) => {
+                obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
+            });
+            
+            excelTrabajadores.push(normalizeTrabajador(obj));
+        }
+
+        let excelHijos = [];
+        if (hijosDataRaw.length > 1) {
+            const hijosHeaders = hijosDataRaw[0].map(h => h.toString().trim());
+            
+            for (let i = 1; i < hijosDataRaw.length; i++) {
+                const row = hijosDataRaw[i];
+                if (!row || row.length === 0) continue;
+                
+                const obj = {};
+                hijosHeaders.forEach((h, idx) => {
+                    obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
+                });
+                
+                excelHijos.push(normalizeHijo(obj));
+            }
+        }
+
+        const resultado = sincronizarDatosConHijos(excelTrabajadores, excelHijos);
+        mostrarResultadoSync(resultado);
+        
+        if (resultado.totalCambios > 0) {
+            saveLocalData();
+            loadTrabajadores();
+            updateStats();
+            showToast(`Sincronización: ${resultado.totalCambios} cambios`);
+            
+            if (isOnline) {
+                await syncToCloud();
+            }
+        }
+
+        selectedFile = null;
+        document.getElementById('excelFile').value = '';
+        document.getElementById('fileLabel').textContent = '📁 Seleccionar archivo Excel (.xlsx)';
+        document.getElementById('fileLabel').classList.remove('has-file');
+        document.getElementById('btnSync').disabled = true;
+
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function normalizeTrabajador(data) {
+    const parseDate = (val) => {
+        if (!val) return '';
+        if (typeof val === 'number') {
+            const epoch = new Date(1899, 11, 30);
+            const d = new Date(epoch.getTime() + val * 24 * 60 * 60 * 1000);
+            return d.toISOString().split('T')[0];
+        }
+        if (typeof val === 'string' && val.includes('/')) {
+            const p = val.split('/');
+            if (p.length === 3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+        }
+        return val;
+    };
+
+    return {
+        id: Date.now() + Math.random(),
+        cedula: (data.Cedula || data.cedula || '').toString().trim(),
+        primerNombre: (data.PrimerNombre || data.primerNombre || '').toString().trim(),
+        segundoNombre: (data.SegundoNombre || data.segundoNombre || '').toString().trim(),
+        primerApellido: (data.PrimerApellido || data.primerApellido || '').toString().trim(),
+        segundoApellido: (data.SegundoApellido || data.segundoApellido || '').toString().trim(),
+        sexo: (data.Sexo || data.sexo || '').toString().trim(),
+        fechaNacimiento: parseDate(data.FechaNacimiento || data.fechaNacimiento),
+        estadoCivil: (data.EstadoCivil || data.estadoCivil || '').toString().trim(),
+        direccion: (data.Direccion || data.direccion || '').toString().trim(),
+        celular: (data.Celular || data.celular || '').toString().trim(),
+        correo: (data.Correo || data.correo || '').toString().trim(),
+        nivelAcademico: (data.NivelAcademico || data.nivelAcademico || '').toString().trim(),
+        profesion: (data.Profesion || data.profesion || '').toString().trim(),
+        tipoPersonal: (data.TipoPersonal || data.tipoPersonal || '').toString().trim(),
+        fechaIngreso: parseDate(data.FechaIngreso || data.fechaIngreso),
+        cargo: (data.Cargo || data.cargo || '').toString().trim(),
+        codigo: (data.Codigo || data.codigo || '').toString().trim(),
+        dependencia: (data.Dependencia || data.dependencia || '').toString().trim(),
+        nomina: (data.Nomina || data.nomina || '').toString().trim(),
+        observaciones: (data.Observaciones || data.observaciones || '').toString().trim(),
+        hijos: [],
+        fechaRegistro: new Date().toISOString()
+    };
+}
+
+function normalizeHijo(data) {
+    const parseDate = (val) => {
+        if (!val) return '';
+        if (typeof val === 'number') {
+            const epoch = new Date(1899, 11, 30);
+            const d = new Date(epoch.getTime() + val * 24 * 60 * 60 * 1000);
+            return d.toISOString().split('T')[0];
+        }
+        if (typeof val === 'string' && val.includes('/')) {
+            const p = val.split('/');
+            if (p.length === 3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+        }
+        return val;
+    };
+
+    return {
+        cedulaPadreMadre: (data.CedulaPadreMadre || data.cedulaPadreMadre || data.Cedula || '').toString().trim(),
+        nombresApellidos: (data.NombresApellidosHijo || data.nombresApellidosHijo || data.NombresApellidos || data.nombresApellidos || '').toString().trim(),
+        cedula: (data.CedulaHijo || data.cedulaHijo || data.Cedula || '').toString().trim(),
+        sexo: (data.Sexo || data.sexo || '').toString().trim(),
+        fechaNacimiento: parseDate(data.FechaNacimiento || data.fechaNacimiento)
+    };
+}
+
+function sincronizarDatosConHijos(excelTrabajadores, excelHijos) {
+    const cambios = {
+        agregados: [],
+        actualizados: [],
+        sinCambios: [],
+        errores: [],
+        hijosAgregados: 0,
+        hijosActualizados: 0
+    };
+
+    const cedulasVistas = new Set();
+
+    for (const nuevo of excelTrabajadores) {
+        const cedula = nuevo.cedula.toString().trim();
+        const cedulaKey = cedula.toLowerCase();
+
+        if (!nuevo.cedula) {
+            cambios.errores.push({ cedula: '(vacía)', error: 'Falta cédula' });
+            continue;
+        }
+
+        if (cedulasVistas.has(cedulaKey)) {
+            cambios.errores.push({ cedula: cedula, error: 'Duplicado en Excel' });
+            continue;
+        }
+
+        const indexExistente = trabajadores.findIndex(t => 
+            t.cedula.toString().trim().toLowerCase() === cedulaKey
+        );
+
+        if (indexExistente === -1) {
+            const hijosDelTrabajador = excelHijos.filter(h => 
+                h.cedulaPadreMadre.toLowerCase() === cedulaKey
+            );
+            
+            nuevo.hijos = hijosDelTrabajador.map(h => ({
+                nombresApellidos: h.nombresApellidos,
+                cedula: h.cedula,
+                sexo: h.sexo,
+                fechaNacimiento: h.fechaNacimiento
+            }));
+            
+            trabajadores.push(nuevo);
+            cambios.agregados.push({ 
+                cedula: cedula, 
+                nombre: `${nuevo.primerNombre || ''} ${nuevo.primerApellido || ''}`.trim() || 'Sin nombre',
+                hijos: nuevo.hijos.length
+            });
+            cambios.hijosAgregados += nuevo.hijos.length;
+        } else {
+            // Lógica de actualización...
+            cambios.sinCambios.push({ cedula: cedula });
+        }
+
+        cedulasVistas.add(cedulaKey);
+    }
+
+    return {
+        agregados: cambios.agregados,
+        actualizados: cambios.actualizados,
+        sinCambios: cambios.sinCambios,
+        errores: cambios.errores,
+        hijosAgregados: cambios.hijosAgregados,
+        hijosActualizados: cambios.hijosActualizados,
+        totalCambios: cambios.agregados.length + cambios.actualizados.length
+    };
+}
+
+function mostrarResultadoSync(resultado) {
+    const statusDiv = document.getElementById('syncStatus');
+    
+    statusDiv.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; text-align: center;">
+            <div style="background: rgba(5, 150, 105, 0.1); padding: 15px; border-radius: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: var(--success);">${resultado.agregados.length}</div>
+                <div style="font-size: 12px;">Agregados</div>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 15px; border-radius: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: var(--accent);">${resultado.actualizados.length}</div>
+                <div style="font-size: 12px;">Actualizados</div>
+            </div>
+            <div style="background: rgba(100, 116, 139, 0.1); padding: 15px; border-radius: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: var(--secondary);">${resultado.sinCambios.length}</div>
+                <div style="font-size: 12px;">Sin cambios</div>
+            </div>
+            <div style="background: rgba(220, 38, 38, 0.1); padding: 15px; border-radius: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: var(--danger);">${resultado.errores.length}</div>
+                <div style="font-size: 12px;">Errores</div>
+            </div>
+        </div>
+    `;
+}
+
+function exportToExcel() {
+    if (trabajadores.length === 0) {
+        showToast('No hay datos para exportar', 'error');
+        return;
+    }
+
+    showLoading(true, 'Generando archivo Excel...');
+
+    try {
+        const trabajadoresData = trabajadores.map(t => ({
+            'ID': t.id,
+            'Cedula': t.cedula,
+            'PrimerNombre': t.primerNombre || '',
+            'SegundoNombre': t.segundoNombre || '',
+            'PrimerApellido': t.primerApellido || '',
+            'SegundoApellido': t.segundoApellido || '',
+            'Sexo': t.sexo || '',
+            'FechaNacimiento': t.fechaNacimiento || '',
+            'Edad': calcularEdadDesdeFecha(t.fechaNacimiento) || '',
+            'EstadoCivil': t.estadoCivil || '',
+            'Direccion': t.direccion || '',
+            'Celular': t.celular || '',
+            'Correo': t.correo || '',
+            'NivelAcademico': t.nivelAcademico || '',
+            'Profesion': t.profesion || '',
+            'TipoPersonal': t.tipoPersonal || '',
+            'FechaIngreso': t.fechaIngreso || '',
+            'AniosServicio': calcularAniosServicioDesdeFecha(t.fechaIngreso) || '',
+            'Cargo': t.cargo || '',
+            'Codigo': t.codigo || '',
+            'Dependencia': t.dependencia || '',
+            'Nomina': t.nomina || '',
+            'Observaciones': t.observaciones || '',
+            'FechaRegistro': t.fechaRegistro,
+            'TotalHijos': t.hijos ? t.hijos.length : 0
+        }));
+
+        const hijosData = [];
+        trabajadores.forEach(t => {
+            if (t.hijos && t.hijos.length > 0) {
+                t.hijos.forEach((h, index) => {
+                    hijosData.push({
+                        'ID': `${t.id}_${index}`,
+                        'CedulaPadreMadre': t.cedula,
+                        'NombrePadreMadre': `${t.primerNombre || ''} ${t.primerApellido || ''}`.trim(),
+                        'NombresApellidosHijo': h.nombresApellidos || '',
+                        'CedulaHijo': h.cedula || '',
+                        'Sexo': h.sexo || '',
+                        'FechaNacimiento': h.fechaNacimiento || ''
+                    });
+                });
+            }
+        });
+
+        const wb = XLSX.utils.book_new();
+        
+        const wsTrabajadores = XLSX.utils.json_to_sheet(trabajadoresData);
+        XLSX.utils.book_append_sheet(wb, wsTrabajadores, 'Trabajadores');
+        
+        if (hijosData.length > 0) {
+            const wsHijos = XLSX.utils.json_to_sheet(hijosData);
+            XLSX.utils.book_append_sheet(wb, wsHijos, 'Hijos');
+        }
+
+        const fecha = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(wb, `CP_Puerto_Miranda_${fecha}.xlsx`);
+        
+        showLoading(false);
+        showToast('Archivo exportado correctamente');
+        
+    } catch (error) {
+        showLoading(false);
+        showToast('Error al exportar: ' + error.message, 'error');
+    }
+}
+                // ============================================
+// UTILIDADES DE UI
+// ============================================
+
+function showLoading(show, text = 'Cargando...') {
+    document.getElementById('loadingOverlay').classList.toggle('active', show);
+    document.getElementById('loadingText').textContent = text;
+}
+
+function showToast(msg, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast ' + (type === 'error' ? 'error' : type === 'warning' ? 'warning' : '');
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.display = 'none', 3000);
+}
+
+function showSection(sectionId) {
+    // Validar permisos
+    if (currentUser && currentUser.role === 'basic' && sectionId !== 'consulta') {
+        showToast('No tiene permisos para acceder a esta sección', 'error');
+        return;
+    }
+
+    // Ocultar todas las secciones
+    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+    
+    // Mostrar sección seleccionada
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
+    
+    // Actualizar navegación (solo para admin)
+    if (currentUser && currentUser.role === 'admin') {
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        const activeNav = document.querySelector(`.nav-link[data-section="${sectionId}"]`);
+        if (activeNav) activeNav.classList.add('active');
+    }
+    
+    // Actualizar título
+    const titles = {
+        'dashboard': 'Dashboard',
+        'sync': 'Sincronizar Nube',
+        'migration': 'Importar Excel',
+        'export': 'Exportar Excel',
+        'trabajadores': 'Trabajadores',
+        'registrar': 'Nuevo Registro',
+        'consulta': 'Consulta'
+    };
+    
+    const pageTitle = document.getElementById('pageTitle');
+    if (currentUser && currentUser.role === 'basic' && sectionId === 'consulta') {
+        pageTitle.textContent = 'Sistema del Personal del Consultorio Popular Puerto Miranda';
+    } else {
+        pageTitle.textContent = titles[sectionId] || 'Sistema';
+    }
+    
+    // Ejecutar funciones específicas de la sección
+    if (sectionId === 'dashboard') {
+        updateStats();
+        loadRecent();
+    } else if (sectionId === 'trabajadores') {
+        loadTrabajadores();
+    } else if (sectionId === 'export') {
+        updateExportPreview();
+    } else if (sectionId === 'sync') {
+        updateSyncStats();
+    } else if (sectionId === 'consulta' && currentUser.role === 'basic') {
+        updateBasicStats();
+    }
+}
+
+function updateStats() {
+    document.getElementById('statTotal').textContent = trabajadores.length;
+    const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
+    document.getElementById('statHijos').textContent = totalHijos;
+    const deps = [...new Set(trabajadores.map(t => t.dependencia).filter(Boolean))];
+    document.getElementById('statDeps').textContent = deps.length;
+    document.getElementById('statCloud').textContent = isOnline ? 'Supabase' : 'Local';
+}
+
+function loadRecent() {
+    const recent = [...trabajadores].reverse().slice(0, 5);
+    const tbody = document.getElementById('recentBody');
+    tbody.innerHTML = recent.length ? recent.map(t => `
+        <tr>
+            <td>${t.cedula}</td>
+            <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+            <td>${t.cargo || '-'}</td>
+            <td>${calcularEdadDesdeFecha(t.fechaNacimiento) || '-'} años</td>
+            <td>${calcularAniosServicioDesdeFecha(t.fechaIngreso) || '-'} años</td>
+            <td><span class="badge badge-success">Activo</span></td>
+        </tr>
+    `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary);">Sin registros</td></tr>';
+}
+
+function updateBasicStats() {
+    const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
+    const deps = [...new Set(trabajadores.map(t => t.dependencia).filter(Boolean))];
+    
+    document.getElementById('basicStatTotal').textContent = trabajadores.length;
+    document.getElementById('basicStatHijos').textContent = totalHijos;
+    document.getElementById('basicStatDeps').textContent = deps.length;
+}
+
+function updateExportPreview() {
+    const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
+    document.getElementById('exportTotalTrabajadores').textContent = trabajadores.length;
+    document.getElementById('exportTotalHijos').textContent = totalHijos;
+
+    const previewTrabajadores = document.getElementById('previewTrabajadores');
+    const trabajadoresPreview = trabajadores.slice(0, 5);
+    
+    if (trabajadoresPreview.length > 0) {
+        previewTrabajadores.innerHTML = trabajadoresPreview.map(t => `
+            <tr>
+                <td>${t.cedula}</td>
+                <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+                <td>${t.cargo || '-'}</td>
+                <td>${calcularEdadDesdeFecha(t.fechaNacimiento) || '-'} años</td>
+                <td>${calcularAniosServicioDesdeFecha(t.fechaIngreso) || '-'} años</td>
+                <td>${t.dependencia || '-'}</td>
+            </tr>
+        `).join('');
+    } else {
+        previewTrabajadores.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--secondary);">Sin trabajadores registrados</td></tr>';
+    }
+}
+                // ============================================
+// INICIALIZACIÓN DE LA APLICACIÓN
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar estado de seguridad
+    loadSecurityState();
+    
+    // Configurar evento de login
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    
+    // Configurar eventos de navegación
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const section = this.getAttribute('data-section');
+            if (section) {
+                showSection(section);
+            }
+        });
+    });
+    
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('editModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+});
+
+function handleLogin(e) {
+    e.preventDefault();
+    
+    if (lockoutEndTime && Date.now() < lockoutEndTime) {
+        const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
+        document.getElementById('loginError').textContent = `Cuenta bloqueada. Intente en ${remaining} segundos.`;
+        document.getElementById('loginError').style.display = 'block';
+        return;
+    }
+    
+    const user = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value;
+    const selectedRole = document.getElementById('userRole').value;
+    
+    if (!user || !pass) {
+        document.getElementById('loginError').textContent = 'Complete todos los campos';
+        document.getElementById('loginError').style.display = 'block';
+        return;
+    }
+    
+    // Buscar usuario
+    let userConfig = null;
+    if (selectedRole === 'admin' && user === CONFIG.USERS.admin.username && pass === CONFIG.USERS.admin.password) {
+        userConfig = CONFIG.USERS.admin;
+    } else if (selectedRole === 'basic' && user === CONFIG.USERS.basic.username && pass === CONFIG.USERS.basic.password) {
+        userConfig = CONFIG.USERS.basic;
+    }
+    
+    if (!userConfig) {
+        const msg = handleFailedAttempt('Credenciales incorrectas');
+        document.getElementById('loginError').textContent = msg;
+        document.getElementById('loginError').style.display = 'block';
+        document.getElementById('password').value = '';
+        return;
+    }
+    
+    // Éxito
+    handleSuccessfulLogin(userConfig.role);
+    document.getElementById('loginError').style.display = 'none';
+    
+    currentUser = userConfig;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+    document.body.style.background = 'var(--bg)';
+    
+    initializeSystem();
+}
+
+function initializeSystem() {
+    // Configurar UI según rol
+    setupUserInterface();
+    
+    // Cargar datos
+    loadLocalData();
+    updateStats();
+    
+    if (currentUser.role === 'admin') {
+        initSupabase();
+        loadRecent();
+        loadTrabajadores();
+        const lastSync = localStorage.getItem('cp_last_sync');
+        if (lastSync) {
+            document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
+        }
+    } else {
+        // Usuario básico: mostrar solo consulta
+        showSection('consulta');
+        updateBasicStats();
+    }
+}
+
+function setupUserInterface() {
+    const isAdmin = currentUser.role === 'admin';
+    
+    // Configurar header
+    document.getElementById('userNameDisplay').textContent = currentUser.name;
+    const avatarEl = document.getElementById('userAvatar');
+    avatarEl.textContent = currentUser.avatar;
+    avatarEl.className = 'user-avatar ' + currentUser.role;
+    
+    const roleBadge = document.getElementById('userRoleBadge');
+    roleBadge.textContent = isAdmin ? 'Superusuario' : 'Solo Consulta';
+    roleBadge.className = 'user-role-badge ' + currentUser.role;
+    
+    if (isAdmin) {
+        document.getElementById('sidebar').style.display = 'block';
+        document.getElementById('cloudStatus').style.display = 'flex';
+        document.getElementById('mainContent').classList.remove('basic-view');
+        
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = 'block';
+        });
+        
+        document.getElementById('basicView').style.display = 'none';
+    } else {
+        document.getElementById('sidebar').style.display = 'none';
+        document.getElementById('cloudStatus').style.display = 'none';
+        document.getElementById('mainContent').classList.add('basic-view');
+        
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        document.querySelectorAll('.nav-item.admin-only').forEach(el => {
+            el.classList.add('hidden');
+        });
+        
+        document.getElementById('basicView').style.display = 'block';
+        document.getElementById('pageTitle').textContent = 'Sistema del Personal del Consultorio Popular Puerto Miranda';
+    }
+}
