@@ -1680,17 +1680,17 @@
                                 
                                 <div class="form-group optional-field" style="grid-column: 1 / -1;">
                                     <label>Dirección</label>
-                                    <input type="text" name="direccion" placeholder="Opcional">
+                                    <input type="text" name="direccion" placeholder="">
                                 </div>
                                 
                                 <div class="form-group optional-field">
                                     <label>Celular</label>
-                                    <input type="tel" name="celular" placeholder="Opcional">
+                                    <input type="tel" name="celular" placeholder="">
                                 </div>
                                 
                                 <div class="form-group optional-field">
                                     <label>Correo Electrónico</label>
-                                    <input type="email" name="correo" placeholder="Opcional">
+                                    <input type="email" name="correo" placeholder="">
                                 </div>
                                 
                                 <div class="form-group optional-field">
@@ -1709,7 +1709,7 @@
                                 
                                 <div class="form-group optional-field">
                                     <label>Profesión</label>
-                                    <input type="text" name="profesion" placeholder="Opcional">
+                                    <input type="text" name="profesion" placeholder="">
                                 </div>
                                 
                                 <div class="form-group optional-field">
@@ -1729,22 +1729,22 @@
                                 
                                 <div class="form-group optional-field">
                                     <label>Cargo</label>
-                                    <input type="text" name="cargo" placeholder="Opcional">
+                                    <input type="text" name="cargo" placeholder="">
                                 </div>
                                 
                                 <div class="form-group optional-field">
                                     <label>Código</label>
-                                    <input type="text" name="codigo" placeholder="Opcional">
+                                    <input type="text" name="codigo" placeholder="">
                                 </div>
                                 
                                 <div class="form-group optional-field">
                                     <label>Dependencia</label>
-                                    <input type="text" name="dependencia" placeholder="Opcional">
+                                    <input type="text" name="dependencia" placeholder="">
                                 </div>
                                 
                                 <div class="form-group optional-field">
                                     <label>Nómina</label>
-                                    <input type="text" name="nomina" placeholder="Opcional">
+                                    <input type="text" name="nomina" placeholder="">
                                 </div>
                                 
                                 <div class="form-group optional-field" style="grid-column: 1 / -1;">
@@ -1755,7 +1755,7 @@
 
                             <div class="hijos-section">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                                    <h3 style="color: var(--cp-blue);">👶 Hijos/Dependientes (Opcional)</h3>
+                                    <h3 style="color: var(--cp-blue);">👶 Hijos/Dependientes </h3>
                                     <button type="button" class="btn-primary" onclick="addHijo()" style="width: auto; padding: 8px 16px; font-size: 13px;">
                                         + Agregar Hijo
                                     </button>
@@ -2955,7 +2955,7 @@
                 return;
             }
             
-            // Procesar hijos (opcional)
+            // Procesar hijos 
             const hijos = [];
             document.querySelectorAll('.hijo-item').forEach(item => {
                 const nombre = item.querySelector('.hijo-nombre').value.trim();
@@ -3343,4 +3343,5 @@
     </script>
 </body>
 </html>
+
 
