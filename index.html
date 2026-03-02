@@ -7,6 +7,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
     <style>
+
+        /* NUEVO: Estilos para campos calculados - AGREGA ESTO AL FINAL DEL CSS */
+.calculated-field { ... }
+.calculated-label { ... }
+.age-display { ... }
+.service-display { ... }
+.calculated-grid { ... }
+        
         * {
             margin: 0;
             padding: 0;
@@ -1656,7 +1664,7 @@
                                 
                                 <div class="form-group optional-field">
                                     <label>Fecha de Nacimiento</label>
-                                    <input type="date" name="fechaNacimiento">
+                                    <input type="date" onchange="calcularEdad()"
                                 </div>
                                 
                                 <div class="form-group optional-field">
@@ -3334,6 +3342,7 @@
     </script>
 </body>
 </html>
+
 
 
 
