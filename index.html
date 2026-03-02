@@ -1134,13 +1134,7 @@
             font-weight: 600;
         }
 
-        .calculated-field label {
-            color: var(--cp-blue);
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
+   
         .calculated-field label::before {
             content: "🧮";
             font-size: 12px;
@@ -3521,7 +3515,7 @@
                     <input type="date" name="fechaIngreso" id="editFechaIngreso" value="${t.fechaIngreso || ''}" onchange="actualizarTiempoServicioEdit()">
                 </div>
                 <div class="form-group calculated-field">
-                    <label>Años de Servicio (Calculado)</label>
+                    <label>Años de Servicio</label>
                     <input type="text" id="editTiempoServicio" value="${tiempoServicioActual}" readonly>
                 </div>
                 <div class="form-group">
@@ -3704,6 +3698,7 @@
     </script>
 </body>
 </html>
+
 
 
 
