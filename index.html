@@ -1719,7 +1719,7 @@
                                 
                                 <!-- Campo calculado: Edad -->
                                 <div class="form-group calculated-field">
-                                    <label>Edad (Calculada)</label>
+                                    <label>Edad </label>
                                     <input type="text" name="edad" id="edadInput" readonly placeholder="Se calculará automáticamente">
                                 </div>
                                 
@@ -3464,7 +3464,7 @@
                     <input type="date" name="fechaNacimiento" id="editFechaNacimiento" value="${t.fechaNacimiento || ''}" onchange="actualizarEdadEdit()">
                 </div>
                 <div class="form-group calculated-field">
-                    <label>Edad (Calculada)</label>
+                    <label></label>
                     <input type="text" id="editEdad" value="${edadActual ? edadActual + ' años' : ''}" readonly>
                 </div>
                 <div class="form-group">
@@ -3704,6 +3704,7 @@
     </script>
 </body>
 </html>
+
 
 
 
