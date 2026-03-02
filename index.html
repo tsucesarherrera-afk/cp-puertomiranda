@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CP Puerto Miranda - Sistema de Gestión</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js   "></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js   "></script>
     <style>
         * {
             margin: 0;
@@ -1099,24 +1099,24 @@
             font-weight: bold;
         }
 
-        /* Estilos para campos calculados automáticamente */
-        .calculated-field {
-            background: rgba(74, 144, 226, 0.05) !important;
-            border-color: var(--cp-blue) !important;
-            color: var(--cp-blue) !important;
-            font-weight: 600 !important;
+        /* Estilo para campos calculados */
+        .calculated-field input {
+            background: linear-gradient(135deg, rgba(74, 144, 226, 0.1), rgba(91, 192, 222, 0.1));
+            border-color: var(--cp-blue);
+            color: var(--primary);
+            font-weight: 600;
         }
 
-        .calculated-field:focus {
-            background: rgba(74, 144, 226, 0.1) !important;
-            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2) !important;
+        .calculated-field label {
+            color: var(--cp-blue);
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
-        .field-hint {
-            font-size: 11px;
-            color: var(--secondary);
-            margin-top: 4px;
-            font-style: italic;
+        .calculated-field label::before {
+            content: "🧮";
+            font-size: 12px;
         }
 
         @media (max-width: 768px) {
@@ -1146,7 +1146,7 @@
     <div class="login-container" id="loginScreen">
         <div class="login-box">
             <div class="logo-container">
-                <svg class="logo-image" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                <svg class="logo-image" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg   ">
                     <!-- Fondo -->
                     <rect width="400" height="300" fill="#5bc0de" rx="15"/>
                     
@@ -1288,7 +1288,7 @@
             <!-- Logo pequeño al final del menú -->
             <div class="sidebar-divider">
                 <div class="sidebar-logo-small">
-                    <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                    <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg   ">
                         <!-- Fondo -->
                         <rect width="400" height="300" fill="#5bc0de" rx="15"/>
                         
@@ -1381,11 +1381,13 @@
                                     <th>Cédula</th>
                                     <th>Nombre</th>
                                     <th>Cargo</th>
+                                    <th>Edad</th>
+                                    <th>Años Servicio</th>
                                     <th>Estado</th>
                                 </tr>
                             </thead>
                             <tbody id="recentBody">
-                                <tr><td colspan="4" style="text-align: center; color: var(--secondary);">Cargando...</td></tr>
+                                <tr><td colspan="6" style="text-align: center; color: var(--secondary);">Cargando...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1563,11 +1565,12 @@
                                         <th>Cédula</th>
                                         <th>Nombre</th>
                                         <th>Cargo</th>
-                                        <th>Dependencia</th>
+                                        <th>Edad</th>
+                                        <th>Años Servicio</th>
                                     </tr>
                                 </thead>
                                 <tbody id="previewTrabajadores">
-                                    <tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin datos</td></tr>
+                                    <tr><td colspan="5" style="text-align: center; color: var(--secondary);">Sin datos</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1678,14 +1681,13 @@
                                 
                                 <div class="form-group optional-field">
                                     <label>Fecha de Nacimiento</label>
-                                    <input type="date" name="fechaNacimiento" id="fechaNacimientoInput" onchange="calcularEdad()">
+                                    <input type="date" name="fechaNacimiento" id="fechaNacimientoInput" onchange="actualizarEdad()">
                                 </div>
                                 
-                                <!-- Campo Edad calculada automáticamente -->
-                                <div class="form-group">
-                                    <label>Edad <span style="font-size: 11px; color: var(--cp-blue);">(Calculada automáticamente)</span></label>
-                                    <input type="text" name="edad" id="edadInput" class="calculated-field" readonly placeholder="Se calculará automáticamente">
-                                    <div class="field-hint">Calculada desde la fecha de nacimiento</div>
+                                <!-- Campo calculado: Edad -->
+                                <div class="form-group calculated-field">
+                                    <label>Edad (Calculada)</label>
+                                    <input type="text" name="edad" id="edadInput" readonly placeholder="Se calculará automáticamente">
                                 </div>
                                 
                                 <div class="form-group optional-field">
@@ -1744,14 +1746,13 @@
                                 
                                 <div class="form-group optional-field">
                                     <label>Fecha de Ingreso</label>
-                                    <input type="date" name="fechaIngreso" id="fechaIngresoInput" onchange="calcularTiempoServicio()">
+                                    <input type="date" name="fechaIngreso" id="fechaIngresoInput" onchange="actualizarTiempoServicio()">
                                 </div>
                                 
-                                <!-- Campo Años de Servicio calculado automáticamente -->
-                                <div class="form-group">
-                                    <label>Años de Servicio <span style="font-size: 11px; color: var(--cp-blue);">(Calculado automáticamente)</span></label>
-                                    <input type="text" name="anosServicio" id="anosServicioInput" class="calculated-field" readonly placeholder="Se calculará automáticamente">
-                                    <div class="field-hint">Calculado desde la fecha de ingreso (años y meses)</div>
+                                <!-- Campo calculado: Años de Servicio -->
+                                <div class="form-group calculated-field">
+                                    <label>Años de Servicio (Calculado)</label>
+                                    <input type="text" name="tiempoServicio" id="tiempoServicioInput" readonly placeholder="Se calculará automáticamente">
                                 </div>
                                 
                                 <div class="form-group optional-field">
@@ -1856,7 +1857,7 @@
         // ============================================
         // CONFIGURACIÓN SUPABASE
         // ============================================
-        const SUPABASE_URL = 'https://lhzigadhmkqfplbwepxp.supabase.co';
+        const SUPABASE_URL = 'https://lhzigadhmkqfplbwepxp.supabase.co   ';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoemlnYWRobWtxZnBsYndlcHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTg4ODEsImV4cCI6MjA4NzUzNDg4MX0.i0PIrrEUmvtnRsFnodIAD_NzYJD903DpQRnvJqqvfFk';
         
         let supabase = null;
@@ -1876,79 +1877,108 @@
         let lockoutCount = 0;
 
         // ============================================
-        // FUNCIONES DE CÁLCULO AUTOMÁTICO
+        // FUNCIONES DE CÁLCULO DE EDAD Y TIEMPO DE SERVICIO
         // ============================================
         
-        // Calcular edad desde fecha de nacimiento
-        function calcularEdad() {
-            const fechaNacimiento = document.getElementById('fechaNacimientoInput').value;
-            const edadInput = document.getElementById('edadInput');
-            
-            if (!fechaNacimiento) {
-                edadInput.value = '';
-                return;
-            }
+        function calcularEdad(fechaNacimiento) {
+            if (!fechaNacimiento) return null;
             
             const hoy = new Date();
-            const nacimiento = new Date(fechaNacimiento);
-            let edad = hoy.getFullYear() - nacimiento.getFullYear();
-            const mes = hoy.getMonth() - nacimiento.getMonth();
+            const fechaNac = new Date(fechaNacimiento);
             
-            if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+            let edad = hoy.getFullYear() - fechaNac.getFullYear();
+            const mes = hoy.getMonth() - fechaNac.getMonth();
+            
+            if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
                 edad--;
             }
             
-            if (edad < 0) {
-                edadInput.value = 'Fecha inválida';
-            } else {
-                edadInput.value = edad + ' años';
-            }
+            return edad;
         }
-        
-        // Calcular tiempo de servicio desde fecha de ingreso
-        function calcularTiempoServicio() {
-            const fechaIngreso = document.getElementById('fechaIngresoInput').value;
-            const anosServicioInput = document.getElementById('anosServicioInput');
-            
-            if (!fechaIngreso) {
-                anosServicioInput.value = '';
-                return;
-            }
+
+        function calcularTiempoServicio(fechaIngreso) {
+            if (!fechaIngreso) return null;
             
             const hoy = new Date();
-            const ingreso = new Date(fechaIngreso);
+            const fechaIng = new Date(fechaIngreso);
             
-            let anos = hoy.getFullYear() - ingreso.getFullYear();
-            let meses = hoy.getMonth() - ingreso.getMonth();
+            let años = hoy.getFullYear() - fechaIng.getFullYear();
+            let meses = hoy.getMonth() - fechaIng.getMonth();
             
             if (meses < 0) {
-                anos--;
+                años--;
                 meses += 12;
             }
             
-            if (hoy.getDate() < ingreso.getDate()) {
+            if (hoy.getDate() < fechaIng.getDate()) {
                 meses--;
                 if (meses < 0) {
-                    anos--;
+                    años--;
                     meses += 12;
                 }
             }
             
-            if (anos < 0) {
-                anosServicioInput.value = 'Fecha inválida';
+            if (años < 0) años = 0;
+            if (meses < 0) meses = 0;
+            
+            let resultado = '';
+            if (años > 0) {
+                resultado += `${años} año${años !== 1 ? 's' : ''}`;
+            }
+            if (meses > 0) {
+                if (resultado) resultado += ' y ';
+                resultado += `${meses} mes${meses !== 1 ? 'es' : ''}`;
+            }
+            if (!resultado) resultado = 'Menos de 1 mes';
+            
+            return { años, meses, texto: resultado };
+        }
+
+        function actualizarEdad() {
+            const fechaNac = document.getElementById('fechaNacimientoInput').value;
+            const edadInput = document.getElementById('edadInput');
+            
+            if (fechaNac) {
+                const edad = calcularEdad(fechaNac);
+                edadInput.value = edad !== null ? `${edad} años` : '';
             } else {
-                let resultado = '';
-                if (anos > 0) {
-                    resultado += anos + ' año' + (anos !== 1 ? 's' : '');
-                }
-                if (meses > 0) {
-                    if (resultado) resultado += ' y ';
-                    resultado += meses + ' mes' + (meses !== 1 ? 'es' : '');
-                }
-                if (!resultado) {
-                    resultado = 'Menos de 1 mes';
-                }
-                anosServicioInput.value = resultado;
+                edadInput.value = '';
+            }
+        }
+
+        function actualizarTiempoServicio() {
+            const fechaIng = document.getElementById('fechaIngresoInput').value;
+            const tiempoInput = document.getElementById('tiempoServicioInput');
+            
+            if (fechaIng) {
+                const tiempo = calcularTiempoServicio(fechaIng);
+                tiempoInput.value = tiempo ? tiempo.texto : '';
+            } else {
+                tiempoInput.value = '';
+            }
+        }
+
+        function actualizarEdadEdit() {
+            const fechaNac = document.getElementById('editFechaNacimiento').value;
+            const edadInput = document.getElementById('editEdad');
+            
+            if (fechaNac) {
+                const edad = calcularEdad(fechaNac);
+                edadInput.value = edad !== null ? `${edad} años` : '';
+            } else {
+                edadInput.value = '';
+            }
+        }
+
+        function actualizarTiempoServicioEdit() {
+            const fechaIng = document.getElementById('editFechaIngreso').value;
+            const tiempoInput = document.getElementById('editTiempoServicio');
+            
+            if (fechaIng) {
+                const tiempo = calcularTiempoServicio(fechaIng);
+                tiempoInput.value = tiempo ? tiempo.texto : '';
+            } else {
+                tiempoInput.value = '';
             }
         }
 
@@ -2160,7 +2190,6 @@
                     segundo_apellido: t.segundoApellido,
                     sexo: t.sexo,
                     fecha_nacimiento: t.fechaNacimiento,
-                    edad: t.edad,
                     estado_civil: t.estadoCivil,
                     direccion: t.direccion,
                     celular: t.celular,
@@ -2169,7 +2198,6 @@
                     profesion: t.profesion,
                     tipo_personal: t.tipoPersonal,
                     fecha_ingreso: t.fechaIngreso,
-                    anos_servicio: t.anosServicio,
                     cargo: t.cargo,
                     codigo: t.codigo,
                     dependencia: t.dependencia,
@@ -2224,7 +2252,6 @@
                         segundoApellido: t.segundo_apellido,
                         sexo: t.sexo,
                         fechaNacimiento: t.fecha_nacimiento,
-                        edad: t.edad,
                         estadoCivil: t.estado_civil,
                         direccion: t.direccion,
                         celular: t.celular,
@@ -2233,7 +2260,6 @@
                         profesion: t.profesion,
                         tipoPersonal: t.tipo_personal,
                         fechaIngreso: t.fecha_ingreso,
-                        anosServicio: t.anos_servicio,
                         cargo: t.cargo,
                         codigo: t.codigo,
                         dependencia: t.dependencia,
@@ -2285,7 +2311,6 @@
                     segundoApellido: t.segundo_apellido,
                     sexo: t.sexo,
                     fechaNacimiento: t.fecha_nacimiento,
-                    edad: t.edad,
                     estadoCivil: t.estado_civil,
                     direccion: t.direccion,
                     celular: t.celular,
@@ -2294,7 +2319,6 @@
                     profesion: t.profesion,
                     tipoPersonal: t.tipo_personal,
                     fechaIngreso: t.fecha_ingreso,
-                    anosServicio: t.anos_servicio,
                     cargo: t.cargo,
                     codigo: t.codigo,
                     dependencia: t.dependencia,
@@ -2483,6 +2507,8 @@
             document.getElementById('cedulaValidation').textContent = '';
             document.getElementById('cedulaError').style.display = 'none';
             document.getElementById('btnSubmit').disabled = false;
+            document.getElementById('edadInput').value = '';
+            document.getElementById('tiempoServicioInput').value = '';
         }
 
         // ============================================
@@ -2507,7 +2533,7 @@
                     'SegundoApellido': t.segundoApellido || '',
                     'Sexo': t.sexo || '',
                     'FechaNacimiento': t.fechaNacimiento || '',
-                    'Edad': t.edad || '',
+                    'Edad': t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) : '',
                     'EstadoCivil': t.estadoCivil || '',
                     'Direccion': t.direccion || '',
                     'Celular': t.celular || '',
@@ -2516,7 +2542,7 @@
                     'Profesion': t.profesion || '',
                     'TipoPersonal': t.tipoPersonal || '',
                     'FechaIngreso': t.fechaIngreso || '',
-                    'AnosServicio': t.anosServicio || '',
+                    'TiempoServicio': t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '',
                     'Cargo': t.cargo || '',
                     'Codigo': t.codigo || '',
                     'Dependencia': t.dependencia || '',
@@ -2585,11 +2611,12 @@
                         <td>${t.cedula}</td>
                         <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
                         <td>${t.cargo || 'No especificado'}</td>
-                        <td>${t.dependencia || 'No especificada'}</td>
+                        <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
+                        <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
                     </tr>
                 `).join('');
             } else {
-                previewTrabajadores.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin trabajadores registrados</td></tr>';
+                previewTrabajadores.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--secondary);">Sin trabajadores registrados</td></tr>';
             }
 
             const previewHijos = document.getElementById('previewHijos');
@@ -2977,9 +3004,11 @@
                     <td>${t.cedula}</td>
                     <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
                     <td>${t.cargo || 'No especificado'}</td>
+                    <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
+                    <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
                     <td><span class="badge badge-success">Activo</span></td>
                 </tr>
-            `).join('') : '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin registros</td></tr>';
+            `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary);">Sin registros</td></tr>';
         }
 
         function loadTrabajadores() {
@@ -2990,13 +3019,15 @@
                     <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
                     <td>${t.cargo || 'No especificado'}</td>
                     <td>${t.dependencia || 'No especificada'}</td>
+                    <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
+                    <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
                     <td>${t.hijos ? t.hijos.length : 0}</td>
                     <td>
                         <button class="btn-warning" onclick="editTrabajador(${t.id})" title="Editar">✏️</button>
                         <button class="btn-danger" onclick="deleteTrabajador(${t.id})" title="Eliminar">🗑️</button>
                     </td>
                 </tr>
-            `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary); padding: 40px;">Sin trabajadores</td></tr>';
+            `).join('') : '<tr><td colspan="8" style="text-align: center; color: var(--secondary); padding: 40px;">Sin trabajadores</td></tr>';
         }
 
         function searchTrabajadores() {
@@ -3014,13 +3045,15 @@
                     <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
                     <td>${t.cargo || 'No especificado'}</td>
                     <td>${t.dependencia || 'No especificada'}</td>
+                    <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
+                    <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
                     <td>${t.hijos ? t.hijos.length : 0}</td>
                     <td>
                         <button class="btn-warning" onclick="editTrabajador(${t.id})" title="Editar">✏️</button>
                         <button class="btn-danger" onclick="deleteTrabajador(${t.id})" title="Eliminar">🗑️</button>
                     </td>
                 </tr>
-            `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary);">No encontrado</td></tr>';
+            `).join('') : '<tr><td colspan="8" style="text-align: center; color: var(--secondary);">No encontrado</td></tr>';
         }
 
         function addHijo() {
@@ -3155,6 +3188,8 @@
                         <div><strong>Cédula:</strong> ${t.cedula}</div>
                         <div><strong>Cargo:</strong> ${t.cargo || 'No especificado'}</div>
                         <div><strong>Dependencia:</strong> ${t.dependencia || 'No especificada'}</div>
+                        <div><strong>Edad:</strong> ${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : 'No especificada'}</div>
+                        <div><strong>Tiempo de Servicio:</strong> ${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : 'No especificado'}</div>
                         <div><strong>Celular:</strong> ${t.celular || 'No especificado'}</div>
                         <div><strong>Correo:</strong> ${t.correo || 'No especificado'}</div>
                         <div><strong>Hijos:</strong> ${t.hijos ? t.hijos.length : 0}</div>
@@ -3188,6 +3223,9 @@
             currentEditId = id;
             const content = document.getElementById('editFormContent');
             
+            const edadActual = t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) : '';
+            const tiempoServicioActual = t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '';
+            
             // Generar campos del formulario de edición con todos los datos
             content.innerHTML = `
                 <div class="form-group" style="grid-column: 1 / -1;">
@@ -3220,7 +3258,11 @@
                 </div>
                 <div class="form-group">
                     <label>Fecha de Nacimiento</label>
-                    <input type="date" name="fechaNacimiento" value="${t.fechaNacimiento || ''}">
+                    <input type="date" name="fechaNacimiento" id="editFechaNacimiento" value="${t.fechaNacimiento || ''}" onchange="actualizarEdadEdit()">
+                </div>
+                <div class="form-group calculated-field">
+                    <label>Edad (Calculada)</label>
+                    <input type="text" id="editEdad" value="${edadActual ? edadActual + ' años' : ''}" readonly>
                 </div>
                 <div class="form-group">
                     <label>Estado Civil</label>
@@ -3273,7 +3315,11 @@
                 </div>
                 <div class="form-group">
                     <label>Fecha de Ingreso</label>
-                    <input type="date" name="fechaIngreso" value="${t.fechaIngreso || ''}">
+                    <input type="date" name="fechaIngreso" id="editFechaIngreso" value="${t.fechaIngreso || ''}" onchange="actualizarTiempoServicioEdit()">
+                </div>
+                <div class="form-group calculated-field">
+                    <label>Años de Servicio (Calculado)</label>
+                    <input type="text" id="editTiempoServicio" value="${tiempoServicioActual}" readonly>
                 </div>
                 <div class="form-group">
                     <label>Cargo</label>
@@ -3455,9 +3501,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
