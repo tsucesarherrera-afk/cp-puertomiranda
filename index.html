@@ -7,14 +7,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
     <style>
-
-        /* NUEVO: Estilos para campos calculados - AGREGA ESTO AL FINAL DEL CSS */
-.calculated-field { ... }
-.calculated-label { ... }
-.age-display { ... }
-.service-display { ... }
-.calculated-grid { ... }
-        
         * {
             margin: 0;
             padding: 0;
@@ -1107,6 +1099,26 @@
             font-weight: bold;
         }
 
+        /* Estilos para campos calculados automáticamente */
+        .calculated-field {
+            background: rgba(74, 144, 226, 0.05) !important;
+            border-color: var(--cp-blue) !important;
+            color: var(--cp-blue) !important;
+            font-weight: 600 !important;
+        }
+
+        .calculated-field:focus {
+            background: rgba(74, 144, 226, 0.1) !important;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2) !important;
+        }
+
+        .field-hint {
+            font-size: 11px;
+            color: var(--secondary);
+            margin-top: 4px;
+            font-style: italic;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -1600,12 +1612,14 @@
                                     <th>Nombre Completo</th>
                                     <th>Cargo</th>
                                     <th>Dependencia</th>
+                                    <th>Edad</th>
+                                    <th>Años Serv.</th>
                                     <th>Hijos</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="trabajadoresBody">
-                                <tr><td colspan="6" style="text-align: center; color: var(--secondary); padding: 40px;">Cargando...</td></tr>
+                                <tr><td colspan="8" style="text-align: center; color: var(--secondary); padding: 40px;">Cargando...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1664,7 +1678,14 @@
                                 
                                 <div class="form-group optional-field">
                                     <label>Fecha de Nacimiento</label>
-                                    <input type="date" onchange="calcularEdad()"
+                                    <input type="date" name="fechaNacimiento" id="fechaNacimientoInput" onchange="calcularEdad()">
+                                </div>
+                                
+                                <!-- Campo Edad calculada automáticamente -->
+                                <div class="form-group">
+                                    <label>Edad <span style="font-size: 11px; color: var(--cp-blue);">(Calculada automáticamente)</span></label>
+                                    <input type="text" name="edad" id="edadInput" class="calculated-field" readonly placeholder="Se calculará automáticamente">
+                                    <div class="field-hint">Calculada desde la fecha de nacimiento</div>
                                 </div>
                                 
                                 <div class="form-group optional-field">
@@ -1723,7 +1744,14 @@
                                 
                                 <div class="form-group optional-field">
                                     <label>Fecha de Ingreso</label>
-                                    <input type="date" name="fechaIngreso">
+                                    <input type="date" name="fechaIngreso" id="fechaIngresoInput" onchange="calcularTiempoServicio()">
+                                </div>
+                                
+                                <!-- Campo Años de Servicio calculado automáticamente -->
+                                <div class="form-group">
+                                    <label>Años de Servicio <span style="font-size: 11px; color: var(--cp-blue);">(Calculado automáticamente)</span></label>
+                                    <input type="text" name="anosServicio" id="anosServicioInput" class="calculated-field" readonly placeholder="Se calculará automáticamente">
+                                    <div class="field-hint">Calculado desde la fecha de ingreso (años y meses)</div>
                                 </div>
                                 
                                 <div class="form-group optional-field">
@@ -1846,6 +1874,83 @@
         let failedAttempts = 0;
         let lockoutEndTime = null;
         let lockoutCount = 0;
+
+        // ============================================
+        // FUNCIONES DE CÁLCULO AUTOMÁTICO
+        // ============================================
+        
+        // Calcular edad desde fecha de nacimiento
+        function calcularEdad() {
+            const fechaNacimiento = document.getElementById('fechaNacimientoInput').value;
+            const edadInput = document.getElementById('edadInput');
+            
+            if (!fechaNacimiento) {
+                edadInput.value = '';
+                return;
+            }
+            
+            const hoy = new Date();
+            const nacimiento = new Date(fechaNacimiento);
+            let edad = hoy.getFullYear() - nacimiento.getFullYear();
+            const mes = hoy.getMonth() - nacimiento.getMonth();
+            
+            if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+                edad--;
+            }
+            
+            if (edad < 0) {
+                edadInput.value = 'Fecha inválida';
+            } else {
+                edadInput.value = edad + ' años';
+            }
+        }
+        
+        // Calcular tiempo de servicio desde fecha de ingreso
+        function calcularTiempoServicio() {
+            const fechaIngreso = document.getElementById('fechaIngresoInput').value;
+            const anosServicioInput = document.getElementById('anosServicioInput');
+            
+            if (!fechaIngreso) {
+                anosServicioInput.value = '';
+                return;
+            }
+            
+            const hoy = new Date();
+            const ingreso = new Date(fechaIngreso);
+            
+            let anos = hoy.getFullYear() - ingreso.getFullYear();
+            let meses = hoy.getMonth() - ingreso.getMonth();
+            
+            if (meses < 0) {
+                anos--;
+                meses += 12;
+            }
+            
+            if (hoy.getDate() < ingreso.getDate()) {
+                meses--;
+                if (meses < 0) {
+                    anos--;
+                    meses += 12;
+                }
+            }
+            
+            if (anos < 0) {
+                anosServicioInput.value = 'Fecha inválida';
+            } else {
+                let resultado = '';
+                if (anos > 0) {
+                    resultado += anos + ' año' + (anos !== 1 ? 's' : '');
+                }
+                if (meses > 0) {
+                    if (resultado) resultado += ' y ';
+                    resultado += meses + ' mes' + (meses !== 1 ? 'es' : '');
+                }
+                if (!resultado) {
+                    resultado = 'Menos de 1 mes';
+                }
+                anosServicioInput.value = resultado;
+            }
+        }
 
         // ============================================
         // SISTEMA DE SEGURIDAD
@@ -2055,6 +2160,7 @@
                     segundo_apellido: t.segundoApellido,
                     sexo: t.sexo,
                     fecha_nacimiento: t.fechaNacimiento,
+                    edad: t.edad,
                     estado_civil: t.estadoCivil,
                     direccion: t.direccion,
                     celular: t.celular,
@@ -2063,6 +2169,7 @@
                     profesion: t.profesion,
                     tipo_personal: t.tipoPersonal,
                     fecha_ingreso: t.fechaIngreso,
+                    anos_servicio: t.anosServicio,
                     cargo: t.cargo,
                     codigo: t.codigo,
                     dependencia: t.dependencia,
@@ -2117,6 +2224,7 @@
                         segundoApellido: t.segundo_apellido,
                         sexo: t.sexo,
                         fechaNacimiento: t.fecha_nacimiento,
+                        edad: t.edad,
                         estadoCivil: t.estado_civil,
                         direccion: t.direccion,
                         celular: t.celular,
@@ -2125,6 +2233,7 @@
                         profesion: t.profesion,
                         tipoPersonal: t.tipo_personal,
                         fechaIngreso: t.fecha_ingreso,
+                        anosServicio: t.anos_servicio,
                         cargo: t.cargo,
                         codigo: t.codigo,
                         dependencia: t.dependencia,
@@ -2176,6 +2285,7 @@
                     segundoApellido: t.segundo_apellido,
                     sexo: t.sexo,
                     fechaNacimiento: t.fecha_nacimiento,
+                    edad: t.edad,
                     estadoCivil: t.estado_civil,
                     direccion: t.direccion,
                     celular: t.celular,
@@ -2184,6 +2294,7 @@
                     profesion: t.profesion,
                     tipoPersonal: t.tipo_personal,
                     fechaIngreso: t.fecha_ingreso,
+                    anosServicio: t.anos_servicio,
                     cargo: t.cargo,
                     codigo: t.codigo,
                     dependencia: t.dependencia,
@@ -2396,6 +2507,7 @@
                     'SegundoApellido': t.segundoApellido || '',
                     'Sexo': t.sexo || '',
                     'FechaNacimiento': t.fechaNacimiento || '',
+                    'Edad': t.edad || '',
                     'EstadoCivil': t.estadoCivil || '',
                     'Direccion': t.direccion || '',
                     'Celular': t.celular || '',
@@ -2404,6 +2516,7 @@
                     'Profesion': t.profesion || '',
                     'TipoPersonal': t.tipoPersonal || '',
                     'FechaIngreso': t.fechaIngreso || '',
+                    'AnosServicio': t.anosServicio || '',
                     'Cargo': t.cargo || '',
                     'Codigo': t.codigo || '',
                     'Dependencia': t.dependencia || '',
@@ -3342,6 +3455,7 @@
     </script>
 </body>
 </html>
+
 
 
 
