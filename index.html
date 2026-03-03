@@ -315,6 +315,11 @@
             color: white;
         }
 
+        /* Ocultar completamente elementos no permitidos */
+        .nav-item.hidden-consulta {
+            display: none !important;
+        }
+
         /* Estilo especial para modo consulta - solo Dashboard y Consulta */
         .nav-link.consulta-only {
             opacity: 1;
@@ -328,10 +333,6 @@
         .nav-link.consulta-only.active {
             background: var(--consulta-green);
             color: white;
-        }
-
-        .nav-link.hidden-consulta {
-            display: none !important;
         }
 
         .main-content {
@@ -1238,12 +1239,12 @@
             <form id="loginForm">
                 <div class="form-group">
                     <label for="username">Usuario</label>
-                    <input type="text" id="username" placeholder="Usuario administrador o consulta" required autocomplete="off">
+                    <input type="text" id="username" placeholder="" required autocomplete="off">
                 </div>
                 
                 <div class="form-group">
                     <label for="password">Contraseña</label>
-                    <input type="password" id="password" placeholder="Ingrese su contraseña segura" required>
+                    <input type="password" id="password" placeholder="" required>
                 </div>
 
                 <button type="submit" class="btn" id="loginBtn">
@@ -1295,12 +1296,12 @@
             
             <nav>
                 <ul class="nav-menu" id="navMenu">
-                    <li class="nav-item">
+                    <li class="nav-item" id="navDashboardItem">
                         <a class="nav-link active" onclick="showSection('dashboard')" id="navDashboard">
                             <span>📊</span> Dashboard
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" id="navConsultaItem">
                         <a class="nav-link" onclick="showSection('consulta')" id="navConsulta">
                             <span>🔍</span> Consulta
                         </a>
@@ -2636,12 +2637,12 @@
                 userAvatar.classList.add('consulta');
                 userLevelDisplay.classList.add('user-level-consulta');
                 
-                // Ocultar elementos de administración
-                document.getElementById('navRegistrarItem').classList.add('hidden-consulta');
-                document.getElementById('navTrabajadoresItem').classList.add('hidden-consulta');
-                document.getElementById('navMigrationItem').classList.add('hidden-consulta');
-                document.getElementById('navExportItem').classList.add('hidden-consulta');
-                document.getElementById('navSyncItem').classList.add('hidden-consulta');
+                // OCULTAR COMPLETAMENTE los elementos no permitidos (usando display:none en el li padre)
+                document.getElementById('navRegistrarItem').style.display = 'none';
+                document.getElementById('navTrabajadoresItem').style.display = 'none';
+                document.getElementById('navMigrationItem').style.display = 'none';
+                document.getElementById('navExportItem').style.display = 'none';
+                document.getElementById('navSyncItem').style.display = 'none';
                 
                 // Cambiar estilo de Dashboard y Consulta a verde
                 document.getElementById('navDashboard').classList.add('consulta-only');
@@ -2657,11 +2658,11 @@
                 userLevelDisplay.classList.remove('user-level-consulta');
                 
                 // Asegurar que todos los elementos estén visibles
-                document.getElementById('navRegistrarItem').classList.remove('hidden-consulta');
-                document.getElementById('navTrabajadoresItem').classList.remove('hidden-consulta');
-                document.getElementById('navMigrationItem').classList.remove('hidden-consulta');
-                document.getElementById('navExportItem').classList.remove('hidden-consulta');
-                document.getElementById('navSyncItem').classList.remove('hidden-consulta');
+                document.getElementById('navRegistrarItem').style.display = 'block';
+                document.getElementById('navTrabajadoresItem').style.display = 'block';
+                document.getElementById('navMigrationItem').style.display = 'block';
+                document.getElementById('navExportItem').style.display = 'block';
+                document.getElementById('navSyncItem').style.display = 'block';
                 
                 // Remover estilos de consulta
                 document.getElementById('navDashboard').classList.remove('consulta-only');
