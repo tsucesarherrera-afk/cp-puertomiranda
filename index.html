@@ -2616,36 +2616,20 @@
             document.getElementById('appContainer').style.display = 'block';
             document.body.style.background = 'var(--bg)';
             
-            // Configurar UI según el rol
+                        // Configurar UI según el rol
             configureUIForRole(userFound);
             
-           function initializeSystem() {
-    initSupabase();
-    loadLocalData();
-    
-    // CORRECCIÓN: Intentar cargar desde la nube si hay conexión
-    if (isOnline) {
-        syncFromCloud().then(() => {
-            updateStats();
-            loadRecent();
-            loadTrabajadores();
-        }).catch(err => {
-            console.log('Error cargando desde nube:', err);
-            updateStats();
-            loadRecent();
-            loadTrabajadores();
+            initializeSystem();
         });
-    } else {
-        updateStats();
-        loadRecent();
-        loadTrabajadores();
-    }
-    
-    const lastSync = localStorage.getItem('cp_last_sync');
-    if (lastSync) {
-        document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
-    }
-}
+
+        function configureUIForRole(user) {
+            const userAvatar = document.getElementById('userAvatar');
+            const userNameDisplay = document.getElementById('userNameDisplay');
+            const userLevelDisplay = document.getElementById('userLevelDisplay');
+            
+            userAvatar.textContent = user.avatar;
+            userNameDisplay.textContent = user.name;
+            userLevelDisplay.textContent = `Nivel: ${user.level}`;
             
             // Configurar menú según rol
             if (user.role === 'consulta') {
@@ -2653,7 +2637,7 @@
                 userAvatar.classList.add('consulta');
                 userLevelDisplay.classList.add('user-level-consulta');
                 
-                // OCULTAR COMPLETAMENTE los elementos no permitidos (usando display:none en el li padre)
+                // OCULTAR COMPLETAMENTE los elementos no permitidos
                 document.getElementById('navRegistrarItem').style.display = 'none';
                 document.getElementById('navTrabajadoresItem').style.display = 'none';
                 document.getElementById('navMigrationItem').style.display = 'none';
@@ -2688,6 +2672,51 @@
             }
         }
 
+        function initializeSystem() {
+            initSupabase();
+            loadLocalData();
+            
+            // Intentar cargar desde la nube si hay conexión
+            if (isOnline) {
+                syncFromCloud().then(() => {
+                    updateStats();
+                    loadRecent();
+                    loadTrabajadores();
+                }).catch(err => {
+                    console.log('Error cargando desde nube:', err);
+                    updateStats();
+                    loadRecent();
+                    loadTrabajadores();
+                });
+            } else {
+                updateStats();
+                loadRecent();
+                loadTrabajadores();
+            }
+            
+            const lastSync = localStorage.getItem('cp_last_sync');
+            if (lastSync) {
+                document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
+            }
+        }
+
+        function logout() {
+            logSecurityEvent('LOGOUT', `Usuario ${currentUser} cerró sesión`);
+            currentUser = '';
+            currentUserRole = '';
+            currentSessionToken = null;
+            location.reload();
+        }
+
+        function updateCloudStatus(status, text) {
+            const statusEl = document.getElementById('cloudStatus');
+            const textEl = document.getElementById('cloudText');
+            const dbStatus = document.getElementById('dbStatus');
+
+            statusEl.className = 'cloud-status ' + status;
+            textEl.textContent = text;
+            dbStatus.textContent = text;
+        }
         function initializeSystem() {
             initSupabase();
             loadLocalData();
