@@ -2561,68 +2561,66 @@ async function initSupabase() {
             }
         }
 
-        // ============================================
-        // INICIALIZACIÓN DEL SISTEMA - MODIFICADO PARA SOPORTAR DOS USUARIOS
-        // ============================================
                 // ============================================
         // INICIALIZACIÓN DEL SISTEMA - MODIFICADO PARA SOPORTAR DOS USUARIOS
         // ============================================
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    if (lockoutEndTime && Date.now() < lockoutEndTime) {
-        const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
-        document.getElementById('loginError').textContent = `Cuenta bloqueada. Intente en ${remaining} segundos.`;
-        document.getElementById('loginError').style.display = 'block';
-        return;
-    }
-    
-    const userInput = document.getElementById('username').value.trim();
-    const passInput = document.getElementById('password').value;
-    
-    if (!userInput || !passInput) {
-        document.getElementById('loginError').textContent = 'Complete todos los campos';
-        document.getElementById('loginError').style.display = 'block';
-        return;
-    }
-    
-    // Buscar usuario en la configuración
-    let userFound = null;
-    let userRole = '';
-    
-    for (const [key, user] of Object.entries(USERS)) {
-        if (user.username === userInput && user.password === passInput) {
-            userFound = user;
-            userRole = user.role;
-            break;
-        }
-    }
-    
-    if (!userFound) {
-        const msg = handleFailedAttempt('Credenciales incorrectas');
-        document.getElementById('loginError').textContent = msg;
-        document.getElementById('loginError').style.display = 'block';
-        document.getElementById('password').value = '';
-        return;
-    }
-    
-    // Éxito - Configurar sesión según el rol
-    handleSuccessfulLogin(userRole);
-    document.getElementById('loginError').style.display = 'none';
-    
-    currentUser = userFound.username;
-    currentUserRole = userRole;
-    
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('appContainer').style.display = 'block';
-    document.body.style.background = 'var(--bg)';
-    
-    // Configurar UI
-    configureUIForRole(userFound);
-    
-    // CRÍTICO: Esperar a que la inicialización complete (incluyendo sincronización)
-    await initializeSystemForUser(userFound.role);
-});
+            e.preventDefault();
+            
+            if (lockoutEndTime && Date.now() < lockoutEndTime) {
+                const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
+                document.getElementById('loginError').textContent = `Cuenta bloqueada. Intente en ${remaining} segundos.`;
+                document.getElementById('loginError').style.display = 'block';
+                return;
+            }
+            
+            const userInput = document.getElementById('username').value.trim();
+            const passInput = document.getElementById('password').value;
+            
+            if (!userInput || !passInput) {
+                document.getElementById('loginError').textContent = 'Complete todos los campos';
+                document.getElementById('loginError').style.display = 'block';
+                return;
+            }
+            
+            // Buscar usuario en la configuración
+            let userFound = null;
+            let userRole = '';
+            
+            for (const [key, user] of Object.entries(USERS)) {
+                if (user.username === userInput && user.password === passInput) {
+                    userFound = user;
+                    userRole = user.role;
+                    break;
+                }
+            }
+            
+            if (!userFound) {
+                const msg = handleFailedAttempt('Credenciales incorrectas');
+                document.getElementById('loginError').textContent = msg;
+                document.getElementById('loginError').style.display = 'block';
+                document.getElementById('password').value = '';
+                return;
+            }
+            
+            // Éxito - Configurar sesión según el rol
+            handleSuccessfulLogin(userRole);
+            document.getElementById('loginError').style.display = 'none';
+            
+            currentUser = userFound.username;
+            currentUserRole = userRole;
+            
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+            document.body.style.background = 'var(--bg)';
+            
+            // Configurar UI según el rol
+            configureUIForRole(userFound);
+            
+            // CRÍTICO: Esperar a que la inicialización complete
+            await initializeSystemForUser(userFound.role);
+        });
+
         function configureUIForRole(user) {
             const userAvatar = document.getElementById('userAvatar');
             const userNameDisplay = document.getElementById('userNameDisplay');
@@ -2671,64 +2669,59 @@ async function initSupabase() {
         }
 
         // NUEVA FUNCIÓN: Inicialización específica por tipo de usuario
-async function initializeSystemForUser(role) {
-    // CRÍTICO: Primero inicializar Supabase y esperar a que conecte
-    await initSupabase();
-    
-    // Luego cargar datos locales
-    loadLocalData();
-    
-    // Ahora intentar sincronizar con la nube SIEMPRE (tanto para admin como consulta)
-    if (isOnline) {
-        showLoading(true, 'Sincronizando datos con la nube...');
-        
-        try {
-            // Descargar datos frescos de Supabase
-            await syncFromCloud();
-            showLoading(false);
-            showToast(`✅ Datos sincronizados: ${trabajadores.length} trabajadores`);
-        } catch (err) {
-            console.log('Error sincronizando desde nube:', err);
-            showLoading(false);
-            showToast('⚠️ Usando datos locales. Error de sincronización.', 'warning');
+        async function initializeSystemForUser(role) {
+            // Primero inicializar Supabase y esperar a que conecte
+            await initSupabase();
+            
+            // Luego cargar datos locales
+            loadLocalData();
+            
+            // Ahora intentar sincronizar con la nube SIEMPRE
+            if (isOnline) {
+                showLoading(true, 'Sincronizando datos con la nube...');
+                
+                try {
+                    await syncFromCloud();
+                    showLoading(false);
+                    showToast(`✅ Datos sincronizados: ${trabajadores.length} trabajadores`);
+                } catch (err) {
+                    console.log('Error sincronizando desde nube:', err);
+                    showLoading(false);
+                    showToast('⚠️ Usando datos locales. Error de sincronización.', 'warning');
+                }
+            } else {
+                showToast('⚠️ Sin conexión a internet. Usando datos locales.', 'warning');
+            }
+            
+            // Completar inicialización
+            completeInitialization(role);
         }
-    } else {
-        showToast('⚠️ Sin conexión a internet. Usando datos locales.', 'warning');
-    }
-    
-    // Completar inicialización independientemente del resultado
-    completeInitialization(role);
-}
 
         // NUEVA FUNCIÓN: Completar inicialización según rol
-function completeInitialization(role) {
-    updateStats();
-    
-    // CRÍTICO: Cargar datos en la tabla de trabajadores siempre
-    loadTrabajadores();
-    
-    if (role === 'consulta') {
-        // Para consulta: mostrar Dashboard primero
-        showSectionDirect('dashboard');
-        loadRecent();
-        
-        // Mostrar mensaje informativo con conteo real
-        if (trabajadores.length > 0) {
-            showToast(`✅ ${trabajadores.length} trabajadores cargados correctamente`);
-        } else {
-            showToast('⚠️ No hay trabajadores registrados', 'warning');
+        function completeInitialization(role) {
+            updateStats();
+            loadTrabajadores();
+            
+            if (role === 'consulta') {
+                showSectionDirect('dashboard');
+                loadRecent();
+                
+                if (trabajadores.length > 0) {
+                    showToast(`✅ ${trabajadores.length} trabajadores cargados correctamente`);
+                } else {
+                    showToast('⚠️ No hay trabajadores registrados', 'warning');
+                }
+            } else {
+                loadRecent();
+                showSectionDirect('dashboard');
+            }
+            
+            const lastSync = localStorage.getItem('cp_last_sync');
+            if (lastSync) {
+                document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
+            }
         }
-    } else {
-        // Para admin: cargar todo normalmente
-        loadRecent();
-        showSectionDirect('dashboard');
-    }
-    
-    const lastSync = localStorage.getItem('cp_last_sync');
-    if (lastSync) {
-        document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
-    }
-}
+
         // NUEVA FUNCIÓN: Mostrar sección sin depender de event.target
         function showSectionDirect(sectionId) {
             // Verificar permisos
@@ -2764,7 +2757,6 @@ function completeInitialization(role) {
             // Actualizar navegación activa
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             
-            // Marcar el enlace correspondiente como activo
             const navLinks = {
                 'dashboard': 'navDashboard',
                 'consulta': 'navConsulta',
@@ -2794,12 +2786,10 @@ function completeInitialization(role) {
             } else if (sectionId === 'sync') {
                 updateSyncStats();
             } else if (sectionId === 'consulta') {
-                // CRÍTICO: Asegurar que los datos estén cargados
                 loadLocalData();
                 document.getElementById('consultaResult').innerHTML = '';
                 document.getElementById('consultaInput').value = '';
                 
-                // Si hay datos, mostrar un resumen
                 if (trabajadores.length > 0) {
                     document.getElementById('consultaResult').innerHTML = `
                         <div style="text-align: center; padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; margin-bottom: 15px;">
@@ -2842,11 +2832,11 @@ function completeInitialization(role) {
             textEl.textContent = text;
             dbStatus.textContent = text;
         }
-            
-                        // Configurar UI según el rol
-            configureUIForRole(userFound);
-            
-            initializeSystem();
+
+        // Inicializar estado de seguridad al cargar
+        window.addEventListener('load', function() {
+            document.getElementById('appContainer').style.display = 'none';
+            loadSecurityState();
         });
 
         function configureUIForRole(user) {
@@ -4129,6 +4119,7 @@ function completeInitialization(role) {
     </script>
 </body>
 </html>
+
 
 
 
