@@ -2619,17 +2619,33 @@
             // Configurar UI según el rol
             configureUIForRole(userFound);
             
-            initializeSystem();
+           function initializeSystem() {
+    initSupabase();
+    loadLocalData();
+    
+    // CORRECCIÓN: Intentar cargar desde la nube si hay conexión
+    if (isOnline) {
+        syncFromCloud().then(() => {
+            updateStats();
+            loadRecent();
+            loadTrabajadores();
+        }).catch(err => {
+            console.log('Error cargando desde nube:', err);
+            updateStats();
+            loadRecent();
+            loadTrabajadores();
         });
-
-        function configureUIForRole(user) {
-            const userAvatar = document.getElementById('userAvatar');
-            const userNameDisplay = document.getElementById('userNameDisplay');
-            const userLevelDisplay = document.getElementById('userLevelDisplay');
-            
-            userAvatar.textContent = user.avatar;
-            userNameDisplay.textContent = user.name;
-            userLevelDisplay.textContent = `Nivel: ${user.level}`;
+    } else {
+        updateStats();
+        loadRecent();
+        loadTrabajadores();
+    }
+    
+    const lastSync = localStorage.getItem('cp_last_sync');
+    if (lastSync) {
+        document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
+    }
+}
             
             // Configurar menú según rol
             if (user.role === 'consulta') {
@@ -3198,44 +3214,52 @@
         // ============================================
         // UI Y NAVEGACIÓN
         // ============================================
-        function showSection(sectionId) {
-            // Verificar permisos para usuarios de consulta
-            if (currentUserRole === 'consulta') {
-                const allowedSections = ['dashboard', 'consulta'];
-                if (!allowedSections.includes(sectionId)) {
-                    showToast('No tiene permisos para acceder a esta sección', 'error');
-                    return;
-                }
-            }
-
-            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-            document.getElementById(sectionId).classList.add('active');
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            event.target.closest('.nav-link').classList.add('active');
-            
-            const titles = {
-                'dashboard': 'Dashboard',
-                'sync': 'Sincronizar Nube',
-                'migration': 'Importar Excel',
-                'export': 'Exportar Excel',
-                'trabajadores': 'Trabajadores',
-                'registrar': 'Nuevo Registro',
-                'consulta': 'Consulta'
-            };
-            document.getElementById('pageTitle').textContent = titles[sectionId];
-            
-            if (sectionId === 'dashboard') {
-                updateStats();
-                loadRecent();
-            } else if (sectionId === 'trabajadores') {
-                loadTrabajadores();
-            } else if (sectionId === 'export') {
-                updateExportPreview();
-            } else if (sectionId === 'sync') {
-                updateSyncStats();
-            }
+     function showSection(sectionId) {
+    // Verificar permisos para usuarios de consulta
+    if (currentUserRole === 'consulta') {
+        const allowedSections = ['dashboard', 'consulta'];
+        if (!allowedSections.includes(sectionId)) {
+            showToast('No tiene permisos para acceder a esta sección', 'error');
+            return;
         }
+    }
 
+    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+    document.getElementById(sectionId).classList.add('active');
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    event.target.closest('.nav-link').classList.add('active');
+    
+    const titles = {
+        'dashboard': 'Dashboard',
+        'sync': 'Sincronizar Nube',
+        'migration': 'Importar Excel',
+        'export': 'Exportar Excel',
+        'trabajadores': 'Trabajadores',
+        'registrar': 'Nuevo Registro',
+        'consulta': 'Consulta'
+    };
+    document.getElementById('pageTitle').textContent = titles[sectionId];
+    
+    // CORRECCIÓN: Recargar datos locales siempre que se cambie de sección
+    loadLocalData();
+    
+    if (sectionId === 'dashboard') {
+        updateStats();
+        loadRecent();
+    } else if (sectionId === 'trabajadores') {
+        loadTrabajadores();
+    } else if (sectionId === 'export') {
+        updateExportPreview();
+    } else if (sectionId === 'sync') {
+        updateSyncStats();
+    }
+    // CORRECCIÓN: Limpiar resultados de consulta al entrar
+    else if (sectionId === 'consulta') {
+        document.getElementById('consultaResult').innerHTML = '';
+        document.getElementById('consultaInput').value = '';
+    }
+}
+          
         function updateStats() {
             document.getElementById('statTotal').textContent = trabajadores.length;
             const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
@@ -3401,68 +3425,167 @@
         }
 
         function consultaAvanzada() {
-            const query = document.getElementById('consultaInput').value.toLowerCase();
-            const resultDiv = document.getElementById('consultaResult');
-            
-            if (!query) {
-                resultDiv.innerHTML = '<p style="text-align: center; color: var(--secondary);">Ingrese término de búsqueda</p>';
-                return;
-            }
-            
-            const encontrados = trabajadores.filter(t => 
-                t.cedula.toLowerCase().includes(query) ||
-                (t.primerNombre && t.primerNombre.toLowerCase().includes(query)) ||
-                (t.primerApellido && t.primerApellido.toLowerCase().includes(query))
-            );
-            
-            if (encontrados.length === 0) {
-                resultDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--secondary);">No se encontraron resultados</div>';
-                return;
-            }
-            
-            // Para usuarios de consulta, ocultar botones de editar/eliminar
-            const showActions = currentUserRole !== 'consulta';
-            
-            resultDiv.innerHTML = encontrados.map(t => `
-                <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border);">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-                        <h3 style="color: var(--cp-blue);">${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</h3>
-                        ${showActions ? `
-                        <div>
-                            <button class="btn-warning" onclick="editTrabajador(${t.id})" style="margin-right: 5px;">✏️ Editar</button>
-                            <button class="btn-danger" onclick="deleteTrabajador(${t.id})">🗑️ Eliminar</button>
-                        </div>
-                        ` : ''}
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px;">
-                        <div><strong>Cédula:</strong> ${t.cedula}</div>
-                        <div><strong>Cargo:</strong> ${t.cargo || 'No especificado'}</div>
-                        <div><strong>Dependencia:</strong> ${t.dependencia || 'No especificada'}</div>
-                        <div><strong>Edad:</strong> ${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : 'No especificada'}</div>
-                        <div><strong>Tiempo de Servicio:</strong> ${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : 'No especificado'}</div>
-                        <div><strong>Celular:</strong> ${t.celular || 'No especificado'}</div>
-                        <div><strong>Correo:</strong> ${t.correo || 'No especificado'}</div>
-                        <div><strong>Hijos:</strong> ${t.hijos ? t.hijos.length : 0}</div>
-                    </div>
-                    ${t.hijos && t.hijos.length > 0 ? `
-                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
-                            <h4 style="color: var(--success); margin-bottom: 10px; font-size: 14px;">👶 Hijos/Dependientes:</h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
-                                ${t.hijos.map(h => `
-                                    <div style="background: rgba(74, 144, 226, 0.05); padding: 10px; border-radius: 6px; font-size: 12px;">
-                                        <div><strong>${h.nombresApellidos}</strong></div>
-                                        <div style="color: var(--secondary);">
-                                            ${h.sexo ? h.sexo + ' - ' : ''}${h.fechaNacimiento || 'Sin fecha'}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('');
+    const query = document.getElementById('consultaInput').value.toLowerCase().trim();
+    const resultDiv = document.getElementById('consultaResult');
+    
+    // CORRECCIÓN: Asegurar que tenemos los datos más recientes
+    loadLocalData();
+    
+    // Si no hay query, mostrar todos los trabajadores (limitado a 50 para rendimiento)
+    let encontrados = [];
+    
+    if (!query) {
+        // Mostrar todos los trabajadores si no hay búsqueda
+        encontrados = trabajadores.slice(0, 50);
+        if (trabajadores.length > 50) {
+            resultDiv.innerHTML = `<p style="text-align: center; color: var(--secondary); margin-bottom: 10px;">
+                Mostrando primeros 50 de ${trabajadores.length} trabajadores. Use el buscador para filtrar.
+            </p>`;
         }
+    } else {
+        // Búsqueda específica
+        encontrados = trabajadores.filter(t => {
+            if (!t) return false;
+            
+            const cedulaMatch = t.cedula && t.cedula.toString().toLowerCase().includes(query);
+            const nombreMatch = t.primerNombre && t.primerNombre.toLowerCase().includes(query);
+            const apellidoMatch = t.primerApellido && t.primerApellido.toLowerCase().includes(query);
+            const segundoNombreMatch = t.segundoNombre && t.segundoNombre.toLowerCase().includes(query);
+            const segundoApellidoMatch = t.segundoApellido && t.segundoApellido.toLowerCase().includes(query);
+            const cargoMatch = t.cargo && t.cargo.toLowerCase().includes(query);
+            const dependenciaMatch = t.dependencia && t.dependencia.toLowerCase().includes(query);
+            
+            return cedulaMatch || nombreMatch || apellidoMatch || segundoNombreMatch || 
+                   segundoApellidoMatch || cargoMatch || dependenciaMatch;
+        });
+    }
+    
+    if (encontrados.length === 0) {
+        resultDiv.innerHTML += '<div style="text-align: center; padding: 40px; color: var(--secondary); background: white; border-radius: 10px; margin-top: 10px;">No se encontraron trabajadores registrados</div>';
+        return;
+    }
+    
+    // Para usuarios de consulta, ocultar botones de editar/eliminar
+    const showActions = currentUserRole !== 'consulta';
+    
+    let html = encontrados.map(t => {
+        const nombreCompleto = `${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''} ${t.segundoApellido || ''}`.trim() || 'Sin nombre';
+        const edad = t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) : null;
+        const tiempoServicio = t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso) : null;
+        
+        return `
+        <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 10px;">
+                <div>
+                    <h3 style="color: var(--cp-blue); margin-bottom: 5px; font-size: 18px;">${nombreCompleto}</h3>
+                    <span style="background: var(--cp-blue); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${t.cedula}</span>
+                </div>
+                ${showActions ? `
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn-warning" onclick="editTrabajador(${t.id})" style="padding: 5px 10px; font-size: 12px;">✏️ Editar</button>
+                    <button class="btn-danger" onclick="deleteTrabajador(${t.id})" style="padding: 5px 10px; font-size: 12px;">🗑️ Eliminar</button>
+                </div>
+                ` : ''}
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; font-size: 13px; margin-bottom: 15px;">
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Cargo:</strong> ${t.cargo || 'No especificado'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Dependencia:</strong> ${t.dependencia || 'No especificada'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Edad:</strong> ${edad !== null ? edad + ' años' : 'No especificada'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Tiempo de Servicio:</strong> ${tiempoServicio ? tiempoServicio.texto : 'No especificado'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Sexo:</strong> ${t.sexo || 'No especificado'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Estado Civil:</strong> ${t.estadoCivil || 'No especificado'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Celular:</strong> ${t.celular || 'No especificado'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Correo:</strong> ${t.correo || 'No especificado'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Nivel Académico:</strong> ${t.nivelAcademico || 'No especificado'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Profesión:</strong> ${t.profesion || 'No especificada'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Tipo Personal:</strong> ${t.tipoPersonal || 'No especificado'}
+                </div>
+                <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                    <strong style="color: var(--cp-blue);">Código:</strong> ${t.codigo || 'No especificado'}
+                </div>
+            </div>
+            
+            ${t.direccion ? `
+            <div style="margin-bottom: 15px; padding: 10px; background: rgba(245, 158, 11, 0.05); border-radius: 6px; border-left: 3px solid var(--accent);">
+                <strong>Dirección:</strong> ${t.direccion}
+            </div>
+            ` : ''}
+            
+            ${t.observaciones ? `
+            <div style="margin-bottom: 15px; padding: 10px; background: rgba(220, 38, 38, 0.05); border-radius: 6px; border-left: 3px solid var(--danger);">
+                <strong>Observaciones:</strong> ${t.observaciones}
+            </div>
+            ` : ''}
+            
+            ${t.hijos && t.hijos.length > 0 ? `
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--border);">
+                    <h4 style="color: var(--success); margin-bottom: 10px; font-size: 14px; display: flex; align-items: center; gap: 5px;">
+                        👶 Hijos/Dependientes (${t.hijos.length})
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px;">
+                        ${t.hijos.map(h => `
+                            <div style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 8px; border-left: 3px solid var(--success);">
+                                <div style="font-weight: 600; color: var(--text); margin-bottom: 3px;">${h.nombresApellidos || 'Sin nombre'}</div>
+                                <div style="color: var(--secondary); font-size: 12px;">
+                                    ${h.cedula ? `Cédula: ${h.cedula} | ` : ''}
+                                    ${h.sexo ? `${h.sexo}` : ''}
+                                    ${h.fechaNacimiento ? ` | Nacimiento: ${h.fechaNacimiento}` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `}).join('');
+    
+    resultDiv.innerHTML = html;
+}
 
+        // Búsqueda en tiempo real para la consulta
+document.addEventListener('DOMContentLoaded', function() {
+    const consultaInput = document.getElementById('consultaInput');
+    if (consultaInput) {
+        consultaInput.addEventListener('input', function() {
+            // Buscar después de 300ms de inactividad
+            clearTimeout(window.consultaTimeout);
+            window.consultaTimeout = setTimeout(() => {
+                if (this.value.length >= 2 || this.value.length === 0) {
+                    consultaAvanzada();
+                }
+            }, 300);
+        });
+        
+        // Permitir búsqueda con Enter
+        consultaInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                consultaAvanzada();
+            }
+        });
+    }
+});
         // ============================================
         // EDITAR Y ELIMINAR TRABAJADOR
         // ============================================
@@ -3759,3 +3882,4 @@
     </script>
 </body>
 </html>
+
