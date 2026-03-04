@@ -315,12 +315,10 @@
             color: white;
         }
 
-        /* Ocultar completamente elementos no permitidos */
         .nav-item.hidden-consulta {
             display: none !important;
         }
 
-        /* Estilo especial para modo consulta - solo Dashboard y Consulta */
         .nav-link.consulta-only {
             opacity: 1;
         }
@@ -1141,12 +1139,10 @@
             color: var(--danger);
         }
 
-        /* Estilo para modo consulta en el header */
         .user-level-consulta {
             color: var(--consulta-green) !important;
         }
 
-        /* Nuevo estilo para campos opcionales */
         .optional-field {
             opacity: 0.8;
         }
@@ -1156,7 +1152,6 @@
             font-weight: bold;
         }
 
-        /* Estilo para campos calculados */
         .calculated-field input {
             background: linear-gradient(135deg, rgba(74, 144, 226, 0.1), rgba(91, 192, 222, 0.1));
             border-color: var(--cp-blue);
@@ -2252,69 +2247,70 @@
             return token;
         }
 
-       // ============================================
-// INICIALIZACIÓN SUPABASE - CON AUTENTICACIÓN DE SERVICIO
-// ============================================
-async function initSupabase() {
-    try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-            auth: {
-                autoRefreshToken: true,
-                persistSession: true,
-                detectSessionInUrl: false
-            },
-            db: {
-                schema: 'public'
+        // ============================================
+        // INICIALIZACIÓN SUPABASE - CON AUTENTICACIÓN DE SERVICIO
+        // ============================================
+        async function initSupabase() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+                    auth: {
+                        autoRefreshToken: true,
+                        persistSession: true,
+                        detectSessionInUrl: false
+                    },
+                    db: {
+                        schema: 'public'
+                    }
+                });
+                
+                document.getElementById('authMethod').textContent = 'Service Role';
+                document.getElementById('securityBadge').textContent = '🔒 RLS + Service';
+                document.getElementById('securityBadge').className = 'security-badge high';
+                
+                // CRÍTICO: Esperar a que la conexión se pruebe antes de continuar
+                await testConnection();
+                
+            } catch (error) {
+                console.error('Error inicializando Supabase:', error);
+                updateCloudStatus('offline', 'Error de conexión');
+                document.getElementById('authMethod').textContent = 'Error';
+                document.getElementById('securityBadge').textContent = '❌ Error';
+                document.getElementById('securityBadge').className = 'security-badge critical';
             }
-        });
-        
-        document.getElementById('authMethod').textContent = 'Service Role';
-        document.getElementById('securityBadge').textContent = '🔒 RLS + Service';
-        document.getElementById('securityBadge').className = 'security-badge high';
-        
-        // CRÍTICO: Esperar a que la conexión se pruebe antes de continuar
-        await testConnection();
-        
-    } catch (error) {
-        console.error('Error inicializando Supabase:', error);
-        updateCloudStatus('offline', 'Error de conexión');
-        document.getElementById('authMethod').textContent = 'Error';
-        document.getElementById('securityBadge').textContent = '❌ Error';
-        document.getElementById('securityBadge').className = 'security-badge critical';
-    }
-}
-
-       async function testConnection() {
-    updateCloudStatus('syncing', 'Verificando...');
-    
-    try {
-        const { data, error } = await supabase
-            .from('trabajadores')
-            .select('count', { count: 'exact', head: true });
-        
-        if (error) {
-            if (error.code === '42501' || error.message.includes('permission denied')) {
-                throw new Error('Acceso denegado - Verificar Service Role Key');
-            }
-            throw error;
         }
-        
-        isOnline = true; // CRÍTICO: Marcar como online
-        updateCloudStatus('online', 'Conectado (Seguro)');
-        updateSyncStats();
-        
-        logSecurityEvent('DB_CONNECT', 'Conexión establecida con rol de servicio');
-        
-    } catch (error) {
-        isOnline = false; // CRÍTICO: Marcar como offline
-        updateCloudStatus('offline', 'Sin conexión');
-        document.getElementById('connectionStatus').textContent = 'Error: ' + error.message;
-        document.getElementById('securityBadge').textContent = '⚠️ Desconectado';
-        document.getElementById('securityBadge').className = 'security-badge medium';
-        
-        logSecurityEvent('DB_ERROR', `Error de conexión: ${error.message}`);
-    }
-}
+
+        async function testConnection() {
+            updateCloudStatus('syncing', 'Verificando...');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('trabajadores')
+                    .select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    if (error.code === '42501' || error.message.includes('permission denied')) {
+                        throw new Error('Acceso denegado - Verificar Service Role Key');
+                    }
+                    throw error;
+                }
+                
+                isOnline = true; // CRÍTICO: Marcar como online
+                updateCloudStatus('online', 'Conectado (Seguro)');
+                updateSyncStats();
+                
+                logSecurityEvent('DB_CONNECT', 'Conexión establecida con rol de servicio');
+                
+            } catch (error) {
+                isOnline = false; // CRÍTICO: Marcar como offline
+                updateCloudStatus('offline', 'Sin conexión');
+                document.getElementById('connectionStatus').textContent = 'Error: ' + error.message;
+                document.getElementById('securityBadge').textContent = '⚠️ Desconectado';
+                document.getElementById('securityBadge').className = 'security-badge medium';
+                
+                logSecurityEvent('DB_ERROR', `Error de conexión: ${error.message}`);
+            }
+        }
+
         // ============================================
         // SINCRONIZACIÓN CON SUPABASE - SEGURA
         // ============================================
@@ -2384,71 +2380,72 @@ async function initSupabase() {
             }
         }
 
-       async function syncFromCloud() {
-    if (!isOnline) {
-        showToast('No hay conexión con la base de datos', 'error');
-        return;
-    }
+        async function syncFromCloud() {
+            if (!isOnline) {
+                showToast('No hay conexión con la base de datos', 'error');
+                return;
+            }
 
-    // MODIFICADO: Permitir sincronización para consulta también (solo lectura)
-    // El usuario consulta necesita descargar datos, no subirlos
-    if (!currentSessionToken && currentUserRole !== 'consulta') {
-        showToast('Sesión no válida. Reinicie el sistema.', 'error');
-        return;
-    }
+            // MODIFICADO: Permitir sincronización para consulta también (solo lectura)
+            // El usuario consulta necesita descargar datos, no subirlos
+            if (!currentSessionToken && currentUserRole !== 'consulta') {
+                showToast('Sesión no válida. Reinicie el sistema.', 'error');
+                return;
+            }
 
-    showLoading(true, 'Descargando datos de la nube...');
-    
-    try {
-        const { data, error } = await supabase
-            .from('trabajadores')
-            .select('*');
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-            trabajadores = data.map(t => ({
-                id: t.id,
-                cedula: t.cedula,
-                primerNombre: t.primer_nombre,
-                segundoNombre: t.segundo_nombre,
-                primerApellido: t.primer_apellido,
-                segundoApellido: t.segundo_apellido,
-                sexo: t.sexo,
-                fechaNacimiento: t.fecha_nacimiento,
-                estadoCivil: t.estado_civil,
-                direccion: t.direccion,
-                celular: t.celular,
-                correo: t.correo,
-                nivelAcademico: t.nivel_academico,
-                profesion: t.profesion,
-                tipoPersonal: t.tipo_personal,
-                fechaIngreso: t.fecha_ingreso,
-                cargo: t.cargo,
-                codigo: t.codigo,
-                dependencia: t.dependencia,
-                nomina: t.nomina,
-                observaciones: t.observaciones,
-                hijos: t.hijos || [],
-                fechaRegistro: t.fecha_registro
-            }));
-
-            saveLocalData(); // Guardar localmente para futuras visitas
+            showLoading(true, 'Descargando datos de la nube...');
             
-            logSecurityEvent('SYNC_DOWNLOAD', `Descargados ${data.length} registros de la nube por ${currentUser}`);
-        } else {
-            // Si no hay datos en la nube, mantener los locales
-            logSecurityEvent('SYNC_EMPTY', 'No hay datos en la nube');
+            try {
+                const { data, error } = await supabase
+                    .from('trabajadores')
+                    .select('*');
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    trabajadores = data.map(t => ({
+                        id: t.id,
+                        cedula: t.cedula,
+                        primerNombre: t.primer_nombre,
+                        segundoNombre: t.segundo_nombre,
+                        primerApellido: t.primer_apellido,
+                        segundoApellido: t.segundo_apellido,
+                        sexo: t.sexo,
+                        fechaNacimiento: t.fecha_nacimiento,
+                        estadoCivil: t.estado_civil,
+                        direccion: t.direccion,
+                        celular: t.celular,
+                        correo: t.correo,
+                        nivelAcademico: t.nivel_academico,
+                        profesion: t.profesion,
+                        tipoPersonal: t.tipo_personal,
+                        fechaIngreso: t.fecha_ingreso,
+                        cargo: t.cargo,
+                        codigo: t.codigo,
+                        dependencia: t.dependencia,
+                        nomina: t.nomina,
+                        observaciones: t.observaciones,
+                        hijos: t.hijos || [],
+                        fechaRegistro: t.fecha_registro
+                    }));
+
+                    saveLocalData(); // Guardar localmente para futuras visitas
+                    
+                    logSecurityEvent('SYNC_DOWNLOAD', `Descargados ${data.length} registros de la nube por ${currentUser}`);
+                } else {
+                    // Si no hay datos en la nube, mantener los locales
+                    logSecurityEvent('SYNC_EMPTY', 'No hay datos en la nube');
+                }
+                showLoading(false);
+                
+            } catch (error) {
+                showLoading(false);
+                showToast('Error al descargar: ' + error.message, 'error');
+                logSecurityEvent('SYNC_ERROR', `Error en descarga: ${error.message}`);
+                throw error; // Re-lanzar para que el llamador pueda manejarlo
+            }
         }
-        showLoading(false);
-        
-    } catch (error) {
-        showLoading(false);
-        showToast('Error al descargar: ' + error.message, 'error');
-        logSecurityEvent('SYNC_ERROR', `Error en descarga: ${error.message}`);
-        throw error; // Re-lanzar para que el llamador pueda manejarlo
-    }
-}
+
         async function mergeCloudData() {
             if (!isOnline) {
                 showToast('No hay conexión con la base de datos', 'error');
@@ -2561,7 +2558,7 @@ async function initSupabase() {
             }
         }
 
-                // ============================================
+        // ============================================
         // INICIALIZACIÓN DEL SISTEMA - MODIFICADO PARA SOPORTAR DOS USUARIOS
         // ============================================
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
@@ -2839,132 +2836,6 @@ async function initSupabase() {
             loadSecurityState();
         });
 
-        function configureUIForRole(user) {
-            const userAvatar = document.getElementById('userAvatar');
-            const userNameDisplay = document.getElementById('userNameDisplay');
-            const userLevelDisplay = document.getElementById('userLevelDisplay');
-            
-            userAvatar.textContent = user.avatar;
-            userNameDisplay.textContent = user.name;
-            userLevelDisplay.textContent = `Nivel: ${user.level}`;
-            
-            // Configurar menú según rol
-            if (user.role === 'consulta') {
-                // Usuario de consulta - solo Dashboard y Consulta
-                userAvatar.classList.add('consulta');
-                userLevelDisplay.classList.add('user-level-consulta');
-                
-                // OCULTAR COMPLETAMENTE los elementos no permitidos
-                document.getElementById('navRegistrarItem').style.display = 'none';
-                document.getElementById('navTrabajadoresItem').style.display = 'none';
-                document.getElementById('navMigrationItem').style.display = 'none';
-                document.getElementById('navExportItem').style.display = 'none';
-                document.getElementById('navSyncItem').style.display = 'none';
-                
-                // Cambiar estilo de Dashboard y Consulta a verde
-                document.getElementById('navDashboard').classList.add('consulta-only');
-                document.getElementById('navConsulta').classList.add('consulta-only');
-                
-                // Forzar inicio en Dashboard
-                showSection('dashboard');
-                
-                logSecurityEvent('ROLE_ACCESS', 'Usuario consulta accedió al sistema');
-            } else {
-                // Administrador - acceso completo
-                userAvatar.classList.remove('consulta');
-                userLevelDisplay.classList.remove('user-level-consulta');
-                
-                // Asegurar que todos los elementos estén visibles
-                document.getElementById('navRegistrarItem').style.display = 'block';
-                document.getElementById('navTrabajadoresItem').style.display = 'block';
-                document.getElementById('navMigrationItem').style.display = 'block';
-                document.getElementById('navExportItem').style.display = 'block';
-                document.getElementById('navSyncItem').style.display = 'block';
-                
-                // Remover estilos de consulta
-                document.getElementById('navDashboard').classList.remove('consulta-only');
-                document.getElementById('navConsulta').classList.remove('consulta-only');
-                
-                logSecurityEvent('ROLE_ACCESS', 'Administrador accedió al sistema');
-            }
-        }
-
-        function initializeSystem() {
-            initSupabase();
-            loadLocalData();
-            
-            // Intentar cargar desde la nube si hay conexión
-            if (isOnline) {
-                syncFromCloud().then(() => {
-                    updateStats();
-                    loadRecent();
-                    loadTrabajadores();
-                }).catch(err => {
-                    console.log('Error cargando desde nube:', err);
-                    updateStats();
-                    loadRecent();
-                    loadTrabajadores();
-                });
-            } else {
-                updateStats();
-                loadRecent();
-                loadTrabajadores();
-            }
-            
-            const lastSync = localStorage.getItem('cp_last_sync');
-            if (lastSync) {
-                document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
-            }
-        }
-
-        function logout() {
-            logSecurityEvent('LOGOUT', `Usuario ${currentUser} cerró sesión`);
-            currentUser = '';
-            currentUserRole = '';
-            currentSessionToken = null;
-            location.reload();
-        }
-
-        function updateCloudStatus(status, text) {
-            const statusEl = document.getElementById('cloudStatus');
-            const textEl = document.getElementById('cloudText');
-            const dbStatus = document.getElementById('dbStatus');
-
-            statusEl.className = 'cloud-status ' + status;
-            textEl.textContent = text;
-            dbStatus.textContent = text;
-        }
-        function initializeSystem() {
-            initSupabase();
-            loadLocalData();
-            updateStats();
-            loadRecent();
-            loadTrabajadores();
-            
-            const lastSync = localStorage.getItem('cp_last_sync');
-            if (lastSync) {
-                document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
-            }
-        }
-
-        function logout() {
-            logSecurityEvent('LOGOUT', `Usuario ${currentUser} cerró sesión`);
-            currentUser = '';
-            currentUserRole = '';
-            currentSessionToken = null;
-            location.reload();
-        }
-
-        function updateCloudStatus(status, text) {
-            const statusEl = document.getElementById('cloudStatus');
-            const textEl = document.getElementById('cloudText');
-            const dbStatus = document.getElementById('dbStatus');
-
-            statusEl.className = 'cloud-status ' + status;
-            textEl.textContent = text;
-            dbStatus.textContent = text;
-        }
-
         // ============================================
         // VALIDACIÓN DE CÉDULA
         // ============================================
@@ -3007,7 +2878,6 @@ async function initSupabase() {
             document.getElementById('edadInput').value = '';
             document.getElementById('tiempoServicioInput').value = '';
         }
-
         // ============================================
         // EXPORTAR A EXCEL
         // ============================================
@@ -4119,6 +3989,7 @@ async function initSupabase() {
     </script>
 </body>
 </html>
+
 
 
 
