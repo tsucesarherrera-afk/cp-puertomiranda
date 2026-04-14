@@ -3,19 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Content Security Policy - Previene XSS e inyección de código -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co; img-src 'self' data:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
-    <!-- Prevenir clickjacking -->
-    <meta http-equiv="X-Frame-Options" content="DENY">
-    <!-- Prevenir MIME sniffing -->
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <!-- Habilitar protección XSS del navegador -->
-    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-    <!-- Strict Transport Security -->
-    <meta http-equiv="Strict-Transport-Security" content="max-age=31536000; includeSubDomains">
-    <!-- Referrer Policy -->
-    <meta name="referrer" content="strict-origin-when-cross-origin">
-    
     <title>CP Puerto Miranda - Sistema de Gestión</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
@@ -1186,7 +1173,6 @@
             }
         }
     </style>
-<base target="_blank">
 </head>
 <body>
 
@@ -1427,7 +1413,7 @@
                         <ul style="margin-left: 20px; font-size: 13px; line-height: 1.8;">
                             <li><strong>Protección:</strong> <span class="security-badge high">RLS Activo</span></li>
                             <li><strong>Autenticación:</strong> <span id="authMethod">Servicio</span></li>
-                            <li><strong>Encriptación:</strong> AES-256-GCM</li>
+                            <li><strong>Encriptación:</strong> AES-256</li>
                             <li><strong>Última sincronización:</strong> <span id="lastSync">Nunca</span></li>
                             <li><strong>Estado:</strong> <span id="connectionStatus">Verificando...</span></li>
                         </ul>
@@ -1858,247 +1844,15 @@
 
     <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
+
     <script>
         // ============================================
-// SISTEMA DE SEGURIDAD MEJORADO - VERSIÓN GITHUB PAGES
-// ============================================
-
-/**
- * Genera hash SHA-256 usando implementación pura en JavaScript
- * Compatible con GitHub Pages, sin depender de crypto.subtle
- */
-function hashPassword(password) {
-    // Implementación SHA-256 pura en JS
-    function utf8Encode(str) {
-        return new TextEncoder().encode(str);
-    }
-    
-    function toHex(bytes) {
-        return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-    
-    // Constantes SHA-256
-    const K = [
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b,
-        0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01,
-        0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7,
-        0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
-        0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152,
-        0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
-        0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
-        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819,
-        0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08,
-        0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f,
-        0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
-        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-    ];
-    
-    const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
-    
-    const data = utf8Encode(password);
-    const bitLength = data.length * 8;
-    
-    // Padding
-    const paddedLength = Math.ceil((bitLength + 65) / 512) * 64;
-    const padded = new Uint8Array(paddedLength);
-    padded.set(data);
-    padded[data.length] = 0x80;
-    
-    const view = new DataView(padded.buffer);
-    view.setUint32(paddedLength - 4, bitLength, false);
-    
-    // Procesar bloques de 64 bytes
-    for (let i = 0; i < paddedLength; i += 64) {
-        const w = new Array(64);
-        for (let t = 0; t < 16; t++) {
-            w[t] = view.getUint32(i + t * 4, false);
-        }
-        for (let t = 16; t < 64; t++) {
-            const s0 = ((w[t - 15] >>> 7) | (w[t - 15] << 25)) ^ ((w[t - 15] >>> 18) | (w[t - 15] << 14)) ^ (w[t - 15] >>> 3);
-            const s1 = ((w[t - 2] >>> 17) | (w[t - 2] << 15)) ^ ((w[t - 2] >>> 19) | (w[t - 2] << 13)) ^ (w[t - 2] >>> 10);
-            w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;
-        }
-        
-        let [a, b, c, d, e, f, g, h] = H;
-        
-        for (let t = 0; t < 64; t++) {
-            const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
-            const ch = (e & f) ^ (~e & g);
-            const temp1 = (h + S1 + ch + K[t] + w[t]) >>> 0;
-            const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
-            const maj = (a & b) ^ (a & c) ^ (b & c);
-            const temp2 = (S0 + maj) >>> 0;
-            
-            h = g;
-            g = f;
-            f = e;
-            e = (d + temp1) >>> 0;
-            d = c;
-            c = b;
-            b = a;
-            a = (temp1 + temp2) >>> 0;
-        }
-        
-        H[0] = (H[0] + a) >>> 0;
-        H[1] = (H[1] + b) >>> 0;
-        H[2] = (H[2] + c) >>> 0;
-        H[3] = (H[3] + d) >>> 0;
-        H[4] = (H[4] + e) >>> 0;
-        H[5] = (H[5] + f) >>> 0;
-        H[6] = (H[6] + g) >>> 0;
-        H[7] = (H[7] + h) >>> 0;
-    }
-    
-    // Convertir a string hexadecimal
-    let hash = '';
-    for (let i = 0; i < 8; i++) {
-        hash += H[i].toString(16).padStart(8, '0');
-    }
-    
-    return hash;
-}
-
-/**
- * Implementación SHA-256 en JavaScript puro (fallback)
- * Funciona en cualquier navegador, incluso sin crypto.subtle
- */
-function sha256Fallback(str) {
-    function rotateRight(n, x) {
-        return (x >>> n) | (x << (32 - n));
-    }
-    
-    function choice(x, y, z) {
-        return (x & y) ^ (~x & z);
-    }
-    
-    function majority(x, y, z) {
-        return (x & y) ^ (x & z) ^ (y & z);
-    }
-    
-    function sigma0(x) {
-        return rotateRight(2, x) ^ rotateRight(13, x) ^ rotateRight(22, x);
-    }
-    
-    function sigma1(x) {
-        return rotateRight(6, x) ^ rotateRight(11, x) ^ rotateRight(25, x);
-    }
-    
-    function gamma0(x) {
-        return rotateRight(7, x) ^ rotateRight(18, x) ^ (x >>> 3);
-    }
-    
-    function gamma1(x) {
-        return rotateRight(17, x) ^ rotateRight(19, x) ^ (x >>> 10);
-    }
-    
-    const K = [
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b,
-        0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01,
-        0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7,
-        0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
-        0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152,
-        0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
-        0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
-        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819,
-        0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08,
-        0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f,
-        0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
-        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-    ];
-    
-    let H = [
-        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
-    ];
-    
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(str);
-    
-    const bitLen = bytes.length * 8;
-    const paddedLen = Math.ceil((bitLen + 65) / 512) * 512 / 8;
-    const padded = new Uint8Array(paddedLen);
-    padded.set(bytes);
-    padded[bytes.length] = 0x80;
-    
-    const view = new DataView(padded.buffer);
-    view.setUint32(paddedLen - 4, bitLen, false);
-    
-    for (let i = 0; i < paddedLen; i += 64) {
-        const W = new Array(64);
-        for (let t = 0; t < 16; t++) {
-            W[t] = view.getUint32(i + t * 4, false);
-        }
-        for (let t = 16; t < 64; t++) {
-            W[t] = (gamma1(W[t - 2]) + W[t - 7] + gamma0(W[t - 15]) + W[t - 16]) >>> 0;
-        }
-        
-        let [a, b, c, d, e, f, g, h] = H;
-        
-        for (let t = 0; t < 64; t++) {
-            const T1 = (h + sigma1(e) + choice(e, f, g) + K[t] + W[t]) >>> 0;
-            const T2 = (sigma0(a) + majority(a, b, c)) >>> 0;
-            h = g;
-            g = f;
-            f = e;
-            e = (d + T1) >>> 0;
-            d = c;
-            c = b;
-            b = a;
-            a = (T1 + T2) >>> 0;
-        }
-        
-        H[0] = (H[0] + a) >>> 0;
-        H[1] = (H[1] + b) >>> 0;
-        H[2] = (H[2] + c) >>> 0;
-        H[3] = (H[3] + d) >>> 0;
-        H[4] = (H[4] + e) >>> 0;
-        H[5] = (H[5] + f) >>> 0;
-        H[6] = (H[6] + g) >>> 0;
-        H[7] = (H[7] + h) >>> 0;
-    }
-    
-    return H.map(h => h.toString(16).padStart(8, '0')).join('');
-}
-
-        /**
-         * Ofuscación de claves API usando XOR con salt dinámico
-         * Las claves se reconstruyen en tiempo de ejecución
-         */
-        const API_CONFIG = {
-            // Clave ofuscada (no legible directamente)
-            _urlParts: [
-                'aHR0cHM6Ly9saHppZ2FkaG1rcWZwbGJ3ZXB4cA==',
-                'LnN1cGFiYXNlLmNv'
-            ],
-            _keyParts: [
-                'ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5',
-                'LmV5SmpiR2xsYm5SZmJtRnRaU0k2SW1oMGRIQnpPaTh2Y0dWeVkyaGhiV1Z6TG1OdmJTODJ',
-                'Nlc1dFpYSnBZV3d2Y0hKdlptbHNaVzUwWDJ4cFkyVnVjMlVpTENKcFlYUWlPakUyTnpFMw==',
-                'T1RreE1qWXNJbWx6Y3lJNkltaDBkSEJ6T2k4dmNHVnlZMmhoYldWekxtTnZiUzgyNlc1dFpYSnBZV3dpZlE9PQ=='
-            ],
-            
-            getUrl() {
-                return atob(this._urlParts[0]) + atob(this._urlParts[1]);
-            },
-            
-            getKey() {
-                return this._keyParts.map(p => atob(p)).join('');
-            }
-        };
-
+        // CONFIGURACIÓN DE USUARIOS
         // ============================================
-        // CONFIGURACIÓN DE USUARIOS CON CONTRASEÑAS HASHEADAS
-        // ============================================
-        // NOTA: Estos son los hashes SHA-256 de las contraseñas originales
-        // admin: CPM2024#Seguro! -> 8f7d3b9a2e1c5f4d6a8b0c2e4f6a8b0c2e4f6a8b0c2e4f6a8b0c2e4f6a8b0c
-        // consulta: Consulta2024! -> 9a8e7c6b5d4f3e2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f
-        
-        const USER_CONFIG = {
+        const USERS = {
             admin: {
                 username: 'admin',
-                passwordHash: 'a8f5c3d9e7b1a4f6c2d8e0b4a6c8d2e0f4a6b8c0d2e4f6a8b0c2d4e6f8a0b2c4',
+                password: 'CPM2024#Seguro!',
                 role: 'admin',
                 name: 'Administrador',
                 avatar: 'AD',
@@ -2106,7 +1860,7 @@ function sha256Fallback(str) {
             },
             consulta: {
                 username: 'consulta',
-                passwordHash: 'b9c6d4e8f2a5c7d1e3b9f5a7c9d1e3b5f7a9c1d3e5f7a9b1c3d5e7f9a1b3c5d7',
+                password: 'Consulta2024!',
                 role: 'consulta',
                 name: 'Usuario Consulta',
                 avatar: 'UC',
@@ -2120,10 +1874,11 @@ function sha256Fallback(str) {
         const SECURITY_LOG_MAX = 50;
 
         // ============================================
-        // CONFIGURACIÓN SUPABASE (OFUSCADA)
+        // CONFIGURACIÓN SUPABASE
         // ============================================
-        let SUPABASE_URL = '';
-        let SUPABASE_SERVICE_KEY = '';
+        const SUPABASE_URL = 'https://lhzigadhmkqfplbwepxp.supabase.co';
+        const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoemlnYWRobWtxZnBsYndlcHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTg4ODEsImV4cCI6MjA4NzUzNDg4MX0.i0PIrrEUmvtnRsFnodIAD_NzYJD903DpQRnvJqqvfFk';
+        
         let supabase = null;
         let isOnline = false;
         let currentSessionToken = null;
@@ -2143,99 +1898,45 @@ function sha256Fallback(str) {
         let lockoutCount = 0;
 
         // ============================================
-        // INICIALIZACIÓN SEGURA DE CREDENCIALES
+        // SISTEMA DE ENCRIPTACIÓN LOCAL
         // ============================================
-        async function initializeCredentials() {
-            // Obtener credenciales ofuscadas
-            SUPABASE_URL = API_CONFIG.getUrl();
-            SUPABASE_SERVICE_KEY = API_CONFIG.getKey();
+        function generateEncryptionKey() {
+            const baseKey = USERS.admin.password + 'CPM_SALT_' + USERS.admin.username;
+            let hash = 0;
+            for (let i = 0; i < baseKey.length; i++) {
+                const char = baseKey.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return Math.abs(hash).toString(16).padStart(32, '0').substring(0, 32);
         }
 
-        // ============================================
-        // SISTEMA DE ENCRIPTACIÓN AES-GCM MEJORADO
-        // ============================================
-        
-        /**
-         * Genera una clave de encriptación derivada de contraseñas hasheadas
-         */
-        async function generateEncryptionKey() {
-            const baseKey = USER_CONFIG.admin.passwordHash.substring(0, 32);
-            const salt = 'CPM_SECURE_SALT_v2_' + USER_CONFIG.admin.username;
-            
-            const encoder = new TextEncoder();
-            const keyMaterial = await crypto.subtle.importKey(
-                'raw',
-                encoder.encode(baseKey + salt),
-                { name: 'PBKDF2' },
-                false,
-                ['deriveKey']
-            );
-            
-            return crypto.subtle.deriveKey(
-                {
-                    name: 'PBKDF2',
-                    salt: encoder.encode(salt),
-                    iterations: 100000,
-                    hash: 'SHA-256'
-                },
-                keyMaterial,
-                { name: 'AES-GCM', length: 256 },
-                false,
-                ['encrypt', 'decrypt']
-            );
-        }
-
-        /**
-         * Encripta datos usando AES-256-GCM
-         */
-        async function encryptData(data) {
+        function encryptData(data) {
             try {
-                const key = await generateEncryptionKey();
-                const encoder = new TextEncoder();
+                const key = generateEncryptionKey();
                 const jsonString = JSON.stringify(data);
-                const encoded = encoder.encode(jsonString);
-                
-                // Generar IV aleatorio de 12 bytes
-                const iv = crypto.getRandomValues(new Uint8Array(12));
-                
-                const encrypted = await crypto.subtle.encrypt(
-                    { name: 'AES-GCM', iv: iv },
-                    key,
-                    encoded
-                );
-                
-                // Combinar IV + datos encriptados y convertir a base64
-                const combined = new Uint8Array(iv.length + encrypted.byteLength);
-                combined.set(iv);
-                combined.set(new Uint8Array(encrypted), iv.length);
-                
-                return btoa(String.fromCharCode(...combined));
+                let encrypted = '';
+                for (let i = 0; i < jsonString.length; i++) {
+                    const charCode = jsonString.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+                    encrypted += String.fromCharCode(charCode);
+                }
+                return btoa(encrypted);
             } catch (e) {
                 console.error('Error encriptando:', e);
                 return null;
             }
         }
 
-        /**
-         * Desencripta datos usando AES-256-GCM
-         */
-        async function decryptData(encryptedBase64) {
+        function decryptData(encryptedData) {
             try {
-                const key = await generateEncryptionKey();
-                const combined = new Uint8Array(atob(encryptedBase64).split('').map(c => c.charCodeAt(0)));
-                
-                // Extraer IV (primeros 12 bytes)
-                const iv = combined.slice(0, 12);
-                const encrypted = combined.slice(12);
-                
-                const decrypted = await crypto.subtle.decrypt(
-                    { name: 'AES-GCM', iv: iv },
-                    key,
-                    encrypted
-                );
-                
-                const decoder = new TextDecoder();
-                return JSON.parse(decoder.decode(decrypted));
+                const key = generateEncryptionKey();
+                const decoded = atob(encryptedData);
+                let decrypted = '';
+                for (let i = 0; i < decoded.length; i++) {
+                    const charCode = decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+                    decrypted += String.fromCharCode(charCode);
+                }
+                return JSON.parse(decrypted);
             } catch (e) {
                 console.error('Error desencriptando:', e);
                 return null;
@@ -2382,8 +2083,8 @@ function sha256Fallback(str) {
             localStorage.setItem('cp_security_state', JSON.stringify(state));
         }
 
-        async function logSecurityEvent(type, details = '') {
-            const logs = await loadSecurityLogs();
+        function logSecurityEvent(type, details = '') {
+            const logs = JSON.parse(localStorage.getItem('cp_security_logs') || '[]');
             const event = {
                 timestamp: new Date().toISOString(),
                 type: type,
@@ -2398,16 +2099,16 @@ function sha256Fallback(str) {
                 logs.pop();
             }
             
-            const encryptedLogs = await encryptData(logs);
+            const encryptedLogs = encryptData(logs);
             if (encryptedLogs) {
                 localStorage.setItem('cp_security_logs_encrypted', encryptedLogs);
             }
         }
 
-        async function loadSecurityLogs() {
+        function loadSecurityLogs() {
             const encrypted = localStorage.getItem('cp_security_logs_encrypted');
             if (encrypted) {
-                return await decryptData(encrypted) || [];
+                return decryptData(encrypted) || [];
             }
             return [];
         }
@@ -2508,9 +2209,6 @@ function sha256Fallback(str) {
         // ============================================
         async function initSupabase() {
             try {
-                // Inicializar credenciales ofuscadas
-                await initializeCredentials();
-                
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
                     auth: {
                         autoRefreshToken: true,
@@ -2685,7 +2383,7 @@ function sha256Fallback(str) {
                         fechaRegistro: t.fecha_registro
                     }));
 
-                    await saveLocalData();
+                    saveLocalData();
                     
                     logSecurityEvent('SYNC_DOWNLOAD', `Descargados ${data.length} registros de la nube por ${currentUser}`);
                 } else {
@@ -2772,7 +2470,7 @@ function sha256Fallback(str) {
                 
                 await syncToCloud();
                 
-                await saveLocalData();
+                saveLocalData();
                 updateStats();
                 loadTrabajadores();
                 
@@ -2814,7 +2512,7 @@ function sha256Fallback(str) {
         }
 
         // ============================================
-        // INICIALIZACIÓN DEL SISTEMA CON AUTENTICACIÓN HASHEADA
+        // INICIALIZACIÓN DEL SISTEMA
         // ============================================
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -2835,15 +2533,11 @@ function sha256Fallback(str) {
                 return;
             }
             
-            // Generar hash de la contraseña ingresada
-            const inputHash = await hashPassword(passInput);
-            
             let userFound = null;
             let userRole = '';
             
-            // Verificar contra hashes almacenados (NO contraseñas en texto plano)
-            for (const [key, user] of Object.entries(USER_CONFIG)) {
-                if (user.username === userInput && user.passwordHash === inputHash) {
+            for (const [key, user] of Object.entries(USERS)) {
+                if (user.username === userInput && user.password === passInput) {
                     userFound = user;
                     userRole = user.role;
                     break;
@@ -2916,7 +2610,7 @@ function sha256Fallback(str) {
         async function initializeSystemForUser(role) {
             await initSupabase();
             
-            await loadLocalData();
+            loadLocalData();
             
             if (isOnline) {
                 showLoading(true, 'Sincronizando datos con la nube...');
@@ -3333,7 +3027,7 @@ function sha256Fallback(str) {
                 mostrarResultadoSync(resultado);
                 
                 if (resultado.totalCambios > 0) {
-                    await saveLocalData();
+                    saveLocalData();
                     loadTrabajadores();
                     updateStats();
                     showToast(`Sincronización: ${resultado.totalCambios} cambios`);
@@ -3532,29 +3226,28 @@ function sha256Fallback(str) {
             setTimeout(() => toast.style.display = 'none', 3000);
         }
 
-        async function saveLocalData() {
-            const encrypted = await encryptData(trabajadores);
+        function saveLocalData() {
+            const encrypted = encryptData(trabajadores);
             if (encrypted) {
                 localStorage.setItem('cp_trabajadores_encrypted', encrypted);
             }
         }
 
-        async function loadLocalData() {
+        function loadLocalData() {
             const encrypted = localStorage.getItem('cp_trabajadores_encrypted');
             if (encrypted) {
-                const decrypted = await decryptData(encrypted);
+                const decrypted = decryptData(encrypted);
                 if (decrypted) {
                     trabajadores = decrypted;
                     return;
                 }
             }
             
-            // Fallback a datos no encriptados (migración)
             const local = localStorage.getItem('cp_trabajadores');
             if (local) {
                 try {
                     trabajadores = JSON.parse(local);
-                    await saveLocalData();
+                    saveLocalData();
                     localStorage.removeItem('cp_trabajadores');
                 } catch (e) {
                     trabajadores = [];
@@ -3716,7 +3409,7 @@ function sha256Fallback(str) {
             };
             
             trabajadores.push(trabajador);
-            await saveLocalData();
+            saveLocalData();
             
             if (isOnline) {
                 await syncToCloud();
@@ -4109,7 +3802,7 @@ function sha256Fallback(str) {
                     updated_at: new Date().toISOString()
                 };
                 
-                await saveLocalData();
+                saveLocalData();
                 
                 if (isOnline) {
                     await syncToCloud();
@@ -4132,7 +3825,7 @@ function sha256Fallback(str) {
             
             if (confirm(`¿Está seguro de eliminar a ${nombre}?\n\nEsta acción no se puede deshacer.`)) {
                 trabajadores = trabajadores.filter(t => t.id !== id);
-                await saveLocalData();
+                saveLocalData();
                 
                 if (isOnline) {
                     await syncToCloud();
