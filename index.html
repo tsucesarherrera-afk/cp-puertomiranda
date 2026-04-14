@@ -1297,13 +1297,17 @@
                         </a>
                     </li>
                     <li class="nav-item" id="navSyncItem">
-                        <a class="nav-link" onclick="showSection('sync')" id="navSync">
+                                    <a class="nav-link" onclick="showSection('sync')" id="navSync">
                             <span>☁️</span> Sincronizar Nube
                         </a>
                     </li>
                 </ul>
             </nav>
-
+<li class="nav-item" id="navUsuariosItem" style="display: none;">
+    <a class="nav-link" onclick="showSection('usuarios')" id="navUsuarios">
+        <span>👤</span> Gestión de Usuarios
+    </a>
+</li>
             <div class="sidebar-divider">
                 <div class="sidebar-logo-small">
                     <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
@@ -1821,7 +1825,85 @@
             </div>
         </main>
     </div>
+<!-- Gestión de Usuarios Section (Solo Superusuario) -->
+<div class="content-section" id="usuarios">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Gestión de Usuarios del Sistema</div>
+            <button class="btn-primary" onclick="mostrarModalUsuario()">+ Nuevo Usuario</button>
+        </div>
+        <div class="card-body">
+            <div id="usuariosAlert"></div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Rol</th>
+                            <th>Correo Electrónico</th>
+                            <th>Estado</th>
+                            <th>Último Acceso</th>
+                            <th>Creado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usuariosBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--secondary);">
+                                Cargando usuarios...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- Modal para Crear/Editar Usuario -->
+<div class="modal" id="modalUsuario">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2 id="modalUsuarioTitle">Nuevo Usuario</h2>
+            <button class="close-btn" onclick="cerrarModalUsuario()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="formUsuario" onsubmit="guardarUsuario(event)">
+                <input type="hidden" id="usuarioEditId">
+                
+                <div class="form-group required-field">
+                    <label>Nombre de Usuario</label>
+                    <input type="text" id="newUsuario" required autocomplete="off">
+                </div>
+                
+                <div class="form-group required-field" id="grupoClave">
+                    <label>Contraseña</label>
+                    <input type="password" id="newClave" required minlength="6">
+                    <small style="color: var(--secondary); font-size: 11px;">Mínimo 6 caracteres</small>
+                </div>
+                
+                <div class="form-group required-field">
+                    <label>Correo Electrónico</label>
+                    <input type="email" id="newEmail" required>
+                </div>
+                
+                <div class="form-group required-field">
+                    <label>Rol</label>
+                    <select id="newRol" required>
+                        <option value="Solo Consulta">Solo Consulta</option>
+                        <option value="Superusuario">Superusuario</option>
+                    </select>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="cerrarModalUsuario()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
     <!-- Modal para Editar -->
     <div class="modal" id="editModal">
         <div class="modal-content">
