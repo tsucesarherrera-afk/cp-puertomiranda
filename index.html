@@ -1297,17 +1297,13 @@
                         </a>
                     </li>
                     <li class="nav-item" id="navSyncItem">
-                                    <a class="nav-link" onclick="showSection('sync')" id="navSync">
+                        <a class="nav-link" onclick="showSection('sync')" id="navSync">
                             <span>☁️</span> Sincronizar Nube
                         </a>
                     </li>
                 </ul>
             </nav>
-<li class="nav-item" id="navUsuariosItem" style="display: none;">
-    <a class="nav-link" onclick="showSection('usuarios')" id="navUsuarios">
-        <span>👤</span> Gestión de Usuarios
-    </a>
-</li>
+
             <div class="sidebar-divider">
                 <div class="sidebar-logo-small">
                     <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
@@ -1825,85 +1821,7 @@
             </div>
         </main>
     </div>
-<!-- Gestión de Usuarios Section (Solo Superusuario) -->
-<div class="content-section" id="usuarios">
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title">Gestión de Usuarios del Sistema</div>
-            <button class="btn-primary" onclick="mostrarModalUsuario()">+ Nuevo Usuario</button>
-        </div>
-        <div class="card-body">
-            <div id="usuariosAlert"></div>
-            
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Usuario</th>
-                            <th>Rol</th>
-                            <th>Correo Electrónico</th>
-                            <th>Estado</th>
-                            <th>Último Acceso</th>
-                            <th>Creado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usuariosBody">
-                        <tr>
-                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--secondary);">
-                                Cargando usuarios...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Modal para Crear/Editar Usuario -->
-<div class="modal" id="modalUsuario">
-    <div class="modal-content" style="max-width: 500px;">
-        <div class="modal-header">
-            <h2 id="modalUsuarioTitle">Nuevo Usuario</h2>
-            <button class="close-btn" onclick="cerrarModalUsuario()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="formUsuario" onsubmit="guardarUsuario(event)">
-                <input type="hidden" id="usuarioEditId">
-                
-                <div class="form-group required-field">
-                    <label>Nombre de Usuario</label>
-                    <input type="text" id="newUsuario" required autocomplete="off">
-                </div>
-                
-                <div class="form-group required-field" id="grupoClave">
-                    <label>Contraseña</label>
-                    <input type="password" id="newClave" required minlength="6">
-                    <small style="color: var(--secondary); font-size: 11px;">Mínimo 6 caracteres</small>
-                </div>
-                
-                <div class="form-group required-field">
-                    <label>Correo Electrónico</label>
-                    <input type="email" id="newEmail" required>
-                </div>
-                
-                <div class="form-group required-field">
-                    <label>Rol</label>
-                    <select id="newRol" required>
-                        <option value="Solo Consulta">Solo Consulta</option>
-                        <option value="Superusuario">Superusuario</option>
-                    </select>
-                </div>
-                
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="cerrarModalUsuario()">Cancelar</button>
-                    <button type="submit" class="btn-primary">Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
     <!-- Modal para Editar -->
     <div class="modal" id="editModal">
         <div class="modal-content">
@@ -1929,261 +1847,31 @@
 
     <script>
         // ============================================
-// CONFIGURACIÓN DE USUARIOS CON SUPABASE
-// ============================================
-
-let currentUserData = null; // Almacena datos del usuario autenticado
-
-// Función para hashear contraseña (bcrypt simulado para verificación)
-// En producción, esto debe hacerse en el backend
-async function hashPassword(password) {
-    // Nota: En un sistema real, el hash debe hacerse en el backend
-    // Esto es solo para compatibilidad con el hash existente
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// ============================================
-// AUTENTICACIÓN CON SUPABASE
-// ============================================
-
-async function authenticateUser(username, password) {
-    try {
-        showLoading(true, 'Verificando credenciales...');
-        
-        // Buscar usuario en Supabase
-        const { data: usuarios, error } = await supabase
-            .from('usuarios_sistema')
-            .select('*')
-            .eq('usuario', username)
-            .eq('activo', true)
-            .limit(1);
-        
-        if (error) {
-            console.error('Error consultando usuario:', error);
-            throw new Error('Error de conexión con la base de datos');
-        }
-        
-        if (!usuarios || usuarios.length === 0) {
-            throw new Error('Usuario no encontrado o inactivo');
-        }
-        
-        const user = usuarios[0];
-        
-        // Verificar contraseña usando bcrypt comparación simple
-        // NOTA: En producción, usa una función Edge de Supabase para verificar
-        const passwordValid = await verifyPassword(password, user.clave_hash);
-        
-        if (!passwordValid) {
-            throw new Error('Contraseña incorrecta');
-        }
-        
-        // Actualizar último acceso
-        await supabase
-            .from('usuarios_sistema')
-            .update({ ultimo_acceso: new Date().toISOString() })
-            .eq('id', user.id);
-        
-        // Establecer usuario para auditoría
-        await supabase.rpc('set_config', {
-            param: 'app.current_user_id',
-            val: user.id
-        });
-        
-        // Preparar datos del usuario
-        currentUserData = {
-            id: user.id,
-            username: user.usuario,
-            role: user.rol === 'Superusuario' ? 'admin' : 'consulta',
-            name: user.usuario,
-            avatar: user.usuario.substring(0, 2).toUpperCase(),
-            level: user.rol,
-            email: user.correo_electronico,
-            rolOriginal: user.rol
+        // CONFIGURACIÓN DE USUARIOS
+        // ============================================
+        const USERS = {
+            admin: {
+                username: 'admin',
+                password: 'CPM2024#Seguro!',
+                role: 'admin',
+                name: 'Administrador',
+                avatar: 'AD',
+                level: 'Superusuario'
+            },
+            consulta: {
+                username: 'consulta',
+                password: 'Consulta2024!',
+                role: 'consulta',
+                name: 'Usuario Consulta',
+                avatar: 'UC',
+                level: 'Solo Consulta'
+            }
         };
-        
-        showLoading(false);
-        return currentUserData;
-        
-    } catch (error) {
-        showLoading(false);
-        throw error;
-    }
-}
 
-// Función simple de verificación de contraseña
-// EN PRODUCCIÓN: Usar una Edge Function de Supabase para esto
-async function verifyPassword(plainPassword, hashedPassword) {
-    // Si el hash empieza con $2a$ es bcrypt
-    if (hashedPassword.startsWith('$2a$')) {
-        // Para el demo, comparamos con contraseñas conocidas
-        // En producción, usa: https://github.com/dcodeIO/bcrypt.js
-        const knownPasswords = {
-            'admin123': '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
-            'consulta123': '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'
-        };
-        
-        // Comparación simple para el ejemplo
-        // En producción, usa bcrypt.compare
-        return knownPasswords[plainPassword] === hashedPassword;
-    }
-    
-    // Fallback a comparación directa (no recomendado)
-    return plainPassword === hashedPassword;
-}
-
-// ============================================
-// GESTIÓN DE USUARIOS (SOLO SUPERUSUARIO)
-// ============================================
-
-async function crearUsuario(datos) {
-    if (!currentUserData || currentUserData.rolOriginal !== 'Superusuario') {
-        throw new Error('No tiene permisos para crear usuarios');
-    }
-    
-    try {
-        // Generar hash de contraseña (en producción, hacer esto en el backend)
-        const claveHash = await hashPassword(datos.clave);
-        
-        const { data, error } = await supabase
-            .from('usuarios_sistema')
-            .insert([{
-                usuario: datos.usuario,
-                clave_hash: claveHash,
-                rol: datos.rol,
-                correo_electronico: datos.correo_electronico,
-                creado_por: currentUserData.id,
-                activo: true
-            }])
-            .select()
-            .single();
-        
-        if (error) throw error;
-        return data;
-    } catch (error) {
-        console.error('Error creando usuario:', error);
-        throw error;
-    }
-}
-
-async function actualizarUsuario(id, datos) {
-    if (!currentUserData || currentUserData.rolOriginal !== 'Superusuario') {
-        throw new Error('No tiene permisos para actualizar usuarios');
-    }
-    
-    try {
-        const updateData = {
-            rol: datos.rol,
-            correo_electronico: datos.correo_electronico,
-            activo: datos.activo,
-            actualizado_en: new Date().toISOString()
-        };
-        
-        if (datos.clave) {
-            updateData.clave_hash = await hashPassword(datos.clave);
-        }
-        
-        const { data, error } = await supabase
-            .from('usuarios_sistema')
-            .update(updateData)
-            .eq('id', id)
-            .select()
-            .single();
-        
-        if (error) throw error;
-        return data;
-    } catch (error) {
-        console.error('Error actualizando usuario:', error);
-        throw error;
-    }
-}
-
-async function eliminarUsuario(id) {
-    if (!currentUserData || currentUserData.rolOriginal !== 'Superusuario') {
-        throw new Error('No tiene permisos para eliminar usuarios');
-    }
-    
-    // No permitir eliminarse a sí mismo
-    if (id === currentUserData.id) {
-        throw new Error('No puede eliminar su propio usuario');
-    }
-    
-    try {
-        const { error } = await supabase
-            .from('usuarios_sistema')
-            .update({ activo: false, actualizado_en: new Date().toISOString() })
-            .eq('id', id);
-        
-        if (error) throw error;
-        return true;
-    } catch (error) {
-        console.error('Error eliminando usuario:', error);
-        throw error;
-    }
-}
-
-async function listarUsuarios() {
-    if (!currentUserData || currentUserData.rolOriginal !== 'Superusuario') {
-        throw new Error('No tiene permisos para listar usuarios');
-    }
-    
-    try {
-        const { data, error } = await supabase
-            .from('usuarios_sistema')
-            .select(`
-                id,
-                usuario,
-                rol,
-                correo_electronico,
-                activo,
-                ultimo_acceso,
-                creado_en,
-                creado_por:usuarios_sistema!creado_por(usuario)
-            `)
-            .order('creado_en', { ascending: false });
-        
-        if (error) throw error;
-        return data;
-    } catch (error) {
-        console.error('Error listando usuarios:', error);
-        throw error;
-    }
-}
-
-// ============================================
-// AUDITORÍA (SOLO SUPERUSUARIO)
-// ============================================
-
-async function obtenerAuditoria(filtros = {}) {
-    if (!currentUserData || currentUserData.rolOriginal !== 'Superusuario') {
-        throw new Error('No tiene permisos para ver auditoría');
-    }
-    
-    try {
-        let query = supabase
-            .from('auditoria_cambios')
-            .select(`
-                *,
-                usuario_responsable:usuarios_sistema!usuario_responsable(usuario)
-            `)
-            .order('fecha_hora', { ascending: false })
-            .limit(100);
-        
-        if (filtros.tabla) query = query.eq('tabla_afectada', filtros.tabla);
-        if (filtros.fecha_desde) query = query.gte('fecha_hora', filtros.fecha_desde);
-        if (filtros.fecha_hasta) query = query.lte('fecha_hora', filtros.fecha_hasta);
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        return data;
-    } catch (error) {
-        console.error('Error obteniendo auditoría:', error);
-        throw error;
-    }
-}
+        // Configuración de seguridad
+        const MAX_ATTEMPTS = 3;
+        const LOCKOUT_BASE_TIME = 30;
+        const SECURITY_LOG_MAX = 50;
 
         // ============================================
         // CONFIGURACIÓN SUPABASE
@@ -2827,52 +2515,254 @@ async function obtenerAuditoria(filtros = {}) {
         // INICIALIZACIÓN DEL SISTEMA
         // ============================================
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
+            e.preventDefault();
+            
+            if (lockoutEndTime && Date.now() < lockoutEndTime) {
+                const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
+                document.getElementById('loginError').textContent = `Cuenta bloqueada. Intente en ${remaining} segundos.`;
+                document.getElementById('loginError').style.display = 'block';
+                return;
+            }
+            
+            const userInput = document.getElementById('username').value.trim();
+            const passInput = document.getElementById('password').value;
+            
+            if (!userInput || !passInput) {
+                document.getElementById('loginError').textContent = 'Complete todos los campos';
+                document.getElementById('loginError').style.display = 'block';
+                return;
+            }
+            
+            let userFound = null;
+            let userRole = '';
+            
+            for (const [key, user] of Object.entries(USERS)) {
+                if (user.username === userInput && user.password === passInput) {
+                    userFound = user;
+                    userRole = user.role;
+                    break;
+                }
+            }
+            
+            if (!userFound) {
+                const msg = handleFailedAttempt('Credenciales incorrectas');
+                document.getElementById('loginError').textContent = msg;
+                document.getElementById('loginError').style.display = 'block';
+                document.getElementById('password').value = '';
+                return;
+            }
+            
+            handleSuccessfulLogin(userRole);
+            document.getElementById('loginError').style.display = 'none';
+            
+            currentUser = userFound.username;
+            currentUserRole = userRole;
+            
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+            document.body.style.background = 'var(--bg)';
+            
+            configureUIForRole(userFound);
+            
+            await initializeSystemForUser(userFound.role);
+        });
 
-    if (lockoutEndTime && Date.now() < lockoutEndTime) {
-        const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
-        document.getElementById('loginError').textContent = `Cuenta bloqueada. Intente en ${remaining} segundos.`;
-        document.getElementById('loginError').style.display = 'block';
-        return;
-    }
-
-    const userInput = document.getElementById('username').value.trim();
-    const passInput = document.getElementById('password').value;
-
-    if (!userInput || !passInput) {
-        document.getElementById('loginError').textContent = 'Complete todos los campos';
-        document.getElementById('loginError').style.display = 'block';
-        return;
-    }
-
-    try {
-        // Autenticar con Supabase
-        const user = await authenticateUser(userInput, passInput);
-        
-        if (!user) {
-            throw new Error('Usuario no encontrado');
+        function configureUIForRole(user) {
+            const userAvatar = document.getElementById('userAvatar');
+            const userNameDisplay = document.getElementById('userNameDisplay');
+            const userLevelDisplay = document.getElementById('userLevelDisplay');
+            
+            userAvatar.textContent = user.avatar;
+            userNameDisplay.textContent = user.name;
+            userLevelDisplay.textContent = `Nivel: ${user.level}`;
+            
+            if (user.role === 'consulta') {
+                userAvatar.classList.add('consulta');
+                userLevelDisplay.classList.add('user-level-consulta');
+                
+                document.getElementById('navRegistrarItem').style.display = 'none';
+                document.getElementById('navTrabajadoresItem').style.display = 'none';
+                document.getElementById('navMigrationItem').style.display = 'none';
+                document.getElementById('navExportItem').style.display = 'none';
+                document.getElementById('navSyncItem').style.display = 'none';
+                
+                document.getElementById('navDashboard').classList.add('consulta-only');
+                document.getElementById('navConsulta').classList.add('consulta-only');
+                
+                logSecurityEvent('ROLE_ACCESS', 'Usuario consulta accedió al sistema');
+            } else {
+                userAvatar.classList.remove('consulta');
+                userLevelDisplay.classList.remove('user-level-consulta');
+                
+                document.getElementById('navRegistrarItem').style.display = 'block';
+                document.getElementById('navTrabajadoresItem').style.display = 'block';
+                document.getElementById('navMigrationItem').style.display = 'block';
+                document.getElementById('navExportItem').style.display = 'block';
+                document.getElementById('navSyncItem').style.display = 'block';
+                
+                document.getElementById('navDashboard').classList.remove('consulta-only');
+                document.getElementById('navConsulta').classList.remove('consulta-only');
+                
+                logSecurityEvent('ROLE_ACCESS', 'Administrador accedió al sistema');
+            }
         }
 
-        handleSuccessfulLogin(user.role);
-        document.getElementById('loginError').style.display = 'none';
-        
-        currentUser = user.username;
-        currentUserRole = user.role;
-        
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('appContainer').style.display = 'block';
-        document.body.style.background = 'var(--bg)';
-        
-        configureUIForRole(user);
-        await initializeSystemForUser(user.role);
-        
-    } catch (error) {
-        const msg = handleFailedAttempt(error.message);
-        document.getElementById('loginError').textContent = msg;
-        document.getElementById('loginError').style.display = 'block';
-        document.getElementById('password').value = '';
-    }
-});
+        async function initializeSystemForUser(role) {
+            await initSupabase();
+            
+            loadLocalData();
+            
+            if (isOnline) {
+                showLoading(true, 'Sincronizando datos con la nube...');
+                
+                try {
+                    await syncFromCloud();
+                    showLoading(false);
+                    showToast(`✅ Datos sincronizados: ${trabajadores.length} trabajadores`);
+                } catch (err) {
+                    console.log('Error sincronizando desde nube:', err);
+                    showLoading(false);
+                    showToast('⚠️ Usando datos locales. Error de sincronización.', 'warning');
+                }
+            } else {
+                showToast('⚠️ Sin conexión a internet. Usando datos locales.', 'warning');
+            }
+            
+            completeInitialization(role);
+        }
+
+        function completeInitialization(role) {
+            updateStats();
+            loadTrabajadores();
+            
+            if (role === 'consulta') {
+                showSectionDirect('dashboard');
+                loadRecent();
+                
+                if (trabajadores.length > 0) {
+                    showToast(`✅ ${trabajadores.length} trabajadores cargados correctamente`);
+                } else {
+                    showToast('⚠️ No hay trabajadores registrados', 'warning');
+                }
+            } else {
+                loadRecent();
+                showSectionDirect('dashboard');
+            }
+            
+            const lastSync = localStorage.getItem('cp_last_sync');
+            if (lastSync) {
+                document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
+            }
+        }
+
+        function showSectionDirect(sectionId) {
+            if (currentUserRole === 'consulta') {
+                const allowedSections = ['dashboard', 'consulta'];
+                if (!allowedSections.includes(sectionId)) {
+                    showToast('No tiene permisos para acceder a esta sección', 'error');
+                    return;
+                }
+            }
+
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+            
+            const titles = {
+                'dashboard': 'Dashboard',
+                'sync': 'Sincronizar Nube',
+                'migration': 'Importar Excel',
+                'export': 'Exportar Excel',
+                'trabajadores': 'Trabajadores',
+                'registrar': 'Nuevo Registro',
+                'consulta': 'Consulta'
+            };
+            document.getElementById('pageTitle').textContent = titles[sectionId] || 'Dashboard';
+            
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            
+            const navLinks = {
+                'dashboard': 'navDashboard',
+                'consulta': 'navConsulta',
+                'registrar': 'navRegistrar',
+                'trabajadores': 'navTrabajadores',
+                'migration': 'navMigration',
+                'export': 'navExport',
+                'sync': 'navSync'
+            };
+            
+            const activeNavId = navLinks[sectionId];
+            if (activeNavId) {
+                const activeNav = document.getElementById(activeNavId);
+                if (activeNav) {
+                    activeNav.classList.add('active');
+                }
+            }
+            
+            if (sectionId === 'dashboard') {
+                updateStats();
+                loadRecent();
+            } else if (sectionId === 'trabajadores') {
+                loadTrabajadores();
+            } else if (sectionId === 'export') {
+                updateExportPreview();
+            } else if (sectionId === 'sync') {
+                updateSyncStats();
+            } else if (sectionId === 'consulta') {
+                loadLocalData();
+                document.getElementById('consultaResult').innerHTML = '';
+                document.getElementById('consultaInput').value = '';
+                
+                if (trabajadores.length > 0) {
+                    document.getElementById('consultaResult').innerHTML = `
+                        <div style="text-align: center; padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; margin-bottom: 15px;">
+                            <strong style="color: var(--success);">✓ Datos disponibles:</strong> 
+                            ${trabajadores.length} trabajadores registrados.<br>
+                            <span style="font-size: 13px; color: var(--secondary);">
+                                Use el buscador arriba para consultar por cédula o nombre
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('consultaResult').innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--danger);">
+                            ⚠️ No hay datos registrados en el sistema
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function showSection(sectionId) {
+            showSectionDirect(sectionId);
+        }
+
+        function logout() {
+            logSecurityEvent('LOGOUT', `Usuario ${currentUser} cerró sesión`);
+            currentUser = '';
+            currentUserRole = '';
+            currentSessionToken = null;
+            location.reload();
+        }
+
+        function updateCloudStatus(status, text) {
+            const statusEl = document.getElementById('cloudStatus');
+            const textEl = document.getElementById('cloudText');
+            const dbStatus = document.getElementById('dbStatus');
+
+            statusEl.className = 'cloud-status ' + status;
+            textEl.textContent = text;
+            dbStatus.textContent = text;
+        }
+
+        window.addEventListener('load', function() {
+            document.getElementById('appContainer').style.display = 'none';
+            loadSecurityState();
+        });
+
         // ============================================
         // VALIDACIÓN DE CÉDULA
         // ============================================
