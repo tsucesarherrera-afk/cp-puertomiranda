@@ -1847,1936 +1847,2562 @@
 
     <script>
         // ============================================
-        // CONFIGURACIÓN DE USUARIOS
-        // ============================================
-        const USERS = {
-            admin: {
-                username: 'admin',
-                password: 'CPM2024#Seguro!',
-                role: 'admin',
-                name: 'Administrador',
-                avatar: 'AD',
-                level: 'Superusuario'
-            },
-            consulta: {
-                username: 'consulta',
-                password: 'Consulta2024!',
-                role: 'consulta',
-                name: 'Usuario Consulta',
-                avatar: 'UC',
-                level: 'Solo Consulta'
-            }
+// CONFIGURACIÓN DE USUARIOS (AHORA EN SUPABASE)
+// ============================================
+
+// Ya no necesitas el objeto USERS hardcodeado
+// const USERS = { ... }; // ELIMINADO
+
+// Configuración de seguridad
+const MAX_ATTEMPTS = 3;
+const LOCKOUT_BASE_TIME = 30;
+const SECURITY_LOG_MAX = 50;
+
+// ============================================
+// CONFIGURACIÓN SUPABASE
+// ============================================
+
+const SUPABASE_URL = 'https://lhzigadhmkqfplbwepxp.supabase.co';
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoemlnYWRobWtxZnBsYndlcHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTg4ODEsImV4cCI6MjA4NzUzNDg4MX0.i0PIrrEUmvtnRsFnodIAD_NzYJD903DpQRnvJqqvfFk';
+
+let supabase = null;
+let isOnline = false;
+let currentSessionToken = null;
+
+// ============================================
+// VARIABLES GLOBALES
+// ============================================
+
+let trabajadores = [];
+let currentUser = null; // Ahora es el objeto usuario completo
+let currentUserRole = '';
+let currentEditId = null;
+let selectedFile = null;
+
+// Variables de seguridad locales (fallback)
+let failedAttempts = 0;
+let lockoutEndTime = null;
+let lockoutCount = 0;
+
+// ============================================
+// SISTEMA DE ENCRIPTACIÓN LOCAL (para datos de trabajadores)
+// ============================================
+
+function generateEncryptionKey() {
+    // Usa una clave derivada del service key para encriptar datos locales
+    const baseKey = SUPABASE_SERVICE_KEY.substring(0, 32) + '_CPM_SALT_v2';
+    let hash = 0;
+    for (let i = 0; i < baseKey.length; i++) {
+        const char = baseKey.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16).padStart(32, '0').substring(0, 32);
+}
+
+function encryptData(data) {
+    try {
+        const key = generateEncryptionKey();
+        const jsonString = JSON.stringify(data);
+        let encrypted = '';
+        for (let i = 0; i < jsonString.length; i++) {
+            const charCode = jsonString.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+            encrypted += String.fromCharCode(charCode);
+        }
+        return btoa(encrypted);
+    } catch (e) {
+        console.error('Error encriptando:', e);
+        return null;
+    }
+}
+
+function decryptData(encryptedData) {
+    try {
+        const key = generateEncryptionKey();
+        const decoded = atob(encryptedData);
+        let decrypted = '';
+        for (let i = 0; i < decoded.length; i++) {
+            const charCode = decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+            decrypted += String.fromCharCode(charCode);
+        }
+        return JSON.parse(decrypted);
+    } catch (e) {
+        console.error('Error desencriptando:', e);
+        return null;
+    }
+}
+
+// ============================================
+// FUNCIONES DE CÁLCULO (sin cambios)
+// ============================================
+
+function calcularEdad(fechaNacimiento) {
+    if (!fechaNacimiento) return null;
+    const hoy = new Date();
+    const fechaNac = new Date(fechaNacimiento);
+    let edad = hoy.getFullYear() - fechaNac.getFullYear();
+    const mes = hoy.getMonth() - fechaNac.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
+        edad--;
+    }
+    return edad;
+}
+
+function calcularTiempoServicio(fechaIngreso) {
+    if (!fechaIngreso) return null;
+    const hoy = new Date();
+    const fechaIng = new Date(fechaIngreso);
+    let años = hoy.getFullYear() - fechaIng.getFullYear();
+    let meses = hoy.getMonth() - fechaIng.getMonth();
+    
+    if (meses < 0) {
+        años--;
+        meses += 12;
+    }
+    if (hoy.getDate() < fechaIng.getDate()) {
+        meses--;
+        if (meses < 0) {
+            años--;
+            meses += 12;
+        }
+    }
+    
+    if (años < 0) años = 0;
+    if (meses < 0) meses = 0;
+    
+    let resultado = '';
+    if (años > 0) {
+        resultado += `${años} año${años !== 1 ? 's' : ''}`;
+    }
+    if (meses > 0) {
+        if (resultado) resultado += ' y ';
+        resultado += `${meses} mes${meses !== 1 ? 'es' : ''}`;
+    }
+    if (!resultado) resultado = 'Menos de 1 mes';
+    
+    return { años, meses, texto: resultado };
+}
+
+function actualizarEdad() {
+    const fechaNac = document.getElementById('fechaNacimientoInput').value;
+    const edadInput = document.getElementById('edadInput');
+    if (fechaNac) {
+        const edad = calcularEdad(fechaNac);
+        edadInput.value = edad !== null ? `${edad} años` : '';
+    } else {
+        edadInput.value = '';
+    }
+}
+
+function actualizarTiempoServicio() {
+    const fechaIng = document.getElementById('fechaIngresoInput').value;
+    const tiempoInput = document.getElementById('tiempoServicioInput');
+    if (fechaIng) {
+        const tiempo = calcularTiempoServicio(fechaIng);
+        tiempoInput.value = tiempo ? tiempo.texto : '';
+    } else {
+        tiempoInput.value = '';
+    }
+}
+
+function actualizarEdadEdit() {
+    const fechaNac = document.getElementById('editFechaNacimiento').value;
+    const edadInput = document.getElementById('editEdad');
+    if (fechaNac) {
+        const edad = calcularEdad(fechaNac);
+        edadInput.value = edad !== null ? `${edad} años` : '';
+    } else {
+        edadInput.value = '';
+    }
+}
+
+function actualizarTiempoServicioEdit() {
+    const fechaIng = document.getElementById('editFechaIngreso').value;
+    const tiempoInput = document.getElementById('editTiempoServicio');
+    if (fechaIng) {
+        const tiempo = calcularTiempoServicio(fechaIng);
+        tiempoInput.value = tiempo ? tiempo.texto : '';
+    } else {
+        tiempoInput.value = '';
+    }
+}
+
+// ============================================
+// SISTEMA DE AUDITORÍA (LOGS EN SUPABASE)
+// ============================================
+
+async function logAuditEvent(action, details = {}) {
+    if (!supabase || !currentUser) return;
+    
+    try {
+        const logEntry = {
+            user_id: currentUser.id,
+            username: currentUser.username,
+            action: action,
+            details: details,
+            ip_address: null, // En cliente no se puede obtener IP real fácilmente
+            user_agent: navigator.userAgent.substring(0, 200),
+            session_token: currentSessionToken ? currentSessionToken.substring(0, 50) : null
         };
-
-        // Configuración de seguridad
-        const MAX_ATTEMPTS = 3;
-        const LOCKOUT_BASE_TIME = 30;
-        const SECURITY_LOG_MAX = 50;
-
-        // ============================================
-        // CONFIGURACIÓN SUPABASE
-        // ============================================
-        const SUPABASE_URL = 'https://lhzigadhmkqfplbwepxp.supabase.co';
-        const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoemlnYWRobWtxZnBsYndlcHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTg4ODEsImV4cCI6MjA4NzUzNDg4MX0.i0PIrrEUmvtnRsFnodIAD_NzYJD903DpQRnvJqqvfFk';
         
-        let supabase = null;
-        let isOnline = false;
-        let currentSessionToken = null;
-        
-        // ============================================
-        // VARIABLES GLOBALES
-        // ============================================
-        let trabajadores = [];
-        let currentUser = '';
-        let currentUserRole = '';
-        let currentEditId = null;
-        let selectedFile = null;
-        
-        // Variables de seguridad
-        let failedAttempts = 0;
-        let lockoutEndTime = null;
-        let lockoutCount = 0;
+        await supabase.from('audit_logs').insert([logEntry]);
+    } catch (error) {
+        console.error('Error guardando log de auditoría:', error);
+    }
+}
 
-        // ============================================
-        // SISTEMA DE ENCRIPTACIÓN LOCAL
-        // ============================================
-        function generateEncryptionKey() {
-            const baseKey = USERS.admin.password + 'CPM_SALT_' + USERS.admin.username;
-            let hash = 0;
-            for (let i = 0; i < baseKey.length; i++) {
-                const char = baseKey.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash = hash & hash;
-            }
-            return Math.abs(hash).toString(16).padStart(32, '0').substring(0, 32);
-        }
+// ============================================
+// SISTEMA DE SEGURIDAD (ACTUALIZADO PARA SUPABASE)
+// ============================================
 
-        function encryptData(data) {
-            try {
-                const key = generateEncryptionKey();
-                const jsonString = JSON.stringify(data);
-                let encrypted = '';
-                for (let i = 0; i < jsonString.length; i++) {
-                    const charCode = jsonString.charCodeAt(i) ^ key.charCodeAt(i % key.length);
-                    encrypted += String.fromCharCode(charCode);
-                }
-                return btoa(encrypted);
-            } catch (e) {
-                console.error('Error encriptando:', e);
-                return null;
-            }
-        }
-
-        function decryptData(encryptedData) {
-            try {
-                const key = generateEncryptionKey();
-                const decoded = atob(encryptedData);
-                let decrypted = '';
-                for (let i = 0; i < decoded.length; i++) {
-                    const charCode = decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length);
-                    decrypted += String.fromCharCode(charCode);
-                }
-                return JSON.parse(decrypted);
-            } catch (e) {
-                console.error('Error desencriptando:', e);
-                return null;
-            }
-        }
-
-        // ============================================
-        // FUNCIONES DE CÁLCULO
-        // ============================================
-        function calcularEdad(fechaNacimiento) {
-            if (!fechaNacimiento) return null;
-            
-            const hoy = new Date();
-            const fechaNac = new Date(fechaNacimiento);
-            
-            let edad = hoy.getFullYear() - fechaNac.getFullYear();
-            const mes = hoy.getMonth() - fechaNac.getMonth();
-            
-            if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
-                edad--;
-            }
-            
-            return edad;
-        }
-
-        function calcularTiempoServicio(fechaIngreso) {
-            if (!fechaIngreso) return null;
-            
-            const hoy = new Date();
-            const fechaIng = new Date(fechaIngreso);
-            
-            let años = hoy.getFullYear() - fechaIng.getFullYear();
-            let meses = hoy.getMonth() - fechaIng.getMonth();
-            
-            if (meses < 0) {
-                años--;
-                meses += 12;
-            }
-            
-            if (hoy.getDate() < fechaIng.getDate()) {
-                meses--;
-                if (meses < 0) {
-                    años--;
-                    meses += 12;
-                }
-            }
-            
-            if (años < 0) años = 0;
-            if (meses < 0) meses = 0;
-            
-            let resultado = '';
-            if (años > 0) {
-                resultado += `${años} año${años !== 1 ? 's' : ''}`;
-            }
-            if (meses > 0) {
-                if (resultado) resultado += ' y ';
-                resultado += `${meses} mes${meses !== 1 ? 'es' : ''}`;
-            }
-            if (!resultado) resultado = 'Menos de 1 mes';
-            
-            return { años, meses, texto: resultado };
-        }
-
-        function actualizarEdad() {
-            const fechaNac = document.getElementById('fechaNacimientoInput').value;
-            const edadInput = document.getElementById('edadInput');
-            
-            if (fechaNac) {
-                const edad = calcularEdad(fechaNac);
-                edadInput.value = edad !== null ? `${edad} años` : '';
-            } else {
-                edadInput.value = '';
-            }
-        }
-
-        function actualizarTiempoServicio() {
-            const fechaIng = document.getElementById('fechaIngresoInput').value;
-            const tiempoInput = document.getElementById('tiempoServicioInput');
-            
-            if (fechaIng) {
-                const tiempo = calcularTiempoServicio(fechaIng);
-                tiempoInput.value = tiempo ? tiempo.texto : '';
-            } else {
-                tiempoInput.value = '';
-            }
-        }
-
-        function actualizarEdadEdit() {
-            const fechaNac = document.getElementById('editFechaNacimiento').value;
-            const edadInput = document.getElementById('editEdad');
-            
-            if (fechaNac) {
-                const edad = calcularEdad(fechaNac);
-                edadInput.value = edad !== null ? `${edad} años` : '';
-            } else {
-                edadInput.value = '';
-            }
-        }
-
-        function actualizarTiempoServicioEdit() {
-            const fechaIng = document.getElementById('editFechaIngreso').value;
-            const tiempoInput = document.getElementById('editTiempoServicio');
-            
-            if (fechaIng) {
-                const tiempo = calcularTiempoServicio(fechaIng);
-                tiempoInput.value = tiempo ? tiempo.texto : '';
-            } else {
-                tiempoInput.value = '';
-            }
-        }
-
-        // ============================================
-        // SISTEMA DE SEGURIDAD
-        // ============================================
-        function loadSecurityState() {
-            const saved = localStorage.getItem('cp_security_state');
-            if (saved) {
-                const state = JSON.parse(saved);
-                failedAttempts = state.failedAttempts || 0;
-                lockoutCount = state.lockoutCount || 0;
-                
-                if (state.lockoutEndTime) {
-                    const now = Date.now();
-                    if (now < state.lockoutEndTime) {
-                        lockoutEndTime = state.lockoutEndTime;
-                        startLockoutTimer();
-                    } else {
-                        failedAttempts = 0;
-                        lockoutEndTime = null;
-                        saveSecurityState();
-                    }
-                }
-            }
-            updateSecurityDisplay();
-        }
-
-        function saveSecurityState() {
-            const state = {
-                failedAttempts: failedAttempts,
-                lockoutEndTime: lockoutEndTime,
-                lockoutCount: lockoutCount,
-                lastUpdated: new Date().toISOString()
-            };
-            localStorage.setItem('cp_security_state', JSON.stringify(state));
-        }
-
-        function logSecurityEvent(type, details = '') {
-            const logs = JSON.parse(localStorage.getItem('cp_security_logs') || '[]');
-            const event = {
-                timestamp: new Date().toISOString(),
-                type: type,
-                details: details,
-                ip: 'local',
-                userAgent: navigator.userAgent.substring(0, 100)
-            };
-            
-            logs.unshift(event);
-            
-            if (logs.length > SECURITY_LOG_MAX) {
-                logs.pop();
-            }
-            
-            const encryptedLogs = encryptData(logs);
-            if (encryptedLogs) {
-                localStorage.setItem('cp_security_logs_encrypted', encryptedLogs);
-            }
-        }
-
-        function loadSecurityLogs() {
-            const encrypted = localStorage.getItem('cp_security_logs_encrypted');
-            if (encrypted) {
-                return decryptData(encrypted) || [];
-            }
-            return [];
-        }
-
-        function updateSecurityDisplay() {
-            const attemptsInfo = document.getElementById('attemptsInfo');
-            const failedAttemptsSpan = document.getElementById('failedAttempts');
-            
-            if (failedAttempts > 0) {
-                attemptsInfo.style.display = 'block';
-                failedAttemptsSpan.textContent = failedAttempts;
-            } else {
-                attemptsInfo.style.display = 'none';
-            }
-        }
-
-        function startLockoutTimer() {
-            const loginBtn = document.getElementById('loginBtn');
-            const usernameInput = document.getElementById('username');
-            const passwordInput = document.getElementById('password');
-            const lockoutMessage = document.getElementById('lockoutMessage');
-            const countdownSpan = document.getElementById('lockoutCountdown');
-            
-            loginBtn.disabled = true;
-            usernameInput.disabled = true;
-            passwordInput.disabled = true;
-            lockoutMessage.style.display = 'block';
-            
-            const updateCountdown = () => {
-                const now = Date.now();
-                const remaining = Math.ceil((lockoutEndTime - now) / 1000);
-                
-                if (remaining <= 0) {
-                    clearInterval(timer);
-                    loginBtn.disabled = false;
-                    usernameInput.disabled = false;
-                    passwordInput.disabled = false;
-                    lockoutMessage.style.display = 'none';
-                    failedAttempts = 0;
-                    lockoutEndTime = null;
-                    saveSecurityState();
-                    updateSecurityDisplay();
-                    
-                    logSecurityEvent('UNLOCK', 'Bloqueo automático finalizado');
-                    showToast('Cuenta desbloqueada. Puede intentar nuevamente.', 'warning');
-                } else {
-                    countdownSpan.textContent = remaining;
-                }
-            };
-            
-            updateCountdown();
-            const timer = setInterval(updateCountdown, 1000);
-        }
-
-        function handleFailedAttempt(reason) {
-            failedAttempts++;
-            
-            if (failedAttempts >= MAX_ATTEMPTS) {
-                lockoutCount++;
-                const multiplier = Math.pow(2, lockoutCount - 1);
-                const lockoutTime = LOCKOUT_BASE_TIME * multiplier * 1000;
-                lockoutEndTime = Date.now() + lockoutTime;
-                
-                saveSecurityState();
-                logSecurityEvent('LOCKOUT', `Cuenta bloqueada por ${LOCKOUT_BASE_TIME * multiplier} segundos. Motivo: ${reason}`);
+function loadSecurityState() {
+    const saved = localStorage.getItem('cp_security_state');
+    if (saved) {
+        const state = JSON.parse(saved);
+        failedAttempts = state.failedAttempts || 0;
+        lockoutCount = state.lockoutCount || 0;
+        if (state.lockoutEndTime) {
+            const now = Date.now();
+            if (now < state.lockoutEndTime) {
+                lockoutEndTime = state.lockoutEndTime;
                 startLockoutTimer();
-                
-                return `Cuenta bloqueada por ${LOCKOUT_BASE_TIME * multiplier} segundos por seguridad.`;
+            } else {
+                failedAttempts = 0;
+                lockoutEndTime = null;
+                saveSecurityState();
             }
-            
-            saveSecurityState();
-            logSecurityEvent('FAILED_ATTEMPT', `Intento ${failedAttempts}/${MAX_ATTEMPTS}. Motivo: ${reason}`);
-            updateSecurityDisplay();
-            
-            const remaining = MAX_ATTEMPTS - failedAttempts;
-            return `Credenciales inválidas. ${remaining} intento${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''} antes del bloqueo.`;
         }
+    }
+    updateSecurityDisplay();
+}
 
-        function handleSuccessfulLogin(userRole) {
+function saveSecurityState() {
+    const state = {
+        failedAttempts: failedAttempts,
+        lockoutEndTime: lockoutEndTime,
+        lockoutCount: lockoutCount,
+        lastUpdated: new Date().toISOString()
+    };
+    localStorage.setItem('cp_security_state', JSON.stringify(state));
+}
+
+function updateSecurityDisplay() {
+    const attemptsInfo = document.getElementById('attemptsInfo');
+    const failedAttemptsSpan = document.getElementById('failedAttempts');
+    if (failedAttempts > 0) {
+        attemptsInfo.style.display = 'block';
+        failedAttemptsSpan.textContent = failedAttempts;
+    } else {
+        attemptsInfo.style.display = 'none';
+    }
+}
+
+function startLockoutTimer() {
+    const loginBtn = document.getElementById('loginBtn');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const lockoutMessage = document.getElementById('lockoutMessage');
+    const countdownSpan = document.getElementById('lockoutCountdown');
+    
+    loginBtn.disabled = true;
+    usernameInput.disabled = true;
+    passwordInput.disabled = true;
+    lockoutMessage.style.display = 'block';
+    
+    const updateCountdown = () => {
+        const now = Date.now();
+        const remaining = Math.ceil((lockoutEndTime - now) / 1000);
+        
+        if (remaining <= 0) {
+            clearInterval(timer);
+            loginBtn.disabled = false;
+            usernameInput.disabled = false;
+            passwordInput.disabled = false;
+            lockoutMessage.style.display = 'none';
             failedAttempts = 0;
             lockoutEndTime = null;
             saveSecurityState();
-            
-            logSecurityEvent('SUCCESS_LOGIN', `Usuario ${currentUser} (${userRole}) autenticado correctamente`);
-            localStorage.setItem('cp_last_successful_login', new Date().toISOString());
-            currentSessionToken = generateSessionToken();
+            updateSecurityDisplay();
+            showToast('Cuenta desbloqueada. Puede intentar nuevamente.', 'warning');
+        } else {
+            countdownSpan.textContent = remaining;
         }
+    };
+    
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+}
 
-        function generateSessionToken() {
-            const timestamp = Date.now();
-            const random = Math.random().toString(36).substring(2);
-            const token = btoa(`${currentUser}:${timestamp}:${random}`);
-            return token;
+async function handleFailedAttempt(username, reason) {
+    failedAttempts++;
+    
+    if (failedAttempts >= MAX_ATTEMPTS) {
+        lockoutCount++;
+        const multiplier = Math.pow(2, lockoutCount - 1);
+        const lockoutTime = LOCKOUT_BASE_TIME * multiplier * 1000;
+        lockoutEndTime = Date.now() + lockoutTime;
+        saveSecurityState();
+        startLockoutTimer();
+        
+        // Log en Supabase del bloqueo
+        if (supabase) {
+            await supabase.from('audit_logs').insert([{
+                username: username,
+                action: 'LOCKOUT',
+                details: { reason: reason, duration_seconds: LOCKOUT_BASE_TIME * multiplier },
+                user_agent: navigator.userAgent.substring(0, 200),
+                timestamp: new Date().toISOString()
+            }]);
         }
+        
+        return `Cuenta bloqueada por ${LOCKOUT_BASE_TIME * multiplier} segundos por seguridad.`;
+    }
+    
+    saveSecurityState();
+    updateSecurityDisplay();
+    const remaining = MAX_ATTEMPTS - failedAttempts;
+    return `Credenciales inválidas. ${remaining} intento${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''} antes del bloqueo.`;
+}
 
-        // ============================================
-        // INICIALIZACIÓN SUPABASE
-        // ============================================
-        async function initSupabase() {
-            try {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-                    auth: {
-                        autoRefreshToken: true,
-                        persistSession: true,
-                        detectSessionInUrl: false
-                    },
-                    db: {
-                        schema: 'public'
-                    }
-                });
-                
-                document.getElementById('authMethod').textContent = 'Service Role';
-                document.getElementById('securityBadge').textContent = '🔒 RLS + Service';
-                document.getElementById('securityBadge').className = 'security-badge high';
-                
-                await testConnection();
-                
-            } catch (error) {
-                console.error('Error inicializando Supabase:', error);
-                updateCloudStatus('offline', 'Error de conexión');
-                document.getElementById('authMethod').textContent = 'Error';
-                document.getElementById('securityBadge').textContent = '❌ Error';
-                document.getElementById('securityBadge').className = 'security-badge critical';
-            }
-        }
-
-        async function testConnection() {
-            updateCloudStatus('syncing', 'Verificando...');
+async function handleSuccessfulLogin(userData) {
+    failedAttempts = 0;
+    lockoutEndTime = null;
+    saveSecurityState();
+    
+    currentSessionToken = generateSessionToken();
+    
+    // Actualizar último login en Supabase
+    if (supabase) {
+        await supabase
+            .from('usuarios_sistema')
+            .update({ 
+                last_login: new Date().toISOString(),
+                failed_attempts: 0,
+                locked_until: null
+            })
+            .eq('id', userData.id);
             
-            try {
-                const { data, error } = await supabase
-                    .from('trabajadores')
-                    .select('count', { count: 'exact', head: true });
-                
-                if (error) {
-                    if (error.code === '42501' || error.message.includes('permission denied')) {
-                        throw new Error('Acceso denegado - Verificar Service Role Key');
-                    }
-                    throw error;
-                }
-                
-                isOnline = true;
-                updateCloudStatus('online', 'Conectado (Seguro)');
-                updateSyncStats();
-                
-                logSecurityEvent('DB_CONNECT', 'Conexión establecida con rol de servicio');
-                
-            } catch (error) {
-                isOnline = false;
-                updateCloudStatus('offline', 'Sin conexión');
-                document.getElementById('connectionStatus').textContent = 'Error: ' + error.message;
-                document.getElementById('securityBadge').textContent = '⚠️ Desconectado';
-                document.getElementById('securityBadge').className = 'security-badge medium';
-                
-                logSecurityEvent('DB_ERROR', `Error de conexión: ${error.message}`);
+        await logAuditEvent('LOGIN', { role: userData.role, level: userData.level });
+    }
+    
+    localStorage.setItem('cp_last_successful_login', new Date().toISOString());
+}
+
+function generateSessionToken() {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2);
+    return btoa(`${currentUser ? currentUser.username : 'unknown'}:${timestamp}:${random}`);
+}
+
+// ============================================
+// INICIALIZACIÓN SUPABASE Y AUTENTICACIÓN
+// ============================================
+
+async function initSupabase() {
+    try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+            auth: {
+                autoRefreshToken: true,
+                persistSession: true,
+                detectSessionInUrl: false
+            },
+            db: {
+                schema: 'public'
             }
-        }
-
-        // ============================================
-        // SINCRONIZACIÓN CON SUPABASE
-        // ============================================
-        async function syncToCloud() {
-            if (!isOnline) {
-                showToast('No hay conexión con la base de datos', 'error');
-                return;
-            }
-
-            if (!currentSessionToken) {
-                showToast('Sesión no válida. Reinicie el sistema.', 'error');
-                return;
-            }
-
-            showLoading(true, 'Subiendo datos de forma segura...');
-            
-            try {
-                const trabajadoresData = trabajadores.map(t => ({
-                    id: t.id,
-                    cedula: t.cedula,
-                    primer_nombre: t.primerNombre,
-                    segundo_nombre: t.segundoNombre,
-                    primer_apellido: t.primerApellido,
-                    segundo_apellido: t.segundoApellido,
-                    sexo: t.sexo,
-                    fecha_nacimiento: t.fechaNacimiento,
-                    estado_civil: t.estadoCivil,
-                    direccion: t.direccion,
-                    celular: t.celular,
-                    correo: t.correo,
-                    nivel_academico: t.nivelAcademico,
-                    profesion: t.profesion,
-                    tipo_personal: t.tipoPersonal,
-                    fecha_ingreso: t.fechaIngreso,
-                    cargo: t.cargo,
-                    codigo: t.codigo,
-                    dependencia: t.dependencia,
-                    nomina: t.nomina,
-                    observaciones: t.observaciones,
-                    hijos: t.hijos,
-                    fecha_registro: t.fechaRegistro,
-                    updated_at: new Date().toISOString(),
-                    last_sync_by: currentUser,
-                    last_sync_token: currentSessionToken.substring(0, 20) + '...',
-                    sync_timestamp: new Date().toISOString()
-                }));
-
-                const { error: trabajadoresError } = await supabase
-                    .from('trabajadores')
-                    .upsert(trabajadoresData, { onConflict: 'id' });
-
-                if (trabajadoresError) throw trabajadoresError;
-
-                localStorage.setItem('cp_last_sync', new Date().toISOString());
-                document.getElementById('lastSync').textContent = new Date().toLocaleString();
-                
-                logSecurityEvent('SYNC_UPLOAD', `Sincronizados ${trabajadores.length} registros a la nube`);
-                
-                showLoading(false);
-                showToast(`✅ ${trabajadores.length} trabajadores sincronizados de forma segura`);
-                updateSyncStats();
-                
-            } catch (error) {
-                showLoading(false);
-                showToast('Error al subir: ' + error.message, 'error');
-                logSecurityEvent('SYNC_ERROR', `Error en subida: ${error.message}`);
-            }
-        }
-
-        async function syncFromCloud() {
-            if (!isOnline) {
-                showToast('No hay conexión con la base de datos', 'error');
-                return;
-            }
-
-            if (!currentSessionToken && currentUserRole !== 'consulta') {
-                showToast('Sesión no válida. Reinicie el sistema.', 'error');
-                return;
-            }
-
-            showLoading(true, 'Descargando datos de la nube...');
-            
-            try {
-                const { data, error } = await supabase
-                    .from('trabajadores')
-                    .select('*');
-
-                if (error) throw error;
-
-                if (data && data.length > 0) {
-                    trabajadores = data.map(t => ({
-                        id: t.id,
-                        cedula: t.cedula,
-                        primerNombre: t.primer_nombre,
-                        segundoNombre: t.segundo_nombre,
-                        primerApellido: t.primer_apellido,
-                        segundoApellido: t.segundo_apellido,
-                        sexo: t.sexo,
-                        fechaNacimiento: t.fecha_nacimiento,
-                        estadoCivil: t.estado_civil,
-                        direccion: t.direccion,
-                        celular: t.celular,
-                        correo: t.correo,
-                        nivelAcademico: t.nivel_academico,
-                        profesion: t.profesion,
-                        tipoPersonal: t.tipo_personal,
-                        fechaIngreso: t.fecha_ingreso,
-                        cargo: t.cargo,
-                        codigo: t.codigo,
-                        dependencia: t.dependencia,
-                        nomina: t.nomina,
-                        observaciones: t.observaciones,
-                        hijos: t.hijos || [],
-                        fechaRegistro: t.fecha_registro
-                    }));
-
-                    saveLocalData();
-                    
-                    logSecurityEvent('SYNC_DOWNLOAD', `Descargados ${data.length} registros de la nube por ${currentUser}`);
-                } else {
-                    logSecurityEvent('SYNC_EMPTY', 'No hay datos en la nube');
-                }
-                showLoading(false);
-                
-            } catch (error) {
-                showLoading(false);
-                showToast('Error al descargar: ' + error.message, 'error');
-                logSecurityEvent('SYNC_ERROR', `Error en descarga: ${error.message}`);
-                throw error;
-            }
-        }
-
-        async function mergeCloudData() {
-            if (!isOnline) {
-                showToast('No hay conexión con la base de datos', 'error');
-                return;
-            }
-
-            if (!currentSessionToken) {
-                showToast('Sesión no válida. Reinicie el sistema.', 'error');
-                return;
-            }
-
-            showLoading(true, 'Fusionando datos de forma segura...');
-            
-            try {
-                const { data: cloudData, error } = await supabase
-                    .from('trabajadores')
-                    .select('*');
-
-                if (error) throw error;
-
-                const cloudTrabajadores = cloudData.map(t => ({
-                    id: t.id,
-                    cedula: t.cedula,
-                    primerNombre: t.primer_nombre,
-                    segundoNombre: t.segundo_nombre,
-                    primerApellido: t.primer_apellido,
-                    segundoApellido: t.segundo_apellido,
-                    sexo: t.sexo,
-                    fechaNacimiento: t.fecha_nacimiento,
-                    estadoCivil: t.estado_civil,
-                    direccion: t.direccion,
-                    celular: t.celular,
-                    correo: t.correo,
-                    nivelAcademico: t.nivel_academico,
-                    profesion: t.profesion,
-                    tipoPersonal: t.tipo_personal,
-                    fechaIngreso: t.fecha_ingreso,
-                    cargo: t.cargo,
-                    codigo: t.codigo,
-                    dependencia: t.dependencia,
-                    nomina: t.nomina,
-                    observaciones: t.observaciones,
-                    hijos: t.hijos || [],
-                    fechaRegistro: t.fecha_registro,
-                    updated_at: t.updated_at
-                }));
-
-                const mergedMap = new Map();
-                
-                trabajadores.forEach(t => {
-                    mergedMap.set(t.cedula, { ...t, source: 'local' });
-                });
-                
-                cloudTrabajadores.forEach(cloud => {
-                    const local = mergedMap.get(cloud.cedula);
-                    if (!local) {
-                        mergedMap.set(cloud.cedula, { ...cloud, source: 'cloud' });
-                    } else {
-                        const localDate = new Date(local.updated_at || local.fechaRegistro);
-                        const cloudDate = new Date(cloud.updated_at || cloud.fechaRegistro);
-                        
-                        if (cloudDate > localDate) {
-                            mergedMap.set(cloud.cedula, { ...cloud, source: 'merged' });
-                        }
-                    }
-                });
-
-                trabajadores = Array.from(mergedMap.values());
-                
-                await syncToCloud();
-                
-                saveLocalData();
-                updateStats();
-                loadTrabajadores();
-                
-                logSecurityEvent('SYNC_MERGE', `Fusión completada: ${trabajadores.length} registros`);
-                
-                showLoading(false);
-                showToast(`✅ Fusión completada: ${trabajadores.length} registros unificados`);
-                updateSyncStats();
-                
-            } catch (error) {
-                showLoading(false);
-                showToast('Error al fusionar: ' + error.message, 'error');
-                logSecurityEvent('SYNC_ERROR', `Error en fusión: ${error.message}`);
-            }
-        }
-
-        async function updateSyncStats() {
-            if (!isOnline) {
-                document.getElementById('syncCloudCount').textContent = '-';
-                document.getElementById('connectionStatus').textContent = 'Desconectado';
-                return;
-            }
-
-            try {
-                const { count, error } = await supabase
-                    .from('trabajadores')
-                    .select('*', { count: 'exact', head: true });
-
-                if (error) throw error;
-
-                document.getElementById('syncCloudCount').textContent = count || 0;
-                document.getElementById('syncLocalCount').textContent = trabajadores.length;
-                document.getElementById('syncTotalCount').textContent = trabajadores.length;
-                document.getElementById('connectionStatus').textContent = 'Conectado (Service Role)';
-                
-            } catch (error) {
-                document.getElementById('syncCloudCount').textContent = 'Error';
-            }
-        }
-
-        // ============================================
-        // INICIALIZACIÓN DEL SISTEMA
-        // ============================================
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            if (lockoutEndTime && Date.now() < lockoutEndTime) {
-                const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
-                document.getElementById('loginError').textContent = `Cuenta bloqueada. Intente en ${remaining} segundos.`;
-                document.getElementById('loginError').style.display = 'block';
-                return;
-            }
-            
-            const userInput = document.getElementById('username').value.trim();
-            const passInput = document.getElementById('password').value;
-            
-            if (!userInput || !passInput) {
-                document.getElementById('loginError').textContent = 'Complete todos los campos';
-                document.getElementById('loginError').style.display = 'block';
-                return;
-            }
-            
-            let userFound = null;
-            let userRole = '';
-            
-            for (const [key, user] of Object.entries(USERS)) {
-                if (user.username === userInput && user.password === passInput) {
-                    userFound = user;
-                    userRole = user.role;
-                    break;
-                }
-            }
-            
-            if (!userFound) {
-                const msg = handleFailedAttempt('Credenciales incorrectas');
-                document.getElementById('loginError').textContent = msg;
-                document.getElementById('loginError').style.display = 'block';
-                document.getElementById('password').value = '';
-                return;
-            }
-            
-            handleSuccessfulLogin(userRole);
-            document.getElementById('loginError').style.display = 'none';
-            
-            currentUser = userFound.username;
-            currentUserRole = userRole;
-            
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'block';
-            document.body.style.background = 'var(--bg)';
-            
-            configureUIForRole(userFound);
-            
-            await initializeSystemForUser(userFound.role);
         });
+        
+        document.getElementById('authMethod').textContent = 'Service Role';
+        document.getElementById('securityBadge').textContent = '🔒 RLS + Service';
+        document.getElementById('securityBadge').className = 'security-badge high';
+        
+        await testConnection();
+    } catch (error) {
+        console.error('Error inicializando Supabase:', error);
+        updateCloudStatus('offline', 'Error de conexión');
+        document.getElementById('authMethod').textContent = 'Error';
+        document.getElementById('securityBadge').textContent = '❌ Error';
+        document.getElementById('securityBadge').className = 'security-badge critical';
+    }
+}
 
-        function configureUIForRole(user) {
-            const userAvatar = document.getElementById('userAvatar');
-            const userNameDisplay = document.getElementById('userNameDisplay');
-            const userLevelDisplay = document.getElementById('userLevelDisplay');
+async function testConnection() {
+    updateCloudStatus('syncing', 'Verificando...');
+    try {
+        const { data, error } = await supabase
+            .from('trabajadores')
+            .select('count', { count: 'exact', head: true });
             
-            userAvatar.textContent = user.avatar;
-            userNameDisplay.textContent = user.name;
-            userLevelDisplay.textContent = `Nivel: ${user.level}`;
-            
-            if (user.role === 'consulta') {
-                userAvatar.classList.add('consulta');
-                userLevelDisplay.classList.add('user-level-consulta');
-                
-                document.getElementById('navRegistrarItem').style.display = 'none';
-                document.getElementById('navTrabajadoresItem').style.display = 'none';
-                document.getElementById('navMigrationItem').style.display = 'none';
-                document.getElementById('navExportItem').style.display = 'none';
-                document.getElementById('navSyncItem').style.display = 'none';
-                
-                document.getElementById('navDashboard').classList.add('consulta-only');
-                document.getElementById('navConsulta').classList.add('consulta-only');
-                
-                logSecurityEvent('ROLE_ACCESS', 'Usuario consulta accedió al sistema');
-            } else {
-                userAvatar.classList.remove('consulta');
-                userLevelDisplay.classList.remove('user-level-consulta');
-                
-                document.getElementById('navRegistrarItem').style.display = 'block';
-                document.getElementById('navTrabajadoresItem').style.display = 'block';
-                document.getElementById('navMigrationItem').style.display = 'block';
-                document.getElementById('navExportItem').style.display = 'block';
-                document.getElementById('navSyncItem').style.display = 'block';
-                
-                document.getElementById('navDashboard').classList.remove('consulta-only');
-                document.getElementById('navConsulta').classList.remove('consulta-only');
-                
-                logSecurityEvent('ROLE_ACCESS', 'Administrador accedió al sistema');
+        if (error) {
+            if (error.code === '42501' || error.message.includes('permission denied')) {
+                throw new Error('Acceso denegado - Verificar Service Role Key');
             }
+            throw error;
         }
+        
+        isOnline = true;
+        updateCloudStatus('online', 'Conectado (Seguro)');
+        updateSyncStats();
+        
+        // Verificar que la tabla de usuarios existe
+        const { error: userError } = await supabase
+            .from('usuarios_sistema')
+            .select('count', { count: 'exact', head: true });
+            
+        if (userError) {
+            console.warn('Tabla usuarios_sistema no encontrada:', userError.message);
+        }
+        
+    } catch (error) {
+        isOnline = false;
+        updateCloudStatus('offline', 'Sin conexión');
+        document.getElementById('connectionStatus').textContent = 'Error: ' + error.message;
+        document.getElementById('securityBadge').textContent = '⚠️ Desconectado';
+        document.getElementById('securityBadge').className = 'security-badge medium';
+    }
+}
 
-        async function initializeSystemForUser(role) {
+// ============================================
+// AUTENTICACIÓN CON SUPABASE (NUEVA FUNCIÓN)
+// ============================================
+
+async function authenticateUser(username, password) {
+    if (!isOnline || !supabase) {
+        throw new Error('No hay conexión con la base de datos. Intente más tarde.');
+    }
+    
+    try {
+        // Buscar usuario por username
+        const { data: users, error } = await supabase
+            .from('usuarios_sistema')
+            .select('*')
+            .eq('username', username)
+            .eq('is_active', true)
+            .limit(1);
+            
+        if (error) throw error;
+        
+        if (!users || users.length === 0) {
+            return { success: false, error: 'Usuario no encontrado o inactivo' };
+        }
+        
+        const user = users[0];
+        
+        // Verificar si está bloqueado
+        if (user.locked_until && new Date(user.locked_until) > new Date()) {
+            const remaining = Math.ceil((new Date(user.locked_until) - new Date()) / 1000);
+            return { success: false, error: `Cuenta bloqueada. Intente en ${remaining} segundos.` };
+        }
+        
+        // Verificar contraseña (comparación simple - en producción usar bcrypt)
+        // NOTA: En un sistema real, debes hashear la contraseña. Aquí comparación directa por simplicidad
+        // o usar una función de hash en el cliente o mejor aún, usar auth de Supabase
+        
+        // Para mayor seguridad, considera usar Supabase Auth con email/password
+        // o hashear la contraseña antes de enviarla
+        
+        const passwordMatch = await verifyPassword(password, user.password_hash);
+        
+        if (!passwordMatch) {
+            // Incrementar contador de intentos fallidos
+            const newFailedAttempts = (user.failed_attempts || 0) + 1;
+            const updates = { failed_attempts: newFailedAttempts };
+            
+            if (newFailedAttempts >= MAX_ATTEMPTS) {
+                const lockoutTime = LOCKOUT_BASE_TIME * Math.pow(2, lockoutCount) * 1000;
+                updates.locked_until = new Date(Date.now() + lockoutTime).toISOString();
+            }
+            
+            await supabase
+                .from('usuarios_sistema')
+                .update(updates)
+                .eq('id', user.id);
+                
+            return { success: false, error: 'Contraseña incorrecta', attempts: newFailedAttempts };
+        }
+        
+        // Resetear intentos fallidos
+        await supabase
+            .from('usuarios_sistema')
+            .update({ 
+                failed_attempts: 0, 
+                locked_until: null,
+                last_login: new Date().toISOString()
+            })
+            .eq('id', user.id);
+        
+        return { success: true, user: user };
+        
+    } catch (error) {
+        console.error('Error en autenticación:', error);
+        throw new Error('Error al verificar credenciales: ' + error.message);
+    }
+}
+
+// Función simple de verificación de contraseña (mejorar en producción)
+async function verifyPassword(inputPassword, storedHash) {
+    // En un sistema real, usa bcrypt o similar
+    // Por ahora, comparación directa o usa una librería como bcryptjs
+    
+    // Opción 1: Comparación directa (NO RECOMENDADO PARA PRODUCCIÓN)
+    // return inputPassword === storedHash;
+    
+    // Opción 2: Usar una función de hash simple (SHA-256)
+    const encoder = new TextEncoder();
+    const data = encoder.encode(inputPassword);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    return hashHex === storedHash;
+}
+
+// ============================================
+// GESTIÓN DE USUARIOS (SOLO ADMIN)
+// ============================================
+
+async function loadUsersList() {
+    if (!isOnline || !supabase || currentUserRole !== 'admin') {
+        showToast('No tiene permisos o no hay conexión', 'error');
+        return [];
+    }
+    
+    try {
+        const { data, error } = await supabase
+            .from('usuarios_sistema')
+            .select('id, username, role, name, level, is_active, created_at, last_login')
+            .order('created_at', { ascending: false });
+            
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error cargando usuarios:', error);
+        showToast('Error al cargar usuarios: ' + error.message, 'error');
+        return [];
+    }
+}
+
+async function createUser(userData) {
+    if (!isOnline || !supabase || currentUserRole !== 'admin') {
+        showToast('No tiene permisos para crear usuarios', 'error');
+        return null;
+    }
+    
+    try {
+        // Hashear contraseña
+        const passwordHash = await hashPassword(userData.password);
+        
+        const newUser = {
+            username: userData.username,
+            password_hash: passwordHash,
+            role: userData.role,
+            name: userData.name,
+            avatar: userData.avatar || (userData.role === 'admin' ? 'AD' : 'UC'),
+            level: userData.level || (userData.role === 'admin' ? 'Superusuario' : 'Solo Consulta'),
+            is_active: true,
+            created_by: currentUser.id
+        };
+        
+        const { data, error } = await supabase
+            .from('usuarios_sistema')
+            .insert([newUser])
+            .select()
+            .single();
+            
+        if (error) {
+            if (error.message.includes('unique constraint')) {
+                throw new Error('El nombre de usuario ya existe');
+            }
+            throw error;
+        }
+        
+        await logAuditEvent('CREATE_USER', { 
+            new_user_id: data.id, 
+            username: data.username, 
+            role: data.role 
+        });
+        
+        showToast(`Usuario ${data.username} creado correctamente`);
+        return data;
+        
+    } catch (error) {
+        console.error('Error creando usuario:', error);
+        showToast('Error: ' + error.message, 'error');
+        return null;
+    }
+}
+
+async function updateUser(userId, updates) {
+    if (!isOnline || !supabase || currentUserRole !== 'admin') {
+        showToast('No tiene permisos para editar usuarios', 'error');
+        return false;
+    }
+    
+    // No permitir editar el usuario admin principal (opcional)
+    if (userId === currentUser.id && updates.is_active === false) {
+        showToast('No puede desactivar su propia cuenta', 'error');
+        return false;
+    }
+    
+    try {
+        const updateData = { ...updates, updated_at: new Date().toISOString() };
+        
+        // Si se actualiza contraseña, hashearla
+        if (updates.password) {
+            updateData.password_hash = await hashPassword(updates.password);
+            delete updateData.password;
+        }
+        
+        const { error } = await supabase
+            .from('usuarios_sistema')
+            .update(updateData)
+            .eq('id', userId);
+            
+        if (error) throw error;
+        
+        await logAuditEvent('UPDATE_USER', { 
+            target_user_id: userId, 
+            updates: Object.keys(updates) 
+        });
+        
+        showToast('Usuario actualizado correctamente');
+        return true;
+        
+    } catch (error) {
+        console.error('Error actualizando usuario:', error);
+        showToast('Error: ' + error.message, 'error');
+        return false;
+    }
+}
+
+async function deleteUser(userId) {
+    if (!isOnline || !supabase || currentUserRole !== 'admin') {
+        showToast('No tiene permisos para eliminar usuarios', 'error');
+        return false;
+    }
+    
+    if (userId === currentUser.id) {
+        showToast('No puede eliminar su propia cuenta', 'error');
+        return false;
+    }
+    
+    try {
+        // Obtener info del usuario antes de eliminar para el log
+        const { data: userInfo } = await supabase
+            .from('usuarios_sistema')
+            .select('username, role')
+            .eq('id', userId)
+            .single();
+        
+        const { error } = await supabase
+            .from('usuarios_sistema')
+            .delete()
+            .eq('id', userId);
+            
+        if (error) throw error;
+        
+        await logAuditEvent('DELETE_USER', { 
+            deleted_user_id: userId,
+            username: userInfo?.username,
+            role: userInfo?.role
+        });
+        
+        showToast('Usuario eliminado correctamente');
+        return true;
+        
+    } catch (error) {
+        console.error('Error eliminando usuario:', error);
+        showToast('Error: ' + error.message, 'error');
+        return false;
+    }
+}
+
+async function hashPassword(password) {
+    // SHA-256 para compatibilidad (en producción usar bcrypt con salt)
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ============================================
+// SINCRONIZACIÓN CON SUPABASE (ACTUALIZADO)
+// ============================================
+
+async function syncToCloud() {
+    if (!isOnline) {
+        showToast('No hay conexión con la base de datos', 'error');
+        return;
+    }
+    
+    if (!currentSessionToken) {
+        showToast('Sesión no válida. Reinicie el sistema.', 'error');
+        return;
+    }
+    
+    showLoading(true, 'Subiendo datos de forma segura...');
+    
+    try {
+        const trabajadoresData = trabajadores.map(t => ({
+            id: t.id,
+            cedula: t.cedula,
+            primer_nombre: t.primerNombre,
+            segundo_nombre: t.segundoNombre,
+            primer_apellido: t.primerApellido,
+            segundo_apellido: t.segundoApellido,
+            sexo: t.sexo,
+            fecha_nacimiento: t.fechaNacimiento,
+            estado_civil: t.estadoCivil,
+            direccion: t.direccion,
+            celular: t.celular,
+            correo: t.correo,
+            nivel_academico: t.nivelAcademico,
+            profesion: t.profesion,
+            tipo_personal: t.tipoPersonal,
+            fecha_ingreso: t.fechaIngreso,
+            cargo: t.cargo,
+            codigo: t.codigo,
+            dependencia: t.dependencia,
+            nomina: t.nomina,
+            observaciones: t.observaciones,
+            hijos: t.hijos,
+            fecha_registro: t.fechaRegistro,
+            updated_at: new Date().toISOString(),
+            last_sync_by: currentUser ? currentUser.username : 'unknown',
+            last_sync_token: currentSessionToken.substring(0, 20) + '...',
+            sync_timestamp: new Date().toISOString()
+        }));
+        
+        const { error: trabajadoresError } = await supabase
+            .from('trabajadores')
+            .upsert(trabajadoresData, { onConflict: 'id' });
+            
+        if (trabajadoresError) throw trabajadoresError;
+        
+        localStorage.setItem('cp_last_sync', new Date().toISOString());
+        document.getElementById('lastSync').textContent = new Date().toLocaleString();
+        
+        await logAuditEvent('SYNC_UPLOAD', { count: trabajadores.length });
+        
+        showLoading(false);
+        showToast(`✅ ${trabajadores.length} trabajadores sincronizados de forma segura`);
+        updateSyncStats();
+        
+    } catch (error) {
+        showLoading(false);
+        showToast('Error al subir: ' + error.message, 'error');
+        await logAuditEvent('SYNC_ERROR', { error: error.message, direction: 'upload' });
+    }
+}
+
+async function syncFromCloud() {
+    if (!isOnline) {
+        showToast('No hay conexión con la base de datos', 'error');
+        return;
+    }
+    
+    if (!currentSessionToken && currentUserRole !== 'consulta') {
+        showToast('Sesión no válida. Reinicie el sistema.', 'error');
+        return;
+    }
+    
+    showLoading(true, 'Descargando datos de la nube...');
+    
+    try {
+        const { data, error } = await supabase
+            .from('trabajadores')
+            .select('*');
+            
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+            trabajadores = data.map(t => ({
+                id: t.id,
+                cedula: t.cedula,
+                primerNombre: t.primer_nombre,
+                segundoNombre: t.segundo_nombre,
+                primerApellido: t.primer_apellido,
+                segundoApellido: t.segundo_apellido,
+                sexo: t.sexo,
+                fechaNacimiento: t.fecha_nacimiento,
+                estadoCivil: t.estado_civil,
+                direccion: t.direccion,
+                celular: t.celular,
+                correo: t.correo,
+                nivelAcademico: t.nivel_academico,
+                profesion: t.profesion,
+                tipoPersonal: t.tipo_personal,
+                fechaIngreso: t.fecha_ingreso,
+                cargo: t.cargo,
+                codigo: t.codigo,
+                dependencia: t.dependencia,
+                nomina: t.nomina,
+                observaciones: t.observaciones,
+                hijos: t.hijos || [],
+                fechaRegistro: t.fecha_registro
+            }));
+            
+            saveLocalData();
+            await logAuditEvent('SYNC_DOWNLOAD', { count: data.length });
+        } else {
+            await logAuditEvent('SYNC_EMPTY', { message: 'No hay datos en la nube' });
+        }
+        
+        showLoading(false);
+        
+    } catch (error) {
+        showLoading(false);
+        showToast('Error al descargar: ' + error.message, 'error');
+        await logAuditEvent('SYNC_ERROR', { error: error.message, direction: 'download' });
+        throw error;
+    }
+}
+
+async function mergeCloudData() {
+    if (!isOnline) {
+        showToast('No hay conexión con la base de datos', 'error');
+        return;
+    }
+    
+    if (!currentSessionToken) {
+        showToast('Sesión no válida. Reinicie el sistema.', 'error');
+        return;
+    }
+    
+    showLoading(true, 'Fusionando datos de forma segura...');
+    
+    try {
+        const { data: cloudData, error } = await supabase
+            .from('trabajadores')
+            .select('*');
+            
+        if (error) throw error;
+        
+        const cloudTrabajadores = cloudData.map(t => ({
+            id: t.id,
+            cedula: t.cedula,
+            primerNombre: t.primer_nombre,
+            segundoNombre: t.segundo_nombre,
+            primerApellido: t.primer_apellido,
+            segundoApellido: t.segundo_apellido,
+            sexo: t.sexo,
+            fechaNacimiento: t.fecha_nacimiento,
+            estadoCivil: t.estado_civil,
+            direccion: t.direccion,
+            celular: t.celular,
+            correo: t.correo,
+            nivelAcademico: t.nivel_academico,
+            profesion: t.profesion,
+            tipoPersonal: t.tipo_personal,
+            fechaIngreso: t.fecha_ingreso,
+            cargo: t.cargo,
+            codigo: t.codigo,
+            dependencia: t.dependencia,
+            nomina: t.nomina,
+            observaciones: t.observaciones,
+            hijos: t.hijos || [],
+            fechaRegistro: t.fecha_registro,
+            updated_at: t.updated_at
+        }));
+        
+        const mergedMap = new Map();
+        
+        trabajadores.forEach(t => {
+            mergedMap.set(t.cedula, { ...t, source: 'local' });
+        });
+        
+        cloudTrabajadores.forEach(cloud => {
+            const local = mergedMap.get(cloud.cedula);
+            if (!local) {
+                mergedMap.set(cloud.cedula, { ...cloud, source: 'cloud' });
+            } else {
+                const localDate = new Date(local.updated_at || local.fechaRegistro);
+                const cloudDate = new Date(cloud.updated_at || cloud.fechaRegistro);
+                if (cloudDate > localDate) {
+                    mergedMap.set(cloud.cedula, { ...cloud, source: 'merged' });
+                }
+            }
+        });
+        
+        trabajadores = Array.from(mergedMap.values());
+        
+        await syncToCloud();
+        saveLocalData();
+        updateStats();
+        loadTrabajadores();
+        
+        await logAuditEvent('SYNC_MERGE', { count: trabajadores.length });
+        
+        showLoading(false);
+        showToast(`✅ Fusión completada: ${trabajadores.length} registros unificados`);
+        updateSyncStats();
+        
+    } catch (error) {
+        showLoading(false);
+        showToast('Error al fusionar: ' + error.message, 'error');
+        await logAuditEvent('SYNC_ERROR', { error: error.message, action: 'merge' });
+    }
+}
+
+async function updateSyncStats() {
+    if (!isOnline) {
+        document.getElementById('syncCloudCount').textContent = '-';
+        document.getElementById('connectionStatus').textContent = 'Desconectado';
+        return;
+    }
+    
+    try {
+        const { count, error } = await supabase
+            .from('trabajadores')
+            .select('*', { count: 'exact', head: true });
+            
+        if (error) throw error;
+        
+        document.getElementById('syncCloudCount').textContent = count || 0;
+        document.getElementById('syncLocalCount').textContent = trabajadores.length;
+        document.getElementById('syncTotalCount').textContent = trabajadores.length;
+        document.getElementById('connectionStatus').textContent = 'Conectado (Service Role)';
+        
+    } catch (error) {
+        document.getElementById('syncCloudCount').textContent = 'Error';
+    }
+}
+
+// ============================================
+// INICIALIZACIÓN DEL SISTEMA (ACTUALIZADA)
+// ============================================
+
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (lockoutEndTime && Date.now() < lockoutEndTime) {
+        const remaining = Math.ceil((lockoutEndTime - Date.now()) / 1000);
+        document.getElementById('loginError').textContent = `Cuenta bloqueada. Intente en ${remaining} segundos.`;
+        document.getElementById('loginError').style.display = 'block';
+        return;
+    }
+    
+    const userInput = document.getElementById('username').value.trim();
+    const passInput = document.getElementById('password').value;
+    
+    if (!userInput || !passInput) {
+        document.getElementById('loginError').textContent = 'Complete todos los campos';
+        document.getElementById('loginError').style.display = 'block';
+        return;
+    }
+    
+    // Mostrar carga
+    document.getElementById('loginBtn').disabled = true;
+    document.getElementById('loginBtn').textContent = 'Verificando...';
+    
+    try {
+        // Primero inicializar Supabase si no está listo
+        if (!supabase) {
             await initSupabase();
-            
-            loadLocalData();
-            
-            if (isOnline) {
-                showLoading(true, 'Sincronizando datos con la nube...');
-                
-                try {
-                    await syncFromCloud();
-                    showLoading(false);
-                    showToast(`✅ Datos sincronizados: ${trabajadores.length} trabajadores`);
-                } catch (err) {
-                    console.log('Error sincronizando desde nube:', err);
-                    showLoading(false);
-                    showToast('⚠️ Usando datos locales. Error de sincronización.', 'warning');
-                }
-            } else {
-                showToast('⚠️ Sin conexión a internet. Usando datos locales.', 'warning');
-            }
-            
-            completeInitialization(role);
         }
-
-        function completeInitialization(role) {
-            updateStats();
-            loadTrabajadores();
-            
-            if (role === 'consulta') {
-                showSectionDirect('dashboard');
-                loadRecent();
-                
-                if (trabajadores.length > 0) {
-                    showToast(`✅ ${trabajadores.length} trabajadores cargados correctamente`);
-                } else {
-                    showToast('⚠️ No hay trabajadores registrados', 'warning');
-                }
-            } else {
-                loadRecent();
-                showSectionDirect('dashboard');
-            }
-            
-            const lastSync = localStorage.getItem('cp_last_sync');
-            if (lastSync) {
-                document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
-            }
+        
+        const authResult = await authenticateUser(userInput, passInput);
+        
+        if (!authResult.success) {
+            const msg = await handleFailedAttempt(userInput, authResult.error);
+            document.getElementById('loginError').textContent = msg;
+            document.getElementById('loginError').style.display = 'block';
+            document.getElementById('password').value = '';
+            document.getElementById('loginBtn').disabled = false;
+            document.getElementById('loginBtn').textContent = 'Ingresar al Sistema';
+            return;
         }
+        
+        // Login exitoso
+        await handleSuccessfulLogin(authResult.user);
+        
+        document.getElementById('loginError').style.display = 'none';
+        currentUser = authResult.user;
+        currentUserRole = authResult.user.role;
+        
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'block';
+        document.body.style.background = 'var(--bg)';
+        
+        configureUIForRole(authResult.user);
+        await initializeSystemForUser(authResult.user.role);
+        
+    } catch (error) {
+        console.error('Error en login:', error);
+        document.getElementById('loginError').textContent = error.message;
+        document.getElementById('loginError').style.display = 'block';
+        document.getElementById('loginBtn').disabled = false;
+        document.getElementById('loginBtn').textContent = 'Ingresar al Sistema';
+    }
+});
 
-        function showSectionDirect(sectionId) {
-            if (currentUserRole === 'consulta') {
-                const allowedSections = ['dashboard', 'consulta'];
-                if (!allowedSections.includes(sectionId)) {
-                    showToast('No tiene permisos para acceder a esta sección', 'error');
-                    return;
-                }
-            }
+function configureUIForRole(user) {
+    const userAvatar = document.getElementById('userAvatar');
+    const userNameDisplay = document.getElementById('userNameDisplay');
+    const userLevelDisplay = document.getElementById('userLevelDisplay');
+    
+    userAvatar.textContent = user.avatar || (user.role === 'admin' ? 'AD' : 'UC');
+    userNameDisplay.textContent = user.name;
+    userLevelDisplay.textContent = `Nivel: ${user.level}`;
+    
+    if (user.role === 'consulta') {
+        userAvatar.classList.add('consulta');
+        userLevelDisplay.classList.add('user-level-consulta');
+        document.getElementById('navRegistrarItem').style.display = 'none';
+        document.getElementById('navTrabajadoresItem').style.display = 'none';
+        document.getElementById('navMigrationItem').style.display = 'none';
+        document.getElementById('navExportItem').style.display = 'none';
+        document.getElementById('navSyncItem').style.display = 'none';
+        document.getElementById('navDashboard').classList.add('consulta-only');
+        document.getElementById('navConsulta').classList.add('consulta-only');
+    } else {
+        userAvatar.classList.remove('consulta');
+        userLevelDisplay.classList.remove('user-level-consulta');
+        document.getElementById('navRegistrarItem').style.display = 'block';
+        document.getElementById('navTrabajadoresItem').style.display = 'block';
+        document.getElementById('navMigrationItem').style.display = 'block';
+        document.getElementById('navExportItem').style.display = 'block';
+        document.getElementById('navSyncItem').style.display = 'block';
+        document.getElementById('navDashboard').classList.remove('consulta-only');
+        document.getElementById('navConsulta').classList.remove('consulta-only');
+        
+        // Agregar menú de gestión de usuarios si es admin
+        addUserManagementMenu();
+    }
+}
 
-            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-            
-            const targetSection = document.getElementById(sectionId);
-            if (targetSection) {
-                targetSection.classList.add('active');
-            }
-            
-            const titles = {
-                'dashboard': 'Dashboard',
-                'sync': 'Sincronizar Nube',
-                'migration': 'Importar Excel',
-                'export': 'Exportar Excel',
-                'trabajadores': 'Trabajadores',
-                'registrar': 'Nuevo Registro',
-                'consulta': 'Consulta'
-            };
-            document.getElementById('pageTitle').textContent = titles[sectionId] || 'Dashboard';
-            
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            
-            const navLinks = {
-                'dashboard': 'navDashboard',
-                'consulta': 'navConsulta',
-                'registrar': 'navRegistrar',
-                'trabajadores': 'navTrabajadores',
-                'migration': 'navMigration',
-                'export': 'navExport',
-                'sync': 'navSync'
-            };
-            
-            const activeNavId = navLinks[sectionId];
-            if (activeNavId) {
-                const activeNav = document.getElementById(activeNavId);
-                if (activeNav) {
-                    activeNav.classList.add('active');
-                }
-            }
-            
-            if (sectionId === 'dashboard') {
-                updateStats();
-                loadRecent();
-            } else if (sectionId === 'trabajadores') {
-                loadTrabajadores();
-            } else if (sectionId === 'export') {
-                updateExportPreview();
-            } else if (sectionId === 'sync') {
-                updateSyncStats();
-            } else if (sectionId === 'consulta') {
-                loadLocalData();
-                document.getElementById('consultaResult').innerHTML = '';
-                document.getElementById('consultaInput').value = '';
-                
-                if (trabajadores.length > 0) {
-                    document.getElementById('consultaResult').innerHTML = `
-                        <div style="text-align: center; padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; margin-bottom: 15px;">
-                            <strong style="color: var(--success);">✓ Datos disponibles:</strong> 
-                            ${trabajadores.length} trabajadores registrados.<br>
-                            <span style="font-size: 13px; color: var(--secondary);">
-                                Use el buscador arriba para consultar por cédula o nombre
-                            </span>
+// Agregar opción de gestión de usuarios en el menú lateral
+function addUserManagementMenu() {
+    const navMenu = document.getElementById('navMenu');
+    
+    // Verificar si ya existe
+    if (document.getElementById('navUsuariosItem')) return;
+    
+    const li = document.createElement('li');
+    li.className = 'nav-item';
+    li.id = 'navUsuariosItem';
+    li.innerHTML = `
+        <a class="nav-link" onclick="showSection('usuarios')" id="navUsuarios">
+            <span>👤</span> Gestión de Usuarios
+        </a>
+    `;
+    
+    // Insertar antes del divider
+    const divider = navMenu.querySelector('.sidebar-divider');
+    if (divider) {
+        navMenu.insertBefore(li, divider);
+    } else {
+        navMenu.appendChild(li);
+    }
+    
+    // Agregar sección de usuarios al main content
+    addUserManagementSection();
+}
+
+function addUserManagementSection() {
+    const mainContent = document.querySelector('.main-content');
+    
+    // Verificar si ya existe
+    if (document.getElementById('usuarios')) return;
+    
+    const section = document.createElement('div');
+    section.className = 'content-section';
+    section.id = 'usuarios';
+    section.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Gestión de Usuarios del Sistema</div>
+                <button class="btn-primary" onclick="openUserModal()">+ Nuevo Usuario</button>
+            </div>
+            <div class="card-body">
+                <div class="search-box">
+                    <input type="text" class="search-input" id="searchUserInput" 
+                           placeholder="Buscar usuario..." onkeyup="searchUsers()">
+                    <button class="btn-primary" onclick="loadUsersTable()">Actualizar</button>
+                </div>
+                <table id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Nombre</th>
+                            <th>Rol</th>
+                            <th>Nivel</th>
+                            <th>Estado</th>
+                            <th>Último Login</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody">
+                        <tr><td colspan="7" style="text-align: center; color: var(--secondary); padding: 40px;">
+                            Cargando usuarios...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Modal para crear/editar usuario -->
+        <div class="modal" id="userModal">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2 id="userModalTitle">Nuevo Usuario</h2>
+                    <button class="close-btn" onclick="closeUserModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm" onsubmit="saveUser(event)">
+                        <input type="hidden" id="editUserId">
+                        <div class="form-group required-field">
+                            <label>Nombre de Usuario</label>
+                            <input type="text" id="userUsername" required placeholder="Ej: jperez">
                         </div>
-                    `;
-                } else {
-                    document.getElementById('consultaResult').innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: var(--danger);">
-                            ⚠️ No hay datos registrados en el sistema
+                        <div class="form-group required-field">
+                            <label>Nombre Completo</label>
+                            <input type="text" id="userName" required placeholder="Ej: Juan Pérez">
                         </div>
-                    `;
-                }
-            }
+                        <div class="form-group required-field">
+                            <label>Contraseña</label>
+                            <input type="password" id="userPassword" required placeholder="Mínimo 6 caracteres">
+                        </div>
+                        <div class="form-group required-field">
+                            <label>Rol</label>
+                            <select id="userRole" required onchange="updateUserLevel()">
+                                <option value="">Seleccione...</option>
+                                <option value="admin">Administrador</option>
+                                <option value="consulta">Usuario Consulta</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nivel (Automático)</label>
+                            <input type="text" id="userLevel" readonly value="">
+                        </div>
+                        <div style="margin-top: 20px; display: flex; gap: 10px;">
+                            <button type="submit" class="btn-primary">Guardar</button>
+                            <button type="button" class="btn-secondary" onclick="closeUserModal()">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    mainContent.appendChild(section);
+    
+    // Event listener para cerrar modal al hacer clic fuera
+    document.getElementById('userModal').addEventListener('click', function(e) {
+        if (e.target === this) closeUserModal();
+    });
+}
+
+async function initializeSystemForUser(role) {
+    if (!isOnline) {
+        showToast('⚠️ Sin conexión a internet. Usando datos locales.', 'warning');
+    } else {
+        showLoading(true, 'Sincronizando datos con la nube...');
+        try {
+            await syncFromCloud();
+            showLoading(false);
+            showToast(`✅ Datos sincronizados: ${trabajadores.length} trabajadores`);
+        } catch (err) {
+            console.log('Error sincronizando desde nube:', err);
+            showLoading(false);
+            showToast('⚠️ Usando datos locales. Error de sincronización.', 'warning');
         }
+    }
+    
+    completeInitialization(role);
+}
 
-        function showSection(sectionId) {
-            showSectionDirect(sectionId);
+function completeInitialization(role) {
+    updateStats();
+    loadTrabajadores();
+    
+    if (role === 'consulta') {
+        showSectionDirect('dashboard');
+        loadRecent();
+        if (trabajadores.length > 0) {
+            showToast(`✅ ${trabajadores.length} trabajadores cargados correctamente`);
+        } else {
+            showToast('⚠️ No hay trabajadores registrados', 'warning');
         }
-
-        function logout() {
-            logSecurityEvent('LOGOUT', `Usuario ${currentUser} cerró sesión`);
-            currentUser = '';
-            currentUserRole = '';
-            currentSessionToken = null;
-            location.reload();
+    } else {
+        loadRecent();
+        showSectionDirect('dashboard');
+        // Cargar tabla de usuarios si existe
+        if (document.getElementById('usersBody')) {
+            loadUsersTable();
         }
+    }
+    
+    const lastSync = localStorage.getItem('cp_last_sync');
+    if (lastSync) {
+        document.getElementById('lastSync').textContent = new Date(lastSync).toLocaleString();
+    }
+}
 
-        function updateCloudStatus(status, text) {
-            const statusEl = document.getElementById('cloudStatus');
-            const textEl = document.getElementById('cloudText');
-            const dbStatus = document.getElementById('dbStatus');
-
-            statusEl.className = 'cloud-status ' + status;
-            textEl.textContent = text;
-            dbStatus.textContent = text;
+function showSectionDirect(sectionId) {
+    if (currentUserRole === 'consulta') {
+        const allowedSections = ['dashboard', 'consulta'];
+        if (!allowedSections.includes(sectionId)) {
+            showToast('No tiene permisos para acceder a esta sección', 'error');
+            return;
         }
-
-        window.addEventListener('load', function() {
-            document.getElementById('appContainer').style.display = 'none';
-            loadSecurityState();
-        });
-
-        // ============================================
-        // VALIDACIÓN DE CÉDULA
-        // ============================================
-        function validateCedulaUnica(cedula) {
-            const validationIcon = document.getElementById('cedulaValidation');
-            const cedulaError = document.getElementById('cedulaError');
-            const btnSubmit = document.getElementById('btnSubmit');
-            
-            if (!cedula || cedula.trim() === '') {
-                validationIcon.textContent = '';
-                cedulaError.style.display = 'none';
-                btnSubmit.disabled = false;
-                return true;
-            }
-            
-            const existe = trabajadores.some(t => 
-                t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
-            );
-            
-            if (existe) {
-                validationIcon.textContent = '❌';
-                validationIcon.className = 'validation-icon invalid';
-                cedulaError.textContent = '⚠️ Esta cédula ya existe';
-                cedulaError.style.display = 'block';
-                btnSubmit.disabled = true;
-                return false;
-            }
-            
-            validationIcon.textContent = '✓';
-            validationIcon.className = 'validation-icon valid';
-            cedulaError.style.display = 'none';
-            btnSubmit.disabled = false;
-            return true;
+    }
+    
+    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
+    
+    const titles = {
+        'dashboard': 'Dashboard',
+        'sync': 'Sincronizar Nube',
+        'migration': 'Importar Excel',
+        'export': 'Exportar Excel',
+        'trabajadores': 'Trabajadores',
+        'registrar': 'Nuevo Registro',
+        'consulta': 'Consulta',
+        'usuarios': 'Gestión de Usuarios'
+    };
+    
+    document.getElementById('pageTitle').textContent = titles[sectionId] || 'Dashboard';
+    
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const navLinks = {
+        'dashboard': 'navDashboard',
+        'consulta': 'navConsulta',
+        'registrar': 'navRegistrar',
+        'trabajadores': 'navTrabajadores',
+        'migration': 'navMigration',
+        'export': 'navExport',
+        'sync': 'navSync',
+        'usuarios': 'navUsuarios'
+    };
+    
+    const activeNavId = navLinks[sectionId];
+    if (activeNavId) {
+        const activeNav = document.getElementById(activeNavId);
+        if (activeNav) {
+            activeNav.classList.add('active');
         }
-
-        function resetCedulaValidation() {
-            document.getElementById('cedulaValidation').textContent = '';
-            document.getElementById('cedulaError').style.display = 'none';
-            document.getElementById('btnSubmit').disabled = false;
-            document.getElementById('edadInput').value = '';
-            document.getElementById('tiempoServicioInput').value = '';
+    }
+    
+    if (sectionId === 'dashboard') {
+        updateStats();
+        loadRecent();
+    } else if (sectionId === 'trabajadores') {
+        loadTrabajadores();
+    } else if (sectionId === 'export') {
+        updateExportPreview();
+    } else if (sectionId === 'sync') {
+        updateSyncStats();
+    } else if (sectionId === 'consulta') {
+        loadLocalData();
+        document.getElementById('consultaResult').innerHTML = '';
+        document.getElementById('consultaInput').value = '';
+        if (trabajadores.length > 0) {
+            document.getElementById('consultaResult').innerHTML = `
+                <div style="text-align: center; padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; margin-bottom: 15px;">
+                    <strong style="color: var(--success);">✓ Datos disponibles:</strong>
+                    ${trabajadores.length} trabajadores registrados.<br>
+                    <span style="font-size: 13px; color: var(--secondary);">
+                        Use el buscador arriba para consultar por cédula o nombre
+                    </span>
+                </div>
+            `;
+        } else {
+            document.getElementById('consultaResult').innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--danger);">
+                    ⚠️ No hay datos registrados en el sistema
+                </div>
+            `;
         }
+    } else if (sectionId === 'usuarios') {
+        loadUsersTable();
+    }
+}
 
-        // ============================================
-        // EXPORTAR A EXCEL
-        // ============================================
-        function exportToExcel() {
-            if (trabajadores.length === 0) {
-                showToast('No hay datos para exportar', 'error');
-                return;
-            }
+function showSection(sectionId) {
+    showSectionDirect(sectionId);
+}
 
-            showLoading(true, 'Generando archivo Excel...');
+async function logout() {
+    await logAuditEvent('LOGOUT', { username: currentUser ? currentUser.username : 'unknown' });
+    currentUser = null;
+    currentUserRole = '';
+    currentSessionToken = null;
+    location.reload();
+}
 
-            try {
-                const trabajadoresData = trabajadores.map(t => ({
-                    'ID': t.id,
-                    'Cedula': t.cedula,
-                    'PrimerNombre': t.primerNombre || '',
-                    'SegundoNombre': t.segundoNombre || '',
-                    'PrimerApellido': t.primerApellido || '',
-                    'SegundoApellido': t.segundoApellido || '',
-                    'Sexo': t.sexo || '',
-                    'FechaNacimiento': t.fechaNacimiento || '',
-                    'Edad': t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) : '',
-                    'EstadoCivil': t.estadoCivil || '',
-                    'Direccion': t.direccion || '',
-                    'Celular': t.celular || '',
-                    'Correo': t.correo || '',
-                    'NivelAcademico': t.nivelAcademico || '',
-                    'Profesion': t.profesion || '',
-                    'TipoPersonal': t.tipoPersonal || '',
-                    'FechaIngreso': t.fechaIngreso || '',
-                    'TiempoServicio': t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '',
-                    'Cargo': t.cargo || '',
-                    'Codigo': t.codigo || '',
-                    'Dependencia': t.dependencia || '',
-                    'Nomina': t.nomina || '',
-                    'Observaciones': t.observaciones || '',
-                    'FechaRegistro': t.fechaRegistro,
-                    'TotalHijos': t.hijos ? t.hijos.length : 0
-                }));
+function updateCloudStatus(status, text) {
+    const statusEl = document.getElementById('cloudStatus');
+    const textEl = document.getElementById('cloudText');
+    const dbStatus = document.getElementById('dbStatus');
+    
+    statusEl.className = 'cloud-status ' + status;
+    textEl.textContent = text;
+    dbStatus.textContent = text;
+}
 
-                const hijosData = [];
-                trabajadores.forEach(t => {
-                    if (t.hijos && t.hijos.length > 0) {
-                        t.hijos.forEach((h, index) => {
-                            hijosData.push({
-                                'ID': `${t.id}_${index}`,
-                                'CedulaPadreMadre': t.cedula,
-                                'NombrePadreMadre': `${t.primerNombre || ''} ${t.primerApellido || ''}`.trim(),
-                                'NombresApellidosHijo': h.nombresApellidos || '',
-                                'CedulaHijo': h.cedula || '',
-                                'Sexo': h.sexo || '',
-                                'FechaNacimiento': h.fechaNacimiento || ''
-                            });
-                        });
-                    }
-                });
+window.addEventListener('load', function() {
+    document.getElementById('appContainer').style.display = 'none';
+    loadSecurityState();
+});
 
-                const wb = XLSX.utils.book_new();
-                
-                const wsTrabajadores = XLSX.utils.json_to_sheet(trabajadoresData);
-                XLSX.utils.book_append_sheet(wb, wsTrabajadores, 'Trabajadores');
-                
-                const wsHijos = XLSX.utils.json_to_sheet(hijosData.length > 0 ? hijosData : [{Mensaje: 'No hay hijos registrados'}]);
-                XLSX.utils.book_append_sheet(wb, wsHijos, 'Hijos');
+// ============================================
+// FUNCIONES DE GESTIÓN DE USUARIOS (UI)
+// ============================================
 
-                const fecha = new Date().toISOString().split('T')[0];
-                const nombreArchivo = `CP_Puerto_Miranda_${fecha}.xlsx`;
+async function loadUsersTable() {
+    const tbody = document.getElementById('usersBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--secondary); padding: 40px;">Cargando...</td></tr>';
+    
+    const users = await loadUsersList();
+    
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--secondary); padding: 40px;">No hay usuarios registrados</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = users.map(u => `
+        <tr>
+            <td><strong>${u.username}</strong></td>
+            <td>${u.name}</td>
+            <td><span class="badge ${u.role === 'admin' ? 'badge-cloud' : 'badge-success'}">${u.role === 'admin' ? 'Administrador' : 'Consulta'}</span></td>
+            <td>${u.level}</td>
+            <td><span class="badge ${u.is_active ? 'badge-success' : 'badge-danger'}">${u.is_active ? 'Activo' : 'Inactivo'}</span></td>
+            <td>${u.last_login ? new Date(u.last_login).toLocaleString() : 'Nunca'}</td>
+            <td>
+                <button class="btn-warning" onclick="editUserModal('${u.id}')" title="Editar">✏️</button>
+                <button class="btn-danger" onclick="deleteUserConfirm('${u.id}', '${u.username}')" title="Eliminar">🗑️</button>
+            </td>
+        </tr>
+    `).join('');
+}
 
-                XLSX.writeFile(wb, nombreArchivo);
-                
-                logSecurityEvent('EXPORT', `Exportados ${trabajadores.length} registros a Excel`);
-                
-                showLoading(false);
-                showToast(`Archivo exportado: ${nombreArchivo}`);
-                
-            } catch (error) {
-                showLoading(false);
-                showToast('Error al exportar: ' + error.message, 'error');
-            }
+function searchUsers() {
+    const query = document.getElementById('searchUserInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#usersBody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
+}
+
+function openUserModal() {
+    document.getElementById('userForm').reset();
+    document.getElementById('editUserId').value = '';
+    document.getElementById('userModalTitle').textContent = 'Nuevo Usuario';
+    document.getElementById('userPassword').required = true;
+    document.getElementById('userModal').classList.add('active');
+}
+
+function closeUserModal() {
+    document.getElementById('userModal').classList.remove('active');
+}
+
+function updateUserLevel() {
+    const role = document.getElementById('userRole').value;
+    document.getElementById('userLevel').value = role === 'admin' ? 'Superusuario' : (role === 'consulta' ? 'Solo Consulta' : '');
+}
+
+async function saveUser(e) {
+    e.preventDefault();
+    
+    const userId = document.getElementById('editUserId').value;
+    const userData = {
+        username: document.getElementById('userUsername').value.trim(),
+        name: document.getElementById('userName').value.trim(),
+        password: document.getElementById('userPassword').value,
+        role: document.getElementById('userRole').value,
+        level: document.getElementById('userLevel').value,
+        avatar: document.getElementById('userRole').value === 'admin' ? 'AD' : 'UC'
+    };
+    
+    if (userId) {
+        // Actualizar
+        const updates = {
+            username: userData.username,
+            name: userData.name,
+            role: userData.role,
+            level: userData.level,
+            avatar: userData.avatar
+        };
+        if (userData.password) {
+            updates.password = userData.password;
         }
+        await updateUser(userId, updates);
+    } else {
+        // Crear nuevo
+        await createUser(userData);
+    }
+    
+    closeUserModal();
+    loadUsersTable();
+}
 
-        function updateExportPreview() {
-            const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
-            document.getElementById('exportTotalTrabajadores').textContent = trabajadores.length;
-            document.getElementById('exportTotalHijos').textContent = totalHijos;
+async function editUserModal(userId) {
+    const users = await loadUsersList();
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    document.getElementById('editUserId').value = user.id;
+    document.getElementById('userUsername').value = user.username;
+    document.getElementById('userName').value = user.name;
+    document.getElementById('userRole').value = user.role;
+    document.getElementById('userLevel').value = user.level;
+    document.getElementById('userPassword').required = false;
+    document.getElementById('userPassword').placeholder = 'Dejar en blanco para mantener actual';
+    document.getElementById('userModalTitle').textContent = 'Editar Usuario';
+    
+    document.getElementById('userModal').classList.add('active');
+}
 
-            const previewTrabajadores = document.getElementById('previewTrabajadores');
-            const trabajadoresPreview = trabajadores.slice(0, 5);
-            
-            if (trabajadoresPreview.length > 0) {
-                previewTrabajadores.innerHTML = trabajadoresPreview.map(t => `
-                    <tr>
-                        <td>${t.cedula}</td>
-                        <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
-                        <td>${t.cargo || 'No especificado'}</td>
-                        <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
-                        <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
-                    </tr>
-                `).join('');
-            } else {
-                previewTrabajadores.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--secondary);">Sin trabajadores registrados</td></tr>';
-            }
+async function deleteUserConfirm(userId, username) {
+    if (confirm(`¿Está seguro de eliminar al usuario ${username}?\n\nEsta acción no se puede deshacer.`)) {
+        await deleteUser(userId);
+        loadUsersTable();
+    }
+}
 
-            const previewHijos = document.getElementById('previewHijos');
-            const hijosPreview = [];
-            trabajadores.forEach(t => {
-                if (t.hijos) {
-                    t.hijos.forEach(h => {
-                        hijosPreview.push({
-                            cedulaPadre: t.cedula,
-                            ...h
-                        });
+// ============================================
+// VALIDACIÓN DE CÉDULA (sin cambios)
+// ============================================
+
+function validateCedulaUnica(cedula) {
+    const validationIcon = document.getElementById('cedulaValidation');
+    const cedulaError = document.getElementById('cedulaError');
+    const btnSubmit = document.getElementById('btnSubmit');
+    
+    if (!cedula || cedula.trim() === '') {
+        validationIcon.textContent = '';
+        cedulaError.style.display = 'none';
+        btnSubmit.disabled = false;
+        return true;
+    }
+    
+    const existe = trabajadores.some(t => 
+        t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
+    );
+    
+    if (existe) {
+        validationIcon.textContent = '❌';
+        validationIcon.className = 'validation-icon invalid';
+        cedulaError.textContent = '⚠️ Esta cédula ya existe';
+        cedulaError.style.display = 'block';
+        btnSubmit.disabled = true;
+        return false;
+    }
+    
+    validationIcon.textContent = '✓';
+    validationIcon.className = 'validation-icon valid';
+    cedulaError.style.display = 'none';
+    btnSubmit.disabled = false;
+    return true;
+}
+
+function resetCedulaValidation() {
+    document.getElementById('cedulaValidation').textContent = '';
+    document.getElementById('cedulaError').style.display = 'none';
+    document.getElementById('btnSubmit').disabled = false;
+    document.getElementById('edadInput').value = '';
+    document.getElementById('tiempoServicioInput').value = '';
+}
+
+// ============================================
+// EXPORTAR A EXCEL (sin cambios funcionales, solo logs)
+// ============================================
+
+function exportToExcel() {
+    if (trabajadores.length === 0) {
+        showToast('No hay datos para exportar', 'error');
+        return;
+    }
+    
+    showLoading(true, 'Generando archivo Excel...');
+    
+    try {
+        const trabajadoresData = trabajadores.map(t => ({
+            'ID': t.id,
+            'Cedula': t.cedula,
+            'PrimerNombre': t.primerNombre || '',
+            'SegundoNombre': t.segundoNombre || '',
+            'PrimerApellido': t.primerApellido || '',
+            'SegundoApellido': t.segundoApellido || '',
+            'Sexo': t.sexo || '',
+            'FechaNacimiento': t.fechaNacimiento || '',
+            'Edad': t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) : '',
+            'EstadoCivil': t.estadoCivil || '',
+            'Direccion': t.direccion || '',
+            'Celular': t.celular || '',
+            'Correo': t.correo || '',
+            'NivelAcademico': t.nivelAcademico || '',
+            'Profesion': t.profesion || '',
+            'TipoPersonal': t.tipoPersonal || '',
+            'FechaIngreso': t.fechaIngreso || '',
+            'TiempoServicio': t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '',
+            'Cargo': t.cargo || '',
+            'Codigo': t.codigo || '',
+            'Dependencia': t.dependencia || '',
+            'Nomina': t.nomina || '',
+            'Observaciones': t.observaciones || '',
+            'FechaRegistro': t.fechaRegistro,
+            'TotalHijos': t.hijos ? t.hijos.length : 0
+        }));
+        
+        const hijosData = [];
+        trabajadores.forEach(t => {
+            if (t.hijos && t.hijos.length > 0) {
+                t.hijos.forEach((h, index) => {
+                    hijosData.push({
+                        'ID': `${t.id}_${index}`,
+                        'CedulaPadreMadre': t.cedula,
+                        'NombrePadreMadre': `${t.primerNombre || ''} ${t.primerApellido || ''}`.trim(),
+                        'NombresApellidosHijo': h.nombresApellidos || '',
+                        'CedulaHijo': h.cedula || '',
+                        'Sexo': h.sexo || '',
+                        'FechaNacimiento': h.fechaNacimiento || ''
                     });
-                }
+                });
+            }
+        });
+        
+        const wb = XLSX.utils.book_new();
+        const wsTrabajadores = XLSX.utils.json_to_sheet(trabajadoresData);
+        XLSX.utils.book_append_sheet(wb, wsTrabajadores, 'Trabajadores');
+        
+        const wsHijos = XLSX.utils.json_to_sheet(hijosData.length > 0 ? hijosData : [{Mensaje: 'No hay hijos registrados'}]);
+        XLSX.utils.book_append_sheet(wb, wsHijos, 'Hijos');
+        
+        const fecha = new Date().toISOString().split('T')[0];
+        const nombreArchivo = `CP_Puerto_Miranda_${fecha}.xlsx`;
+        
+        XLSX.writeFile(wb, nombreArchivo);
+        
+        logAuditEvent('EXPORT', { filename: nombreArchivo, count: trabajadores.length });
+        
+        showLoading(false);
+        showToast(`Archivo exportado: ${nombreArchivo}`);
+        
+    } catch (error) {
+        showLoading(false);
+        showToast('Error al exportar: ' + error.message, 'error');
+    }
+}
+
+function updateExportPreview() {
+    const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
+    document.getElementById('exportTotalTrabajadores').textContent = trabajadores.length;
+    document.getElementById('exportTotalHijos').textContent = totalHijos;
+    
+    const previewTrabajadores = document.getElementById('previewTrabajadores');
+    const trabajadoresPreview = trabajadores.slice(0, 5);
+    
+    if (trabajadoresPreview.length > 0) {
+        previewTrabajadores.innerHTML = trabajadoresPreview.map(t => `
+            <tr>
+                <td>${t.cedula}</td>
+                <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+                <td>${t.cargo || 'No especificado'}</td>
+                <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
+                <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
+            </tr>
+        `).join('');
+    } else {
+        previewTrabajadores.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--secondary);">Sin trabajadores registrados</td></tr>';
+    }
+    
+    const previewHijos = document.getElementById('previewHijos');
+    const hijosPreview = [];
+    trabajadores.forEach(t => {
+        if (t.hijos) {
+            t.hijos.forEach(h => {
+                hijosPreview.push({
+                    cedulaPadre: t.cedula,
+                    ...h
+                });
             });
-            
-            const hijosLimitados = hijosPreview.slice(0, 5);
-            
-            if (hijosLimitados.length > 0) {
-                previewHijos.innerHTML = hijosLimitados.map(h => `
-                    <tr>
-                        <td>${h.cedulaPadre}</td>
-                        <td>${h.nombresApellidos || ''}</td>
-                        <td>${h.sexo || '-'}</td>
-                        <td>${h.fechaNacimiento || '-'}</td>
-                    </tr>
-                `).join('');
-            } else {
-                previewHijos.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin hijos registrados</td></tr>';
-            }
         }
+    });
+    
+    const hijosLimitados = hijosPreview.slice(0, 5);
+    if (hijosLimitados.length > 0) {
+        previewHijos.innerHTML = hijosLimitados.map(h => `
+            <tr>
+                <td>${h.cedulaPadre}</td>
+                <td>${h.nombresApellidos || ''}</td>
+                <td>${h.sexo || '-'}</td>
+                <td>${h.fechaNacimiento || '-'}</td>
+            </tr>
+        `).join('');
+    } else {
+        previewHijos.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--secondary);">Sin hijos registrados</td></tr>';
+    }
+}
 
-        // ============================================
-        // SINCRONIZACIÓN EXCEL
-        // ============================================
-        function handleFileSelect(input) {
-            const label = document.getElementById('fileLabel');
-            const btnSync = document.getElementById('btnSync');
+// ============================================
+// SINCRONIZACIÓN EXCEL (sin cambios funcionales)
+// ============================================
+
+function handleFileSelect(input) {
+    const label = document.getElementById('fileLabel');
+    const btnSync = document.getElementById('btnSync');
+    
+    if (input.files && input.files[0]) {
+        selectedFile = input.files[0];
+        label.textContent = `📄 ${selectedFile.name}`;
+        label.classList.add('has-file');
+        btnSync.disabled = false;
+        document.getElementById('syncStatus').innerHTML = 'Archivo listo para sincronizar';
+    } else {
+        selectedFile = null;
+        label.textContent = '📁 Seleccionar archivo Excel (.xlsx)';
+        label.classList.remove('has-file');
+        btnSync.disabled = true;
+    }
+}
+
+async function syncFromExcel() {
+    if (!selectedFile) {
+        showToast('Selecciona un archivo primero', 'error');
+        return;
+    }
+    
+    showLoading(true, 'Procesando Excel...');
+    
+    try {
+        const data = await selectedFile.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        const trabajadoresSheet = workbook.Sheets['Trabajadores'] || workbook.Sheets[workbook.SheetNames[0]];
+        const trabajadoresData = XLSX.utils.sheet_to_json(trabajadoresSheet, { header: 1 });
+        
+        let hijosData = [];
+        if (workbook.SheetNames.includes('Hijos')) {
+            const hijosSheet = workbook.Sheets['Hijos'];
+            const hijosRaw = XLSX.utils.sheet_to_json(hijosSheet, { header: 1 });
             
-            if (input.files && input.files[0]) {
-                selectedFile = input.files[0];
-                label.textContent = `📄 ${selectedFile.name}`;
-                label.classList.add('has-file');
-                btnSync.disabled = false;
-                document.getElementById('syncStatus').innerHTML = 'Archivo listo para sincronizar';
-            } else {
-                selectedFile = null;
-                label.textContent = '📁 Seleccionar archivo Excel (.xlsx)';
-                label.classList.remove('has-file');
-                btnSync.disabled = true;
-            }
-        }
-
-        async function syncFromExcel() {
-            if (!selectedFile) {
-                showToast('Selecciona un archivo primero', 'error');
-                return;
-            }
-
-            showLoading(true, 'Procesando Excel...');
-            
-            try {
-                const data = await selectedFile.arrayBuffer();
-                const workbook = XLSX.read(data, { type: 'array' });
-                
-                const trabajadoresSheet = workbook.Sheets['Trabajadores'] || workbook.Sheets[workbook.SheetNames[0]];
-                const trabajadoresData = XLSX.utils.sheet_to_json(trabajadoresSheet, { header: 1 });
-
-                let hijosData = [];
-                if (workbook.SheetNames.includes('Hijos')) {
-                    const hijosSheet = workbook.Sheets['Hijos'];
-                    const hijosRaw = XLSX.utils.sheet_to_json(hijosSheet, { header: 1 });
-                    if (hijosRaw.length > 1) {
-                        const headers = hijosRaw[0].map(h => h.toString().trim());
-                        for (let i = 1; i < hijosRaw.length; i++) {
-                            const row = hijosRaw[i];
-                            if (!row || row.length === 0) continue;
-                            const obj = {};
-                            headers.forEach((h, idx) => {
-                                obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
-                            });
-                            hijosData.push(obj);
-                        }
-                    }
-                }
-
-                if (trabajadoresData.length < 2) {
-                    throw new Error('El archivo no tiene datos suficientes');
-                }
-
-                const headers = trabajadoresData[0].map(h => h.toString().trim());
-                const excelTrabajadores = [];
-                
-                for (let i = 1; i < trabajadoresData.length; i++) {
-                    const row = trabajadoresData[i];
+            if (hijosRaw.length > 1) {
+                const headers = hijosRaw[0].map(h => h.toString().trim());
+                for (let i = 1; i < hijosRaw.length; i++) {
+                    const row = hijosRaw[i];
                     if (!row || row.length === 0) continue;
                     
                     const obj = {};
                     headers.forEach((h, idx) => {
                         obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
                     });
-                    
-                    const cedulaTrabajador = obj.Cedula || obj.cedula || '';
-                    const hijosDelTrabajador = hijosData.filter(h => 
-                        (h.CedulaPadreMadre || h.cedulaPadreMadre || '').toString().trim() === cedulaTrabajador
-                    ).map(h => ({
-                        nombresApellidos: h.NombresApellidosHijo || h.nombresApellidosHijo || '',
-                        cedula: h.CedulaHijo || h.cedulaHijo || '',
-                        sexo: h.Sexo || h.sexo || '',
-                        fechaNacimiento: h.FechaNacimiento || h.fechaNacimiento || ''
-                    }));
-
-                    const trabajador = normalizeTrabajador(obj);
-                    trabajador.hijos = hijosDelTrabajador;
-                    excelTrabajadores.push(trabajador);
-                }
-
-                const resultado = sincronizarDatos(excelTrabajadores);
-                mostrarResultadoSync(resultado);
-                
-                if (resultado.totalCambios > 0) {
-                    saveLocalData();
-                    loadTrabajadores();
-                    updateStats();
-                    showToast(`Sincronización: ${resultado.totalCambios} cambios`);
-                    
-                    if (isOnline) {
-                        await syncToCloud();
-                    }
-                } else {
-                    showToast('No se detectaron cambios');
-                }
-
-                selectedFile = null;
-                document.getElementById('excelFile').value = '';
-                document.getElementById('fileLabel').textContent = '📁 Seleccionar archivo Excel (.xlsx)';
-                document.getElementById('fileLabel').classList.remove('has-file');
-                document.getElementById('btnSync').disabled = true;
-
-            } catch (error) {
-                showToast('Error: ' + error.message, 'error');
-                document.getElementById('syncStatus').innerHTML = `<div style="color: var(--danger);">❌ ${error.message}</div>`;
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function sincronizarDatos(excelData) {
-            const cambios = {
-                agregados: [],
-                actualizados: [],
-                sinCambios: [],
-                errores: []
-            };
-
-            const cedulasVistas = new Set();
-
-            for (const nuevo of excelData) {
-                const cedula = nuevo.cedula.toString().trim();
-                const cedulaKey = cedula.toLowerCase();
-
-                if (!nuevo.cedula) {
-                    cambios.errores.push({ cedula: cedula || '(vacía)', error: 'Falta cédula' });
-                    continue;
-                }
-
-                if (cedulasVistas.has(cedulaKey)) {
-                    cambios.errores.push({ cedula: cedula, error: 'Duplicado en Excel' });
-                    continue;
-                }
-
-                const indexExistente = trabajadores.findIndex(t => 
-                    t.cedula.toString().trim().toLowerCase() === cedulaKey
-                );
-
-                if (indexExistente === -1) {
-                    trabajadores.push(nuevo);
-                    cambios.agregados.push({ cedula: cedula, nombre: `${nuevo.primerNombre || ''} ${nuevo.primerApellido || ''}`.trim() || 'Sin nombre' });
-                } else {
-                    const actual = trabajadores[indexExistente];
-                    const hayCambios = detectarCambios(actual, nuevo);
-
-                    if (hayCambios) {
-                        const hijosFinales = (nuevo.hijos && nuevo.hijos.length > 0) ? nuevo.hijos : (actual.hijos || []);
-                        
-                        trabajadores[indexExistente] = {
-                            ...nuevo,
-                            id: actual.id,
-                            fechaRegistro: actual.fechaRegistro,
-                            hijos: hijosFinales
-                        };
-                        cambios.actualizados.push({ cedula: cedula, nombre: `${nuevo.primerNombre || ''} ${nuevo.primerApellido || ''}`.trim() || 'Sin nombre' });
-                    } else {
-                        cambios.sinCambios.push({ cedula: cedula });
-                    }
-                }
-
-                cedulasVistas.add(cedulaKey);
-            }
-
-            return {
-                agregados: cambios.agregados,
-                actualizados: cambios.actualizados,
-                sinCambios: cambios.sinCambios,
-                errores: cambios.errores,
-                totalCambios: cambios.agregados.length + cambios.actualizados.length
-            };
-        }
-
-        function detectarCambios(actual, nuevo) {
-            const campos = ['primerNombre', 'segundoNombre', 'primerApellido', 'segundoApellido', 'sexo', 'cargo', 'dependencia', 'direccion', 'celular', 'correo'];
-            return campos.some(campo => (actual[campo] || '') !== (nuevo[campo] || ''));
-        }
-
-        function mostrarResultadoSync(resultado) {
-            const statusDiv = document.getElementById('syncStatus');
-            const logDiv = document.getElementById('changeLog');
-            
-            let html = `
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; text-align: center;">
-                    <div style="background: rgba(5, 150, 105, 0.1); padding: 15px; border-radius: 8px;">
-                        <div style="font-size: 24px; font-weight: 700; color: var(--success);">${resultado.agregados.length}</div>
-                        <div style="font-size: 12px;">Agregados</div>
-                    </div>
-                    <div style="background: rgba(245, 158, 11, 0.1); padding: 15px; border-radius: 8px;">
-                        <div style="font-size: 24px; font-weight: 700; color: var(--accent);">${resultado.actualizados.length}</div>
-                        <div style="font-size: 12px;">Actualizados</div>
-                    </div>
-                    <div style="background: rgba(100, 116, 139, 0.1); padding: 15px; border-radius: 8px;">
-                        <div style="font-size: 24px; font-weight: 700; color: var(--secondary);">${resultado.sinCambios.length}</div>
-                        <div style="font-size: 12px;">Sin cambios</div>
-                    </div>
-                    <div style="background: rgba(220, 38, 38, 0.1); padding: 15px; border-radius: 8px;">
-                        <div style="font-size: 24px; font-weight: 700; color: var(--danger);">${resultado.errores.length}</div>
-                        <div style="font-size: 12px;">Errores</div>
-                    </div>
-                </div>
-            `;
-            
-            statusDiv.innerHTML = html;
-
-            let logHtml = '';
-            if (resultado.agregados.length > 0) {
-                logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--success);">➕ Agregados:</strong>';
-                resultado.agregados.forEach(r => logHtml += `<div class="change-item added">${r.cedula} - ${r.nombre}</div>`);
-                logHtml += '</div>';
-            }
-            if (resultado.actualizados.length > 0) {
-                logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--accent);">🔄 Actualizados:</strong>';
-                resultado.actualizados.forEach(r => logHtml += `<div class="change-item updated">${r.cedula} - ${r.nombre}</div>`);
-                logHtml += '</div>';
-            }
-            if (resultado.errores.length > 0) {
-                logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--danger);">❌ Errores:</strong>';
-                resultado.errores.forEach(r => logHtml += `<div class="change-item skipped">${r.cedula}: ${r.error}</div>`);
-                logHtml += '</div>';
-            }
-            
-            logDiv.innerHTML = logHtml || '<div style="color: var(--secondary);">Sin cambios para mostrar</div>';
-            logDiv.style.display = 'block';
-        }
-
-        function normalizeTrabajador(data) {
-            const parseDate = (val) => {
-                if (!val) return '';
-                if (typeof val === 'number') {
-                    const epoch = new Date(1899, 11, 30);
-                    const d = new Date(epoch.getTime() + val * 24 * 60 * 60 * 1000);
-                    return d.toISOString().split('T')[0];
-                }
-                if (typeof val === 'string' && val.includes('/')) {
-                    const p = val.split('/');
-                    if (p.length === 3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
-                }
-                return val;
-            };
-
-            return {
-                id: Date.now() + Math.random(),
-                cedula: (data.Cedula || data.cedula || '').toString().trim(),
-                primerNombre: (data.PrimerNombre || data.primerNombre || '').toString().trim(),
-                segundoNombre: (data.SegundoNombre || data.segundoNombre || '').toString().trim(),
-                primerApellido: (data.PrimerApellido || data.primerApellido || '').toString().trim(),
-                segundoApellido: (data.SegundoApellido || data.segundoApellido || '').toString().trim(),
-                sexo: (data.Sexo || data.sexo || '').toString().trim(),
-                fechaNacimiento: parseDate(data.FechaNacimiento || data.fechaNacimiento),
-                estadoCivil: (data.EstadoCivil || data.estadoCivil || '').toString().trim(),
-                direccion: (data.Direccion || data.direccion || '').toString().trim(),
-                celular: (data.Celular || data.celular || '').toString().trim(),
-                correo: (data.Correo || data.correo || '').toString().trim(),
-                nivelAcademico: (data.NivelAcademico || data.nivelAcademico || '').toString().trim(),
-                profesion: (data.Profesion || data.profesion || '').toString().trim(),
-                tipoPersonal: (data.TipoPersonal || data.tipoPersonal || '').toString().trim(),
-                fechaIngreso: parseDate(data.FechaIngreso || data.fechaIngreso),
-                cargo: (data.Cargo || data.cargo || '').toString().trim(),
-                codigo: (data.Codigo || data.codigo || '').toString().trim(),
-                dependencia: (data.Dependencia || data.dependencia || '').toString().trim(),
-                nomina: (data.Nomina || data.nomina || '').toString().trim(),
-                observaciones: (data.Observaciones || data.observaciones || '').toString().trim(),
-                hijos: [],
-                fechaRegistro: new Date().toISOString()
-            };
-        }
-
-        // ============================================
-        // FUNCIONES UTILITARIAS
-        // ============================================
-        function showLoading(show, text = 'Cargando...') {
-            document.getElementById('loadingOverlay').classList.toggle('active', show);
-            document.getElementById('loadingText').textContent = text;
-        }
-
-        function showToast(msg, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.className = 'toast ' + (type === 'error' ? 'error' : type === 'warning' ? 'warning' : '');
-            toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', 3000);
-        }
-
-        function saveLocalData() {
-            const encrypted = encryptData(trabajadores);
-            if (encrypted) {
-                localStorage.setItem('cp_trabajadores_encrypted', encrypted);
-            }
-        }
-
-        function loadLocalData() {
-            const encrypted = localStorage.getItem('cp_trabajadores_encrypted');
-            if (encrypted) {
-                const decrypted = decryptData(encrypted);
-                if (decrypted) {
-                    trabajadores = decrypted;
-                    return;
-                }
-            }
-            
-            const local = localStorage.getItem('cp_trabajadores');
-            if (local) {
-                try {
-                    trabajadores = JSON.parse(local);
-                    saveLocalData();
-                    localStorage.removeItem('cp_trabajadores');
-                } catch (e) {
-                    trabajadores = [];
+                    hijosData.push(obj);
                 }
             }
         }
-
-        // ============================================
-        // UI Y NAVEGACIÓN
-        // ============================================
-        function updateStats() {
-            document.getElementById('statTotal').textContent = trabajadores.length;
-            const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
-            document.getElementById('statHijos').textContent = totalHijos;
-            const deps = [...new Set(trabajadores.map(t => t.dependencia).filter(Boolean))];
-            document.getElementById('statDeps').textContent = deps.length;
-            document.getElementById('statCloud').textContent = isOnline ? 'Supabase' : 'Local';
+        
+        if (trabajadoresData.length < 2) {
+            throw new Error('El archivo no tiene datos suficientes');
         }
-
-        function loadRecent() {
-            const recent = [...trabajadores].reverse().slice(0, 5);
-            const tbody = document.getElementById('recentBody');
-            tbody.innerHTML = recent.length ? recent.map(t => `
-                <tr>
-                    <td>${t.cedula}</td>
-                    <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
-                    <td>${t.cargo || 'No especificado'}</td>
-                    <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
-                    <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
-                    <td><span class="badge badge-success">Activo</span></td>
-                </tr>
-            `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary);">Sin registros</td></tr>';
-        }
-
-        function loadTrabajadores() {
-            const tbody = document.getElementById('trabajadoresBody');
-            tbody.innerHTML = trabajadores.length ? trabajadores.map(t => `
-                <tr>
-                    <td><strong>${t.cedula}</strong></td>
-                    <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
-                    <td>${t.cargo || 'No especificado'}</td>
-                    <td>${t.dependencia || 'No especificada'}</td>
-                    <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
-                    <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
-                    <td>${t.hijos ? t.hijos.length : 0}</td>
-                    <td>
-                        <button class="btn-warning" onclick="editTrabajador(${t.id})" title="Editar">✏️</button>
-                        <button class="btn-danger" onclick="deleteTrabajador(${t.id})" title="Eliminar">🗑️</button>
-                    </td>
-                </tr>
-            `).join('') : '<tr><td colspan="8" style="text-align: center; color: var(--secondary); padding: 40px;">Sin trabajadores</td></tr>';
-        }
-
-        function searchTrabajadores() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = trabajadores.filter(t => 
-                t.cedula.toLowerCase().includes(query) ||
-                (t.primerNombre && t.primerNombre.toLowerCase().includes(query)) ||
-                (t.primerApellido && t.primerApellido.toLowerCase().includes(query))
-            );
+        
+        const headers = trabajadoresData[0].map(h => h.toString().trim());
+        const excelTrabajadores = [];
+        
+        for (let i = 1; i < trabajadoresData.length; i++) {
+            const row = trabajadoresData[i];
+            if (!row || row.length === 0) continue;
             
-            const tbody = document.getElementById('trabajadoresBody');
-            tbody.innerHTML = filtered.length ? filtered.map(t => `
-                <tr>
-                    <td><strong>${t.cedula}</strong></td>
-                    <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
-                    <td>${t.cargo || 'No especificado'}</td>
-                    <td>${t.dependencia || 'No especificada'}</td>
-                    <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
-                    <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
-                    <td>${t.hijos ? t.hijos.length : 0}</td>
-                    <td>
-                        <button class="btn-warning" onclick="editTrabajador(${t.id})" title="Editar">✏️</button>
-                        <button class="btn-danger" onclick="deleteTrabajador(${t.id})" title="Eliminar">🗑️</button>
-                    </td>
-                </tr>
-            `).join('') : '<tr><td colspan="8" style="text-align: center; color: var(--secondary);">No encontrado</td></tr>';
-        }
-
-        function addHijo() {
-            const container = document.getElementById('hijosContainer');
-            const div = document.createElement('div');
-            div.className = 'hijo-item';
-            div.innerHTML = `
-                <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre" required>
-                <input type="text" placeholder="Cédula" class="hijo-cedula">
-                <select class="hijo-sexo">
-                    <option value="">Sexo</option>
-                    <option value="Masculino">M</option>
-                    <option value="Femenino">F</option>
-                </select>
-                <input type="date" class="hijo-fecha">
-                <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
-            `;
-            container.appendChild(div);
-        }
-
-        // ============================================
-        // GUARDAR TRABAJADOR
-        // ============================================
-        async function saveTrabajador(e) {
-            e.preventDefault();
-            const form = e.target;
-            const formData = new FormData(form);
-            
-            const cedula = formData.get('cedula').toString().trim();
-            
-            if (!cedula) {
-                showToast('Error: La cédula es requerida', 'error');
-                return;
-            }
-            
-            const existe = trabajadores.some(t => 
-                t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
-            );
-            
-            if (existe) {
-                showToast('Error: La cédula ya existe', 'error');
-                return;
-            }
-            
-            const hijos = [];
-            document.querySelectorAll('.hijo-item').forEach(item => {
-                const nombre = item.querySelector('.hijo-nombre').value.trim();
-                if (nombre) {
-                    hijos.push({
-                        nombresApellidos: nombre,
-                        cedula: item.querySelector('.hijo-cedula').value,
-                        sexo: item.querySelector('.hijo-sexo').value,
-                        fechaNacimiento: item.querySelector('.hijo-fecha').value
-                    });
-                }
+            const obj = {};
+            headers.forEach((h, idx) => {
+                obj[h] = row[idx] !== undefined ? row[idx].toString().trim() : '';
             });
             
-            const trabajador = {
-                id: Date.now(),
-                cedula: cedula,
-                primerNombre: formData.get('primerNombre') || '',
-                segundoNombre: formData.get('segundoNombre') || '',
-                primerApellido: formData.get('primerApellido') || '',
-                segundoApellido: formData.get('segundoApellido') || '',
-                sexo: formData.get('sexo') || '',
-                fechaNacimiento: formData.get('fechaNacimiento') || '',
-                estadoCivil: formData.get('estadoCivil') || '',
-                direccion: formData.get('direccion') || '',
-                celular: formData.get('celular') || '',
-                correo: formData.get('correo') || '',
-                nivelAcademico: formData.get('nivelAcademico') || '',
-                profesion: formData.get('profesion') || '',
-                tipoPersonal: formData.get('tipoPersonal') || '',
-                fechaIngreso: formData.get('fechaIngreso') || '',
-                cargo: formData.get('cargo') || '',
-                codigo: formData.get('codigo') || '',
-                dependencia: formData.get('dependencia') || '',
-                nomina: formData.get('nomina') || '',
-                observaciones: formData.get('observaciones') || '',
-                hijos: hijos,
-                fechaRegistro: new Date().toISOString()
-            };
+            const cedulaTrabajador = obj.Cedula || obj.cedula || '';
+            const hijosDelTrabajador = hijosData.filter(h => 
+                (h.CedulaPadreMadre || h.cedulaPadreMadre || '').toString().trim() === cedulaTrabajador
+            ).map(h => ({
+                nombresApellidos: h.NombresApellidosHijo || h.nombresApellidosHijo || '',
+                cedula: h.CedulaHijo || h.cedulaHijo || '',
+                sexo: h.Sexo || h.sexo || '',
+                fechaNacimiento: h.FechaNacimiento || h.fechaNacimiento || ''
+            }));
             
-            trabajadores.push(trabajador);
+            const trabajador = normalizeTrabajador(obj);
+            trabajador.hijos = hijosDelTrabajador;
+            excelTrabajadores.push(trabajador);
+        }
+        
+        const resultado = sincronizarDatos(excelTrabajadores);
+        mostrarResultadoSync(resultado);
+        
+        if (resultado.totalCambios > 0) {
             saveLocalData();
+            loadTrabajadores();
+            updateStats();
+            showToast(`Sincronización: ${resultado.totalCambios} cambios`);
+            
+            await logAuditEvent('IMPORT_EXCEL', { 
+                added: resultado.agregados.length,
+                updated: resultado.actualizados.length,
+                filename: selectedFile.name
+            });
             
             if (isOnline) {
                 await syncToCloud();
             }
-            
-            form.reset();
-            document.getElementById('hijosContainer').innerHTML = '';
-            resetCedulaValidation();
-            showToast('Trabajador guardado correctamente');
-            updateStats();
-        }
-
-        // ============================================
-        // CONSULTA AVANZADA
-        // ============================================
-        function consultaAvanzada() {
-            const query = document.getElementById('consultaInput').value.toLowerCase().trim();
-            const resultDiv = document.getElementById('consultaResult');
-            
-            loadLocalData();
-            
-            if (!trabajadores || trabajadores.length === 0) {
-                resultDiv.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: var(--danger); background: white; border-radius: 10px;">
-                        <strong>⚠️ No hay datos registrados</strong><br><br>
-                        <span style="color: var(--secondary); font-size: 13px;">
-                            La base de datos está vacía.<br>
-                            Contacte al administrador para sincronizar los datos.
-                        </span>
-                    </div>
-                `;
-                return;
-            }
-            
-            let encontrados = [];
-            
-            if (!query) {
-                encontrados = trabajadores.slice(0, 50);
-                if (trabajadores.length > 50) {
-                    resultDiv.innerHTML = `<p style="text-align: center; color: var(--secondary); margin-bottom: 10px;">
-                        Mostrando primeros 50 de ${trabajadores.length} trabajadores. Use el buscador para filtrar.
-                    </p>`;
-                }
-            } else {
-                encontrados = trabajadores.filter(t => {
-                    if (!t) return false;
-                    
-                    const cedulaMatch = t.cedula && t.cedula.toString().toLowerCase().includes(query);
-                    const nombreMatch = t.primerNombre && t.primerNombre.toLowerCase().includes(query);
-                    const apellidoMatch = t.primerApellido && t.primerApellido.toLowerCase().includes(query);
-                    const segundoNombreMatch = t.segundoNombre && t.segundoNombre.toLowerCase().includes(query);
-                    const segundoApellidoMatch = t.segundoApellido && t.segundoApellido.toLowerCase().includes(query);
-                    const cargoMatch = t.cargo && t.cargo.toLowerCase().includes(query);
-                    const dependenciaMatch = t.dependencia && t.dependencia.toLowerCase().includes(query);
-                    
-                    return cedulaMatch || nombreMatch || apellidoMatch || segundoNombreMatch || 
-                           segundoApellidoMatch || cargoMatch || dependenciaMatch;
-                });
-            }
-            
-            if (encontrados.length === 0) {
-                resultDiv.innerHTML += '<div style="text-align: center; padding: 40px; color: var(--secondary); background: white; border-radius: 10px; margin-top: 10px;">No se encontraron trabajadores que coincidan con la búsqueda</div>';
-                return;
-            }
-            
-            const showActions = currentUserRole !== 'consulta';
-            
-            let html = encontrados.map(t => {
-                const nombreCompleto = `${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''} ${t.segundoApellido || ''}`.trim() || 'Sin nombre';
-                const edad = t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) : null;
-                const tiempoServicio = t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso) : null;
-                
-                return `
-                <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 10px;">
-                        <div>
-                            <h3 style="color: var(--cp-blue); margin-bottom: 5px; font-size: 18px;">${nombreCompleto}</h3>
-                            <span style="background: var(--cp-blue); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${t.cedula}</span>
-                        </div>
-                        ${showActions ? `
-                        <div style="display: flex; gap: 5px;">
-                            <button class="btn-warning" onclick="editTrabajador(${t.id})" style="padding: 5px 10px; font-size: 12px;">✏️ Editar</button>
-                            <button class="btn-danger" onclick="deleteTrabajador(${t.id})" style="padding: 5px 10px; font-size: 12px;">🗑️ Eliminar</button>
-                        </div>
-                        ` : ''}
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; font-size: 13px; margin-bottom: 15px;">
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Cargo:</strong> ${t.cargo || 'No especificado'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Dependencia:</strong> ${t.dependencia || 'No especificada'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Edad:</strong> ${edad !== null ? edad + ' años' : 'No especificada'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Tiempo de Servicio:</strong> ${tiempoServicio ? tiempoServicio.texto : 'No especificado'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Sexo:</strong> ${t.sexo || 'No especificado'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Estado Civil:</strong> ${t.estadoCivil || 'No especificado'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Celular:</strong> ${t.celular || 'No especificado'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Correo:</strong> ${t.correo || 'No especificado'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Nivel Académico:</strong> ${t.nivelAcademico || 'No especificado'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Profesión:</strong> ${t.profesion || 'No especificada'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Tipo Personal:</strong> ${t.tipoPersonal || 'No especificado'}
-                        </div>
-                        <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
-                            <strong style="color: var(--cp-blue);">Código:</strong> ${t.codigo || 'No especificado'}
-                        </div>
-                    </div>
-                    
-                    ${t.direccion ? `
-                    <div style="margin-bottom: 15px; padding: 10px; background: rgba(245, 158, 11, 0.05); border-radius: 6px; border-left: 3px solid var(--accent);">
-                        <strong>Dirección:</strong> ${t.direccion}
-                    </div>
-                    ` : ''}
-                    
-                    ${t.observaciones ? `
-                    <div style="margin-bottom: 15px; padding: 10px; background: rgba(220, 38, 38, 0.05); border-radius: 6px; border-left: 3px solid var(--danger);">
-                        <strong>Observaciones:</strong> ${t.observaciones}
-                    </div>
-                    ` : ''}
-                    
-                    ${t.hijos && t.hijos.length > 0 ? `
-                        <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--border);">
-                            <h4 style="color: var(--success); margin-bottom: 10px; font-size: 14px; display: flex; align-items: center; gap: 5px;">
-                                👶 Hijos/Dependientes (${t.hijos.length})
-                            </h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px;">
-                                ${t.hijos.map(h => `
-                                    <div style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 8px; border-left: 3px solid var(--success);">
-                                        <div style="font-weight: 600; color: var(--text); margin-bottom: 3px;">${h.nombresApellidos || 'Sin nombre'}</div>
-                                        <div style="color: var(--secondary); font-size: 12px;">
-                                            ${h.cedula ? `Cédula: ${h.cedula} | ` : ''}
-                                            ${h.sexo ? `${h.sexo}` : ''}
-                                            ${h.fechaNacimiento ? ` | Nacimiento: ${h.fechaNacimiento}` : ''}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            `}).join('');
-            
-            resultDiv.innerHTML = html;
+        } else {
+            showToast('No se detectaron cambios');
         }
         
-        // ============================================
-        // EDITAR Y ELIMINAR TRABAJADOR
-        // ============================================
-        function editTrabajador(id) {
-            if (currentUserRole === 'consulta') {
-                showToast('No tiene permisos para editar trabajadores', 'error');
-                return;
-            }
+        selectedFile = null;
+        document.getElementById('excelFile').value = '';
+        document.getElementById('fileLabel').textContent = '📁 Seleccionar archivo Excel (.xlsx)';
+        document.getElementById('fileLabel').classList.remove('has-file');
+        document.getElementById('btnSync').disabled = true;
+        
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+        document.getElementById('syncStatus').innerHTML = `<div style="color: var(--danger);">❌ ${error.message}</div>`;
+    } finally {
+        showLoading(false);
+    }
+}
 
-            const t = trabajadores.find(x => x.id === id);
-            if (!t) return;
+function sincronizarDatos(excelData) {
+    const cambios = {
+        agregados: [],
+        actualizados: [],
+        sinCambios: [],
+        errores: []
+    };
+    
+    const cedulasVistas = new Set();
+    
+    for (const nuevo of excelData) {
+        const cedula = nuevo.cedula.toString().trim();
+        const cedulaKey = cedula.toLowerCase();
+        
+        if (!nuevo.cedula) {
+            cambios.errores.push({ cedula: cedula || '(vacía)', error: 'Falta cédula' });
+            continue;
+        }
+        
+        if (cedulasVistas.has(cedulaKey)) {
+            cambios.errores.push({ cedula: cedula, error: 'Duplicado en Excel' });
+            continue;
+        }
+        
+        const indexExistente = trabajadores.findIndex(t => 
+            t.cedula.toString().trim().toLowerCase() === cedulaKey
+        );
+        
+        if (indexExistente === -1) {
+            trabajadores.push(nuevo);
+            cambios.agregados.push({ 
+                cedula: cedula, 
+                nombre: `${nuevo.primerNombre || ''} ${nuevo.primerApellido || ''}`.trim() || 'Sin nombre' 
+            });
+        } else {
+            const actual = trabajadores[indexExistente];
+            const hayCambios = detectarCambios(actual, nuevo);
             
-            currentEditId = id;
-            const content = document.getElementById('editFormContent');
+            if (hayCambios) {
+                const hijosFinales = (nuevo.hijos && nuevo.hijos.length > 0) ? nuevo.hijos : (actual.hijos || []);
+                trabajadores[indexExistente] = {
+                    ...nuevo,
+                    id: actual.id,
+                    fechaRegistro: actual.fechaRegistro,
+                    hijos: hijosFinales
+                };
+                cambios.actualizados.push({ 
+                    cedula: cedula, 
+                    nombre: `${nuevo.primerNombre || ''} ${nuevo.primerApellido || ''}`.trim() || 'Sin nombre' 
+                });
+            } else {
+                cambios.sinCambios.push({ cedula: cedula });
+            }
+        }
+        
+        cedulasVistas.add(cedulaKey);
+    }
+    
+    return {
+        agregados: cambios.agregados,
+        actualizados: cambios.actualizados,
+        sinCambios: cambios.sinCambios,
+        errores: cambios.errores,
+        totalCambios: cambios.agregados.length + cambios.actualizados.length
+    };
+}
+
+function detectarCambios(actual, nuevo) {
+    const campos = ['primerNombre', 'segundoNombre', 'primerApellido', 'segundoApellido', 'sexo', 'cargo', 'dependencia', 'direccion', 'celular', 'correo'];
+    return campos.some(campo => (actual[campo] || '') !== (nuevo[campo] || ''));
+}
+
+function mostrarResultadoSync(resultado) {
+    const statusDiv = document.getElementById('syncStatus');
+    const logDiv = document.getElementById('changeLog');
+    
+    let html = `
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; text-align: center;">
+            <div style="background: rgba(5, 150, 105, 0.1); padding: 15px; border-radius: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: var(--success);">${resultado.agregados.length}</div>
+                <div style="font-size: 12px;">Agregados</div>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 15px; border-radius: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: var(--accent);">${resultado.actualizados.length}</div>
+                <div style="font-size: 12px;">Actualizados</div>
+            </div>
+            <div style="background: rgba(100, 116, 139, 0.1); padding: 15px; border-radius: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: var(--secondary);">${resultado.sinCambios.length}</div>
+                <div style="font-size: 12px;">Sin cambios</div>
+            </div>
+            <div style="background: rgba(220, 38, 38, 0.1); padding: 15px; border-radius: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: var(--danger);">${resultado.errores.length}</div>
+                <div style="font-size: 12px;">Errores</div>
+            </div>
+        </div>
+    `;
+    
+    statusDiv.innerHTML = html;
+    
+    let logHtml = '';
+    if (resultado.agregados.length > 0) {
+        logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--success);">➕ Agregados:</strong>';
+        resultado.agregados.forEach(r => logHtml += `<div class="change-item added">${r.cedula} - ${r.nombre}</div>`);
+        logHtml += '</div>';
+    }
+    
+    if (resultado.actualizados.length > 0) {
+        logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--accent);">🔄 Actualizados:</strong>';
+        resultado.actualizados.forEach(r => logHtml += `<div class="change-item updated">${r.cedula} - ${r.nombre}</div>`);
+        logHtml += '</div>';
+    }
+    
+    if (resultado.errores.length > 0) {
+        logHtml += '<div style="margin-bottom: 10px;"><strong style="color: var(--danger);">❌ Errores:</strong>';
+        resultado.errores.forEach(r => logHtml += `<div class="change-item skipped">${r.cedula}: ${r.error}</div>`);
+        logHtml += '</div>';
+    }
+    
+    logDiv.innerHTML = logHtml || '<div style="color: var(--secondary);">Sin cambios para mostrar</div>';
+    logDiv.style.display = 'block';
+}
+
+function normalizeTrabajador(data) {
+    const parseDate = (val) => {
+        if (!val) return '';
+        if (typeof val === 'number') {
+            const epoch = new Date(1899, 11, 30);
+            const d = new Date(epoch.getTime() + val * 24 * 60 * 60 * 1000);
+            return d.toISOString().split('T')[0];
+        }
+        if (typeof val === 'string' && val.includes('/')) {
+            const p = val.split('/');
+            if (p.length === 3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+        }
+        return val;
+    };
+    
+    return {
+        id: Date.now() + Math.random(),
+        cedula: (data.Cedula || data.cedula || '').toString().trim(),
+        primerNombre: (data.PrimerNombre || data.primerNombre || '').toString().trim(),
+        segundoNombre: (data.SegundoNombre || data.segundoNombre || '').toString().trim(),
+        primerApellido: (data.PrimerApellido || data.primerApellido || '').toString().trim(),
+        segundoApellido: (data.SegundoApellido || data.segundoApellido || '').toString().trim(),
+        sexo: (data.Sexo || data.sexo || '').toString().trim(),
+        fechaNacimiento: parseDate(data.FechaNacimiento || data.fechaNacimiento),
+        estadoCivil: (data.EstadoCivil || data.estadoCivil || '').toString().trim(),
+        direccion: (data.Direccion || data.direccion || '').toString().trim(),
+        celular: (data.Celular || data.celular || '').toString().trim(),
+        correo: (data.Correo || data.correo || '').toString().trim(),
+        nivelAcademico: (data.NivelAcademico || data.nivelAcademico || '').toString().trim(),
+        profesion: (data.Profesion || data.profesion || '').toString().trim(),
+        tipoPersonal: (data.TipoPersonal || data.tipoPersonal || '').toString().trim(),
+        fechaIngreso: parseDate(data.FechaIngreso || data.fechaIngreso),
+        cargo: (data.Cargo || data.cargo || '').toString().trim(),
+        codigo: (data.Codigo || data.codigo || '').toString().trim(),
+        dependencia: (data.Dependencia || data.dependencia || '').toString().trim(),
+        nomina: (data.Nomina || data.nomina || '').toString().trim(),
+        observaciones: (data.Observaciones || data.observaciones || '').toString().trim(),
+        hijos: [],
+        fechaRegistro: new Date().toISOString()
+    };
+}
+
+// ============================================
+// FUNCIONES UTILITARIAS (sin cambios)
+// ============================================
+
+function showLoading(show, text = 'Cargando...') {
+    document.getElementById('loadingOverlay').classList.toggle('active', show);
+    document.getElementById('loadingText').textContent = text;
+}
+
+function showToast(msg, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast ' + (type === 'error' ? 'error' : type === 'warning' ? 'warning' : '');
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.display = 'none', 3000);
+}
+
+function saveLocalData() {
+    const encrypted = encryptData(trabajadores);
+    if (encrypted) {
+        localStorage.setItem('cp_trabajadores_encrypted', encrypted);
+    }
+}
+
+function loadLocalData() {
+    const encrypted = localStorage.getItem('cp_trabajadores_encrypted');
+    if (encrypted) {
+        const decrypted = decryptData(encrypted);
+        if (decrypted) {
+            trabajadores = decrypted;
+            return;
+        }
+    }
+    
+    const local = localStorage.getItem('cp_trabajadores');
+    if (local) {
+        try {
+            trabajadores = JSON.parse(local);
+            saveLocalData();
+            localStorage.removeItem('cp_trabajadores');
+        } catch (e) {
+            trabajadores = [];
+        }
+    }
+}
+
+// ============================================
+// UI Y NAVEGACIÓN (sin cambios)
+// ============================================
+
+function updateStats() {
+    document.getElementById('statTotal').textContent = trabajadores.length;
+    const totalHijos = trabajadores.reduce((acc, t) => acc + (t.hijos ? t.hijos.length : 0), 0);
+    document.getElementById('statHijos').textContent = totalHijos;
+    const deps = [...new Set(trabajadores.map(t => t.dependencia).filter(Boolean))];
+    document.getElementById('statDeps').textContent = deps.length;
+    document.getElementById('statCloud').textContent = isOnline ? 'Supabase' : 'Local';
+}
+
+function loadRecent() {
+    const recent = [...trabajadores].reverse().slice(0, 5);
+    const tbody = document.getElementById('recentBody');
+    tbody.innerHTML = recent.length ? recent.map(t => `
+        <tr>
+            <td>${t.cedula}</td>
+            <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+            <td>${t.cargo || 'No especificado'}</td>
+            <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
+            <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
+            <td><span class="badge badge-success">Activo</span></td>
+        </tr>
+    `).join('') : '<tr><td colspan="6" style="text-align: center; color: var(--secondary);">Sin registros</td></tr>';
+}
+
+function loadTrabajadores() {
+    const tbody = document.getElementById('trabajadoresBody');
+    tbody.innerHTML = trabajadores.length ? trabajadores.map(t => `
+        <tr>
+            <td><strong>${t.cedula}</strong></td>
+            <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+            <td>${t.cargo || 'No especificado'}</td>
+            <td>${t.dependencia || 'No especificada'}</td>
+            <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
+            <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
+            <td>${t.hijos ? t.hijos.length : 0}</td>
+            <td>
+                <button class="btn-warning" onclick="editTrabajador(${t.id})" title="Editar">✏️</button>
+                <button class="btn-danger" onclick="deleteTrabajador(${t.id})" title="Eliminar">🗑️</button>
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="8" style="text-align: center; color: var(--secondary); padding: 40px;">Sin trabajadores</td></tr>';
+}
+
+function searchTrabajadores() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = trabajadores.filter(t => 
+        t.cedula.toLowerCase().includes(query) ||
+        (t.primerNombre && t.primerNombre.toLowerCase().includes(query)) ||
+        (t.primerApellido && t.primerApellido.toLowerCase().includes(query))
+    );
+    
+    const tbody = document.getElementById('trabajadoresBody');
+    tbody.innerHTML = filtered.length ? filtered.map(t => `
+        <tr>
+            <td><strong>${t.cedula}</strong></td>
+            <td>${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''}</td>
+            <td>${t.cargo || 'No especificado'}</td>
+            <td>${t.dependencia || 'No especificada'}</td>
+            <td>${t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) + ' años' : '-'}</td>
+            <td>${t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '-'}</td>
+            <td>${t.hijos ? t.hijos.length : 0}</td>
+            <td>
+                <button class="btn-warning" onclick="editTrabajador(${t.id})" title="Editar">✏️</button>
+                <button class="btn-danger" onclick="deleteTrabajador(${t.id})" title="Eliminar">🗑️</button>
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="8" style="text-align: center; color: var(--secondary);">No encontrado</td></tr>';
+}
+
+function addHijo() {
+    const container = document.getElementById('hijosContainer');
+    const div = document.createElement('div');
+    div.className = 'hijo-item';
+    div.innerHTML = `
+        <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre" required>
+        <input type="text" placeholder="Cédula" class="hijo-cedula">
+        <select class="hijo-sexo">
+            <option value="">Sexo</option>
+            <option value="Masculino">M</option>
+            <option value="Femenino">F</option>
+        </select>
+        <input type="date" class="hijo-fecha">
+        <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+    `;
+    container.appendChild(div);
+}
+
+// ============================================
+// GUARDAR TRABAJADOR (actualizado con logs)
+// ============================================
+
+async function saveTrabajador(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const cedula = formData.get('cedula').toString().trim();
+    
+    if (!cedula) {
+        showToast('Error: La cédula es requerida', 'error');
+        return;
+    }
+    
+    const existe = trabajadores.some(t => 
+        t.cedula.toString().trim().toLowerCase() === cedula.toLowerCase()
+    );
+    
+    if (existe) {
+        showToast('Error: La cédula ya existe', 'error');
+        return;
+    }
+    
+    const hijos = [];
+    document.querySelectorAll('.hijo-item').forEach(item => {
+        const nombre = item.querySelector('.hijo-nombre').value.trim();
+        if (nombre) {
+            hijos.push({
+                nombresApellidos: nombre,
+                cedula: item.querySelector('.hijo-cedula').value,
+                sexo: item.querySelector('.hijo-sexo').value,
+                fechaNacimiento: item.querySelector('.hijo-fecha').value
+            });
+        }
+    });
+    
+    const trabajador = {
+        id: Date.now(),
+        cedula: cedula,
+        primerNombre: formData.get('primerNombre') || '',
+        segundoNombre: formData.get('segundoNombre') || '',
+        primerApellido: formData.get('primerApellido') || '',
+        segundoApellido: formData.get('segundoApellido') || '',
+        sexo: formData.get('sexo') || '',
+        fechaNacimiento: formData.get('fechaNacimiento') || '',
+        estadoCivil: formData.get('estadoCivil') || '',
+        direccion: formData.get('direccion') || '',
+        celular: formData.get('celular') || '',
+        correo: formData.get('correo') || '',
+        nivelAcademico: formData.get('nivelAcademico') || '',
+        profesion: formData.get('profesion') || '',
+        tipoPersonal: formData.get('tipoPersonal') || '',
+        fechaIngreso: formData.get('fechaIngreso') || '',
+        cargo: formData.get('cargo') || '',
+        codigo: formData.get('codigo') || '',
+        dependencia: formData.get('dependencia') || '',
+        nomina: formData.get('nomina') || '',
+        observaciones: formData.get('observaciones') || '',
+        hijos: hijos,
+        fechaRegistro: new Date().toISOString()
+    };
+    
+    trabajadores.push(trabajador);
+    saveLocalData();
+    
+    if (isOnline) {
+        await syncToCloud();
+    }
+    
+    await logAuditEvent('CREATE_WORKER', { cedula: trabajador.cedula, name: `${trabajador.primerNombre} ${trabajador.primerApellido}` });
+    
+    form.reset();
+    document.getElementById('hijosContainer').innerHTML = '';
+    resetCedulaValidation();
+    showToast('Trabajador guardado correctamente');
+    updateStats();
+}
+
+// ============================================
+// CONSULTA AVANZADA (sin cambios)
+// ============================================
+
+function consultaAvanzada() {
+    const query = document.getElementById('consultaInput').value.toLowerCase().trim();
+    const resultDiv = document.getElementById('consultaResult');
+    
+    loadLocalData();
+    
+    if (!trabajadores || trabajadores.length === 0) {
+        resultDiv.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--danger); background: white; border-radius: 10px;">
+                <strong>⚠️ No hay datos registrados</strong><br><br>
+                <span style="color: var(--secondary); font-size: 13px;">
+                    La base de datos está vacía.<br>
+                    Contacte al administrador para sincronizar los datos.
+                </span>
+            </div>
+        `;
+        return;
+    }
+    
+    let encontrados = [];
+    
+    if (!query) {
+        encontrados = trabajadores.slice(0, 50);
+        if (trabajadores.length > 50) {
+            resultDiv.innerHTML = `<p style="text-align: center; color: var(--secondary); margin-bottom: 10px;">
+                Mostrando primeros 50 de ${trabajadores.length} trabajadores. Use el buscador para filtrar.
+            </p>`;
+        }
+    } else {
+        encontrados = trabajadores.filter(t => {
+            if (!t) return false;
+            const cedulaMatch = t.cedula && t.cedula.toString().toLowerCase().includes(query);
+            const nombreMatch = t.primerNombre && t.primerNombre.toLowerCase().includes(query);
+            const apellidoMatch = t.primerApellido && t.primerApellido.toLowerCase().includes(query);
+            const segundoNombreMatch = t.segundoNombre && t.segundoNombre.toLowerCase().includes(query);
+            const segundoApellidoMatch = t.segundoApellido && t.segundoApellido.toLowerCase().includes(query);
+            const cargoMatch = t.cargo && t.cargo.toLowerCase().includes(query);
+            const dependenciaMatch = t.dependencia && t.dependencia.toLowerCase().includes(query);
             
-            const edadActual = t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) : '';
-            const tiempoServicioActual = t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '';
-            
-            content.innerHTML = `
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <label>Cédula (No editable)</label>
-                    <input type="text" value="${t.cedula}" disabled style="background: #f1f5f9; color: var(--secondary);">
-                </div>
-                <div class="form-group">
-                    <label>Primer Nombre</label>
-                    <input type="text" name="primerNombre" value="${t.primerNombre || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Segundo Nombre</label>
-                    <input type="text" name="segundoNombre" value="${t.segundoNombre || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Primer Apellido</label>
-                    <input type="text" name="primerApellido" value="${t.primerApellido || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Segundo Apellido</label>
-                    <input type="text" name="segundoApellido" value="${t.segundoApellido || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Sexo</label>
-                    <select name="sexo">
-                        <option value="">Seleccione...</option>
-                        <option value="Masculino" ${t.sexo === 'Masculino' ? 'selected' : ''}>Masculino</option>
-                        <option value="Femenino" ${t.sexo === 'Femenino' ? 'selected' : ''}>Femenino</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Fecha de Nacimiento</label>
-                    <input type="date" name="fechaNacimiento" id="editFechaNacimiento" value="${t.fechaNacimiento || ''}" onchange="actualizarEdadEdit()">
-                </div>
-                <div class="form-group calculated-field">
-                    <label></label>
-                    <input type="text" id="editEdad" value="${edadActual ? edadActual + ' años' : ''}" readonly>
-                </div>
-                <div class="form-group">
-                    <label>Estado Civil</label>
-                    <select name="estadoCivil">
-                        <option value="">Seleccione...</option>
-                        <option value="Soltero" ${t.estadoCivil === 'Soltero' ? 'selected' : ''}>Soltero/a</option>
-                        <option value="Casado" ${t.estadoCivil === 'Casado' ? 'selected' : ''}>Casado/a</option>
-                        <option value="Divorciado" ${t.estadoCivil === 'Divorciado' ? 'selected' : ''}>Divorciado/a</option>
-                        <option value="Viudo" ${t.estadoCivil === 'Viudo' ? 'selected' : ''}>Viudo/a</option>
-                    </select>
-                </div>
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <label>Dirección</label>
-                    <input type="text" name="direccion" value="${t.direccion || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Celular</label>
-                    <input type="tel" name="celular" value="${t.celular || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Correo Electrónico</label>
-                    <input type="email" name="correo" value="${t.correo || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Nivel Académico</label>
-                    <select name="nivelAcademico">
-                        <option value="">Seleccione...</option>
-                        <option value="Primaria" ${t.nivelAcademico === 'Primaria' ? 'selected' : ''}>Primaria</option>
-                        <option value="Secundaria" ${t.nivelAcademico === 'Secundaria' ? 'selected' : ''}>Secundaria</option>
-                        <option value="Técnico Medio" ${t.nivelAcademico === 'Técnico Medio' ? 'selected' : ''}>Técnico Medio</option>
-                        <option value="Universitario" ${t.nivelAcademico === 'Universitario' ? 'selected' : ''}>Universitario</option>
-                        <option value="Especialización" ${t.nivelAcademico === 'Especialización' ? 'selected' : ''}>Especialización</option>
-                        <option value="Maestría" ${t.nivelAcademico === 'Maestría' ? 'selected' : ''}>Maestría</option>
-                        <option value="Doctorado" ${t.nivelAcademico === 'Doctorado' ? 'selected' : ''}>Doctorado</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Profesión</label>
-                    <input type="text" name="profesion" value="${t.profesion || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Tipo de Personal</label>
-                    <select name="tipoPersonal">
-                        <option value="">Seleccione...</option>
-                        <option value="Fijo" ${t.tipoPersonal === 'Fijo' ? 'selected' : ''}>Fijo</option>
-                        <option value="Contratado" ${t.tipoPersonal === 'Contratado' ? 'selected' : ''}>Contratado</option>
-                        <option value="Obrero" ${t.tipoPersonal === 'Obrero' ? 'selected' : ''}>Obrero</option>
-                        <option value="Temporal" ${t.tipoPersonal === 'Temporal' ? 'selected' : ''}>Temporal</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Fecha de Ingreso</label>
-                    <input type="date" name="fechaIngreso" id="editFechaIngreso" value="${t.fechaIngreso || ''}" onchange="actualizarTiempoServicioEdit()">
-                </div>
-                <div class="form-group calculated-field">
-                    <label>Años de Servicio</label>
-                    <input type="text" id="editTiempoServicio" value="${tiempoServicioActual}" readonly>
-                </div>
-                <div class="form-group">
-                    <label>Cargo</label>
-                    <input type="text" name="cargo" value="${t.cargo || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Código</label>
-                    <input type="text" name="codigo" value="${t.codigo || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Dependencia</label>
-                    <input type="text" name="dependencia" value="${t.dependencia || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Nómina</label>
-                    <input type="text" name="nomina" value="${t.nomina || ''}">
-                </div>
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <label>Observaciones</label>
-                    <textarea name="observaciones" rows="3">${t.observaciones || ''}</textarea>
+            return cedulaMatch || nombreMatch || apellidoMatch || segundoNombreMatch || 
+                   segundoApellidoMatch || cargoMatch || dependenciaMatch;
+        });
+    }
+    
+    if (encontrados.length === 0) {
+        resultDiv.innerHTML += '<div style="text-align: center; padding: 40px; color: var(--secondary); background: white; border-radius: 10px; margin-top: 10px;">No se encontraron trabajadores que coincidan con la búsqueda</div>';
+        return;
+    }
+    
+    const showActions = currentUserRole !== 'consulta';
+    
+    let html = encontrados.map(t => {
+        const nombreCompleto = `${t.primerNombre || ''} ${t.segundoNombre || ''} ${t.primerApellido || ''} ${t.segundoApellido || ''}`.trim() || 'Sin nombre';
+        const edad = t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) : null;
+        const tiempoServicio = t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso) : null;
+        
+        return `
+            <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 10px;">
+                    <div>
+                        <h3 style="color: var(--cp-blue); margin-bottom: 5px; font-size: 18px;">${nombreCompleto}</h3>
+                        <span style="background: var(--cp-blue); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${t.cedula}</span>
+                    </div>
+                    ${showActions ? `
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn-warning" onclick="editTrabajador(${t.id})" style="padding: 5px 10px; font-size: 12px;">✏️ Editar</button>
+                        <button class="btn-danger" onclick="deleteTrabajador(${t.id})" style="padding: 5px 10px; font-size: 12px;">🗑️ Eliminar</button>
+                    </div>
+                    ` : ''}
                 </div>
                 
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <div class="hijos-section">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <h3 style="color: var(--cp-blue);">👶 Hijos/Dependientes</h3>
-                            <button type="button" class="btn-primary" onclick="addHijoEdit()" style="width: auto; padding: 8px 16px; font-size: 13px;">
-                                + Agregar Hijo
-                            </button>
-                        </div>
-                        <div id="hijosContainerEdit">
-                            ${t.hijos && t.hijos.length > 0 ? t.hijos.map((h, index) => `
-                                <div class="hijo-item" data-index="${index}">
-                                    <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre-edit" value="${h.nombresApellidos || ''}" required>
-                                    <input type="text" placeholder="Cédula" class="hijo-cedula-edit" value="${h.cedula || ''}">
-                                    <select class="hijo-sexo-edit">
-                                        <option value="">Sexo</option>
-                                        <option value="Masculino" ${h.sexo === 'Masculino' ? 'selected' : ''}>M</option>
-                                        <option value="Femenino" ${h.sexo === 'Femenino' ? 'selected' : ''}>F</option>
-                                    </select>
-                                    <input type="date" class="hijo-fecha-edit" value="${h.fechaNacimiento || ''}">
-                                    <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
-                                </div>
-                            `).join('') : '<div id="noHijosMsg" style="text-align: center; color: var(--secondary); padding: 20px;">Sin hijos registrados</div>'}
-                        </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; font-size: 13px; margin-bottom: 15px;">
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Cargo:</strong> ${t.cargo || 'No especificado'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Dependencia:</strong> ${t.dependencia || 'No especificada'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Edad:</strong> ${edad !== null ? edad + ' años' : 'No especificada'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Tiempo de Servicio:</strong> ${tiempoServicio ? tiempoServicio.texto : 'No especificado'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Sexo:</strong> ${t.sexo || 'No especificado'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Estado Civil:</strong> ${t.estadoCivil || 'No especificado'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Celular:</strong> ${t.celular || 'No especificado'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Correo:</strong> ${t.correo || 'No especificado'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Nivel Académico:</strong> ${t.nivelAcademico || 'No especificado'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Profesión:</strong> ${t.profesion || 'No especificada'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Tipo Personal:</strong> ${t.tipoPersonal || 'No especificado'}
+                    </div>
+                    <div style="padding: 8px; background: rgba(74, 144, 226, 0.05); border-radius: 6px;">
+                        <strong style="color: var(--cp-blue);">Código:</strong> ${t.codigo || 'No especificado'}
                     </div>
                 </div>
-            `;
-            
-            document.getElementById('editModal').classList.add('active');
-        }
+                
+                ${t.direccion ? `
+                <div style="margin-bottom: 15px; padding: 10px; background: rgba(245, 158, 11, 0.05); border-radius: 6px; border-left: 3px solid var(--accent);">
+                    <strong>Dirección:</strong> ${t.direccion}
+                </div>
+                ` : ''}
+                
+                ${t.observaciones ? `
+                <div style="margin-bottom: 15px; padding: 10px; background: rgba(220, 38, 38, 0.05); border-radius: 6px; border-left: 3px solid var(--danger);">
+                    <strong>Observaciones:</strong> ${t.observaciones}
+                </div>
+                ` : ''}
+                
+                ${t.hijos && t.hijos.length > 0 ? `
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--border);">
+                    <h4 style="color: var(--success); margin-bottom: 10px; font-size: 14px; display: flex; align-items: center; gap: 5px;">
+                        👶 Hijos/Dependientes (${t.hijos.length})
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px;">
+                        ${t.hijos.map(h => `
+                            <div style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 8px; border-left: 3px solid var(--success);">
+                                <div style="font-weight: 600; color: var(--text); margin-bottom: 3px;">${h.nombresApellidos || 'Sin nombre'}</div>
+                                <div style="color: var(--secondary); font-size: 12px;">
+                                    ${h.cedula ? `Cédula: ${h.cedula} | ` : ''}
+                                    ${h.sexo ? `${h.sexo}` : ''}
+                                    ${h.fechaNacimiento ? ` | Nacimiento: ${h.fechaNacimiento}` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+    
+    resultDiv.innerHTML = html;
+}
 
-        function addHijoEdit() {
-            const container = document.getElementById('hijosContainerEdit');
-            const noHijosMsg = document.getElementById('noHijosMsg');
-            if (noHijosMsg) noHijosMsg.remove();
-            
-            const div = document.createElement('div');
-            div.className = 'hijo-item';
-            div.innerHTML = `
-                <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre-edit" required>
-                <input type="text" placeholder="Cédula" class="hijo-cedula-edit">
-                <select class="hijo-sexo-edit">
-                    <option value="">Sexo</option>
-                    <option value="Masculino">M</option>
-                    <option value="Femenino">F</option>
-                </select>
-                <input type="date" class="hijo-fecha-edit">
-                <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
-            `;
-            container.appendChild(div);
-        }
+// ============================================
+// EDITAR Y ELIMINAR TRABAJADOR (actualizado con logs)
+// ============================================
 
-        async function updateTrabajador(e) {
-            e.preventDefault();
-            const form = e.target;
-            const formData = new FormData(form);
-            
-            const index = trabajadores.findIndex(t => t.id === currentEditId);
-            if (index !== -1) {
-                const hijos = [];
-                document.querySelectorAll('#hijosContainerEdit .hijo-item').forEach(item => {
-                    const nombre = item.querySelector('.hijo-nombre-edit').value.trim();
-                    if (nombre) {
-                        hijos.push({
-                            nombresApellidos: nombre,
-                            cedula: item.querySelector('.hijo-cedula-edit').value,
-                            sexo: item.querySelector('.hijo-sexo-edit').value,
-                            fechaNacimiento: item.querySelector('.hijo-fecha-edit').value
-                        });
-                    }
+function editTrabajador(id) {
+    if (currentUserRole === 'consulta') {
+        showToast('No tiene permisos para editar trabajadores', 'error');
+        return;
+    }
+    
+    const t = trabajadores.find(x => x.id === id);
+    if (!t) return;
+    
+    currentEditId = id;
+    const content = document.getElementById('editFormContent');
+    const edadActual = t.fechaNacimiento ? calcularEdad(t.fechaNacimiento) : '';
+    const tiempoServicioActual = t.fechaIngreso ? calcularTiempoServicio(t.fechaIngreso).texto : '';
+    
+    content.innerHTML = `
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Cédula (No editable)</label>
+            <input type="text" value="${t.cedula}" disabled style="background: #f1f5f9; color: var(--secondary);">
+        </div>
+        
+        <div class="form-group">
+            <label>Primer Nombre</label>
+            <input type="text" name="primerNombre" value="${t.primerNombre || ''}">
+        </div>
+        <div class="form-group">
+            <label>Segundo Nombre</label>
+            <input type="text" name="segundoNombre" value="${t.segundoNombre || ''}">
+        </div>
+        <div class="form-group">
+            <label>Primer Apellido</label>
+            <input type="text" name="primerApellido" value="${t.primerApellido || ''}">
+        </div>
+        <div class="form-group">
+            <label>Segundo Apellido</label>
+            <input type="text" name="segundoApellido" value="${t.segundoApellido || ''}">
+        </div>
+        
+        <div class="form-group">
+            <label>Sexo</label>
+            <select name="sexo">
+                <option value="">Seleccione...</option>
+                <option value="Masculino" ${t.sexo === 'Masculino' ? 'selected' : ''}>Masculino</option>
+                <option value="Femenino" ${t.sexo === 'Femenino' ? 'selected' : ''}>Femenino</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Fecha de Nacimiento</label>
+            <input type="date" name="fechaNacimiento" id="editFechaNacimiento" value="${t.fechaNacimiento || ''}" onchange="actualizarEdadEdit()">
+        </div>
+        <div class="form-group calculated-field">
+            <label></label>
+            <input type="text" id="editEdad" value="${edadActual ? edadActual + ' años' : ''}" readonly>
+        </div>
+        
+        <div class="form-group">
+            <label>Estado Civil</label>
+            <select name="estadoCivil">
+                <option value="">Seleccione...</option>
+                <option value="Soltero" ${t.estadoCivil === 'Soltero' ? 'selected' : ''}>Soltero/a</option>
+                <option value="Casado" ${t.estadoCivil === 'Casado' ? 'selected' : ''}>Casado/a</option>
+                <option value="Divorciado" ${t.estadoCivil === 'Divorciado' ? 'selected' : ''}>Divorciado/a</option>
+                <option value="Viudo" ${t.estadoCivil === 'Viudo' ? 'selected' : ''}>Viudo/a</option>
+            </select>
+        </div>
+        
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Dirección</label>
+            <input type="text" name="direccion" value="${t.direccion || ''}">
+        </div>
+        
+        <div class="form-group">
+            <label>Celular</label>
+            <input type="tel" name="celular" value="${t.celular || ''}">
+        </div>
+        <div class="form-group">
+            <label>Correo Electrónico</label>
+            <input type="email" name="correo" value="${t.correo || ''}">
+        </div>
+        
+        <div class="form-group">
+            <label>Nivel Académico</label>
+            <select name="nivelAcademico">
+                <option value="">Seleccione...</option>
+                <option value="Primaria" ${t.nivelAcademico === 'Primaria' ? 'selected' : ''}>Primaria</option>
+                <option value="Secundaria" ${t.nivelAcademico === 'Secundaria' ? 'selected' : ''}>Secundaria</option>
+                <option value="Técnico Medio" ${t.nivelAcademico === 'Técnico Medio' ? 'selected' : ''}>Técnico Medio</option>
+                <option value="Universitario" ${t.nivelAcademico === 'Universitario' ? 'selected' : ''}>Universitario</option>
+                <option value="Especialización" ${t.nivelAcademico === 'Especialización' ? 'selected' : ''}>Especialización</option>
+                <option value="Maestría" ${t.nivelAcademico === 'Maestría' ? 'selected' : ''}>Maestría</option>
+                <option value="Doctorado" ${t.nivelAcademico === 'Doctorado' ? 'selected' : ''}>Doctorado</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Profesión</label>
+            <input type="text" name="profesion" value="${t.profesion || ''}">
+        </div>
+        
+        <div class="form-group">
+            <label>Tipo de Personal</label>
+            <select name="tipoPersonal">
+                <option value="">Seleccione...</option>
+                <option value="Fijo" ${t.tipoPersonal === 'Fijo' ? 'selected' : ''}>Fijo</option>
+                <option value="Contratado" ${t.tipoPersonal === 'Contratado' ? 'selected' : ''}>Contratado</option>
+                <option value="Obrero" ${t.tipoPersonal === 'Obrero' ? 'selected' : ''}>Obrero</option>
+                <option value="Temporal" ${t.tipoPersonal === 'Temporal' ? 'selected' : ''}>Temporal</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Fecha de Ingreso</label>
+            <input type="date" name="fechaIngreso" id="editFechaIngreso" value="${t.fechaIngreso || ''}" onchange="actualizarTiempoServicioEdit()">
+        </div>
+        <div class="form-group calculated-field">
+            <label>Años de Servicio</label>
+            <input type="text" id="editTiempoServicio" value="${tiempoServicioActual}" readonly>
+        </div>
+        
+        <div class="form-group">
+            <label>Cargo</label>
+            <input type="text" name="cargo" value="${t.cargo || ''}">
+        </div>
+        <div class="form-group">
+            <label>Código</label>
+            <input type="text" name="codigo" value="${t.codigo || ''}">
+        </div>
+        <div class="form-group">
+            <label>Dependencia</label>
+            <input type="text" name="dependencia" value="${t.dependencia || ''}">
+        </div>
+        <div class="form-group">
+            <label>Nómina</label>
+            <input type="text" name="nomina" value="${t.nomina || ''}">
+        </div>
+        
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Observaciones</label>
+            <textarea name="observaciones" rows="3">${t.observaciones || ''}</textarea>
+        </div>
+        
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <div class="hijos-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="color: var(--cp-blue);">👶 Hijos/Dependientes</h3>
+                    <button type="button" class="btn-primary" onclick="addHijoEdit()" style="width: auto; padding: 8px 16px; font-size: 13px;">
+                        + Agregar Hijo
+                    </button>
+                </div>
+                <div id="hijosContainerEdit">
+                    ${t.hijos && t.hijos.length > 0 ? t.hijos.map((h, index) => `
+                        <div class="hijo-item" data-index="${index}">
+                            <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre-edit" value="${h.nombresApellidos || ''}" required>
+                            <input type="text" placeholder="Cédula" class="hijo-cedula-edit" value="${h.cedula || ''}">
+                            <select class="hijo-sexo-edit">
+                                <option value="">Sexo</option>
+                                <option value="Masculino" ${h.sexo === 'Masculino' ? 'selected' : ''}>M</option>
+                                <option value="Femenino" ${h.sexo === 'Femenino' ? 'selected' : ''}>F</option>
+                            </select>
+                            <input type="date" class="hijo-fecha-edit" value="${h.fechaNacimiento || ''}">
+                            <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+                        </div>
+                    `).join('') : '<div id="noHijosMsg" style="text-align: center; color: var(--secondary); padding: 20px;">Sin hijos registrados</div>'}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('editModal').classList.add('active');
+}
+
+function addHijoEdit() {
+    const container = document.getElementById('hijosContainerEdit');
+    const noHijosMsg = document.getElementById('noHijosMsg');
+    if (noHijosMsg) noHijosMsg.remove();
+    
+    const div = document.createElement('div');
+    div.className = 'hijo-item';
+    div.innerHTML = `
+        <input type="text" placeholder="Nombres y Apellidos" class="hijo-nombre-edit" required>
+        <input type="text" placeholder="Cédula" class="hijo-cedula-edit">
+        <select class="hijo-sexo-edit">
+            <option value="">Sexo</option>
+            <option value="Masculino">M</option>
+            <option value="Femenino">F</option>
+        </select>
+        <input type="date" class="hijo-fecha-edit">
+        <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+    `;
+    container.appendChild(div);
+}
+
+async function updateTrabajador(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const index = trabajadores.findIndex(t => t.id === currentEditId);
+    
+    if (index !== -1) {
+        const hijos = [];
+        document.querySelectorAll('#hijosContainerEdit .hijo-item').forEach(item => {
+            const nombre = item.querySelector('.hijo-nombre-edit').value.trim();
+            if (nombre) {
+                hijos.push({
+                    nombresApellidos: nombre,
+                    cedula: item.querySelector('.hijo-cedula-edit').value,
+                    sexo: item.querySelector('.hijo-sexo-edit').value,
+                    fechaNacimiento: item.querySelector('.hijo-fecha-edit').value
                 });
+            }
+        });
+        
+        const oldData = trabajadores[index];
+        trabajadores[index] = {
+            ...trabajadores[index],
+            primerNombre: formData.get('primerNombre') || '',
+            segundoNombre: formData.get('segundoNombre') || '',
+            primerApellido: formData.get('primerApellido') || '',
+            segundoApellido: formData.get('segundoApellido') || '',
+            sexo: formData.get('sexo') || '',
+            fechaNacimiento: formData.get('fechaNacimiento') || '',
+            estadoCivil: formData.get('estadoCivil') || '',
+            direccion: formData.get('direccion') || '',
+            celular: formData.get('celular') || '',
+            correo: formData.get('correo') || '',
+            nivelAcademico: formData.get('nivelAcademico') || '',
+            profesion: formData.get('profesion') || '',
+            tipoPersonal: formData.get('tipoPersonal') || '',
+            fechaIngreso: formData.get('fechaIngreso') || '',
+            cargo: formData.get('cargo') || '',
+            codigo: formData.get('codigo') || '',
+            dependencia: formData.get('dependencia') || '',
+            nomina: formData.get('nomina') || '',
+            observaciones: formData.get('observaciones') || '',
+            hijos: hijos,
+            updated_at: new Date().toISOString()
+        };
+        
+        saveLocalData();
+        
+        if (isOnline) {
+            await syncToCloud();
+        }
+        
+        await logAuditEvent('UPDATE_WORKER', { 
+            cedula: oldData.cedula, 
+            name: `${trabajadores[index].primerNombre} ${trabajadores[index].primerApellido}` 
+        });
+        
+        closeModal();
+        loadTrabajadores();
+        showToast('Trabajador actualizado correctamente');
+    }
+}
 
+async function deleteTrabajador(id) {
+    if (currentUserRole === 'consulta') {
+        showToast('No tiene permisos para eliminar trabajadores', 'error');
+        return;
+    }
+    
+    const t = trabajadores.find(x => x.id === id);
+    const nombre = t ? `${t.primerNombre || ''} ${t.primerApellido || ''}`.trim() || t.cedula : 'este trabajador';
+    
+    if (confirm(`¿Está seguro de eliminar a ${nombre}?\n\nEsta acción no se puede deshacer.`)) {
+        trabajadores = trabajadores.filter(t => t.id !== id);
+        saveLocalData();
+        
+        if (isOnline) {
+            await syncToCloud();
+        }
+        
+        await logAuditEvent('DELETE_WORKER', { cedula: t.cedula, name: nombre });
+        
+        loadTrabajadores();
+        updateStats();
+        showToast('Trabajador eliminado correctamente');
+    }
+}
+
+function openModal() {
+    document.getElementById('trabajadorForm').reset();
+    document.getElementById('hijosContainer').innerHTML = '';
+    resetCedulaValidation();
+    showSection('registrar');
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    document.querySelectorAll('.nav-link').forEach(l => {
+        if (l.textContent.includes('Nuevo Registro')) {
+            l.classList.add('active');
+        }
+    });
+}
+
+function closeModal() {
+    document.getElementById('editModal').classList.remove('active');
+    currentEditId = null;
+}
+
+document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
                 trabajadores[index] = {
                     ...trabajadores[index],
                     primerNombre: formData.get('primerNombre') || '',
