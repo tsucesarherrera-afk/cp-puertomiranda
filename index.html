@@ -76,6 +76,16 @@
             font-size: 12px; text-align: left; display: none;
         }
         .app-container { display: none; min-height: 100vh; }
+        .app-bg {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: url('https://raw.githubusercontent.com/tsucesarherrera-afk/p/main/imagenes/LOGO%20DEL%20AMBULATORIO%20PUERTO%20MIRANDA.jpg') center/cover no-repeat;
+            z-index: -1;
+        }
+        .app-bg::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(241, 245, 249, 0.92);
+        }
         .cloud-status {
             position: fixed; top: 20px; right: 20px; background: white;
             padding: 12px 20px; border-radius: 50px;
@@ -192,6 +202,7 @@
     </style>
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 
@@ -231,6 +242,7 @@
 
     <!-- Main Application -->
     <div class="app-container" id="appContainer">
+        <div class="app-bg"></div>
 
         <!-- Cloud Status -->
         <div class="cloud-status offline" id="cloudStatus">
@@ -241,10 +253,11 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-logo">
+                <img src="https://raw.githubusercontent.com/tsucesarherrera-afk/p/main/imagenes/LOGO%20DEL%20AMBULATORIO%20PUERTO%20MIRANDA.jpg" alt="Logo" style="width: 120px; height: auto; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
                 <h3>Consultorio Popular<br>Tipo II<br>Puerto Miranda</h3>
             </div>
 
-            <div class="db-info">
+            <div class="db-info" style="display: none !important;">
                <label>☁️ Base de Datos</label>
                <div class="db-status" id="dbStatus">Cargando...</div>
                 <div style="margin-top: 8px; font-size: 10px;">
@@ -310,7 +323,7 @@
                         <div style="font-weight: 600;" id="userNameDisplay">Administrador</div>
                         <div style="font-size: 12px; color: var(--secondary);" id="userLevelDisplay">Nivel: -</div>
                     </div>
-                    <button class="btn-logout" onclick="logout()">Salir</button>
+                    <button class="btn-logout" onclick="confirmarSalir()">Salir</button>
                 </div>
             </div>
 
@@ -817,7 +830,7 @@
             <div class="modal-body">
                 <h2 style="color: var(--danger); margin-bottom: 10px;">⚠️ Sesión por expirar</h2>
                 <p style="color: var(--secondary); margin-bottom: 10px;">
-                    Detectamos inactividad en el sistema por más de 5 minutos.
+                    Detectamos inactividad en el sistema por más de 1 minuto.
                 </p>
                 <p style="font-weight: 600;">La sesión se cerrará automáticamente en:</p>
                 <div class="inactivity-timer" id="inactivityTimer">30</div>
@@ -966,7 +979,7 @@
         // ============================================
         // CONTROL DE INACTIVIDAD
         // ============================================
-        const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutos
+        const INACTIVITY_TIMEOUT = 60 * 1000; // 60 segundos
         const WARNING_TIMEOUT = 30 * 1000; // 30 segundos de advertencia
         let inactivityTimer = null;
         let warningTimer = null;
@@ -1227,6 +1240,12 @@
             if (!isAdmin) {
                 document.getElementById('userAvatar').classList.add('consulta');
                 setTimeout(() => showSection('consulta'), 100);
+            }
+        }
+
+        function confirmarSalir() {
+            if (confirm('¿Está seguro de que desea salir del sistema?')) {
+                logout();
             }
         }
 
