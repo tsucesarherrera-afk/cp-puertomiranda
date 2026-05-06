@@ -2,7 +2,13 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1e3a8a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+
     <title>CP Puerto Miranda - Sistema de Gestión</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
@@ -192,7 +198,403 @@
             .main-content { margin-left: 0; }
             .stats-grid { grid-template-columns: 1fr; }
         }
-    </style>
+    
+        /* ==========================================================
+           ESTILOS RESPONSIVE PARA MÓVIL - DISEÑO MODERNO
+           ========================================================== */
+
+        /* ===== DETECCIÓN DE MÓVIL ===== */
+        @media (max-width: 768px) {
+
+            /* ===== LOGIN EN MÓVIL ===== */
+            .login-container {
+                padding: 15px;
+                background-position: center center;
+            }
+            .login-box {
+                padding: 30px 20px;
+                max-width: 100%;
+                border-radius: 16px;
+            }
+            .logo-image {
+                width: 140px !important;
+            }
+            .logo-title {
+                font-size: 18px;
+            }
+
+            /* ===== APP EN MÓVIL ===== */
+            .app-container {
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* ===== SIDEBAR COMO BOTTOM NAV ===== */
+            .sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                top: auto;
+                width: 100%;
+                height: auto;
+                max-height: 70px;
+                padding: 0;
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+                z-index: 1000;
+                border-radius: 20px 20px 0 0;
+                overflow: hidden;
+            }
+            .sidebar-logo {
+                display: none;
+            }
+            .db-info {
+                display: none !important;
+            }
+
+            /* Menú horizontal en bottom */
+            .nav-menu {
+                display: flex;
+                justify-content: space-around;
+                align-items: center;
+                padding: 0;
+                margin: 0;
+                height: 70px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            .nav-menu::-webkit-scrollbar {
+                display: none;
+            }
+            .nav-item {
+                margin: 0;
+                flex: 1;
+                min-width: 60px;
+            }
+            .nav-link {
+                flex-direction: column;
+                padding: 8px 4px;
+                gap: 4px;
+                font-size: 10px;
+                text-align: center;
+                border-radius: 12px;
+                margin: 0 2px;
+            }
+            .nav-link span {
+                font-size: 22px;
+            }
+            .nav-link.active {
+                background: var(--cp-blue);
+                color: white;
+                transform: translateY(-4px);
+                box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+            }
+
+            /* ===== MAIN CONTENT ===== */
+            .main-content {
+                margin-left: 0;
+                padding: 70px 15px 90px 15px;
+                min-height: 100vh;
+            }
+
+            /* ===== HEADER ===== */
+            .header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 999;
+                margin-bottom: 0;
+                border-radius: 0;
+                padding: 12px 15px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                background: rgba(255,255,255,0.95);
+                backdrop-filter: blur(10px);
+            }
+            .header h1 {
+                font-size: 16px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 180px;
+            }
+            .user-info {
+                gap: 8px;
+            }
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
+            }
+            .user-info > div:last-child {
+                display: none;
+            }
+            .btn-logout {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+
+            /* ===== STATS GRID ===== */
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            .stat-card {
+                padding: 15px;
+                border-radius: 12px;
+            }
+            .stat-title {
+                font-size: 10px;
+            }
+            .stat-value {
+                font-size: 24px;
+            }
+            .stat-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+            }
+
+            /* ===== CARDS ===== */
+            .card {
+                border-radius: 12px;
+                margin-bottom: 15px;
+            }
+            .card-header {
+                padding: 15px;
+            }
+            .card-title {
+                font-size: 15px;
+            }
+            .card-body {
+                padding: 15px;
+            }
+
+            /* ===== TABLES ===== */
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+            th, td {
+                padding: 10px 8px;
+                font-size: 13px;
+            }
+
+            /* ===== FORMS ===== */
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .form-group {
+                margin-bottom: 12px;
+            }
+            .form-group label {
+                font-size: 13px;
+                margin-bottom: 6px;
+            }
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                padding: 10px 12px;
+                font-size: 16px; /* Previene zoom en iOS */
+                border-radius: 10px;
+            }
+
+            /* ===== HIJOS SECTION ===== */
+            .hijos-section {
+                padding: 15px;
+            }
+            .hijo-item {
+                grid-template-columns: 1fr;
+                gap: 8px;
+                padding: 12px;
+            }
+
+            /* ===== SEARCH BOX ===== */
+            .search-box {
+                flex-direction: column;
+                gap: 8px;
+            }
+            .search-input {
+                padding: 12px;
+                font-size: 16px;
+            }
+
+            /* ===== MODALS ===== */
+            .modal-content {
+                width: 95%;
+                max-width: 100%;
+                border-radius: 16px;
+                max-height: 85vh;
+            }
+            .modal-header {
+                padding: 15px;
+            }
+            .modal-body {
+                padding: 15px;
+            }
+
+            /* ===== CLOUD STATUS ===== */
+            .cloud-status {
+                top: auto;
+                bottom: 80px;
+                right: 10px;
+                padding: 8px 14px;
+                font-size: 11px;
+                border-radius: 20px;
+            }
+
+            /* ===== BUTTONS ===== */
+            .btn-primary, .btn-success, .btn-secondary {
+                padding: 12px 18px;
+                font-size: 14px;
+                width: 100%;
+                justify-content: center;
+            }
+            .btn-warning, .btn-danger {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+
+            /* ===== USER MANAGEMENT ===== */
+            .user-management {
+                padding: 15px;
+            }
+            .super-admin-key {
+                padding: 15px;
+            }
+
+            /* ===== ENCRYPT SECTION ===== */
+            .encrypt-section {
+                padding: 15px;
+            }
+
+            /* ===== TOAST ===== */
+            .toast {
+                left: 15px;
+                right: 15px;
+                bottom: 85px;
+                text-align: center;
+                padding: 14px;
+                font-size: 14px;
+                border-radius: 12px;
+            }
+
+            /* ===== LOADING OVERLAY ===== */
+            .loading-overlay p {
+                font-size: 16px;
+            }
+
+            /* ===== CONSULTA RESULT ===== */
+            #consultaResult > div {
+                padding: 15px;
+            }
+            #consultaResult h3 {
+                font-size: 16px;
+            }
+            #consultaResult p {
+                font-size: 13px;
+            }
+
+            /* ===== CAMBIAR CLAVE ===== */
+            #cambiarClave .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* ===== Ocultar elementos admin-only en móvil si no es admin ===== */
+            .admin-only {
+                display: none;
+            }
+
+            /* ===== Animación de entrada para bottom nav ===== */
+            @keyframes slideUp {
+                from { transform: translateY(100%); }
+                to { transform: translateY(0); }
+            }
+            .sidebar {
+                animation: slideUp 0.3s ease-out;
+            }
+        }
+
+        /* ===== TABLET (768px - 1024px) ===== */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .sidebar {
+                width: 240px;
+            }
+            .main-content {
+                margin-left: 240px;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* ===== MÓVIL PEQUEÑO (< 380px) ===== */
+        @media (max-width: 380px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .header h1 {
+                font-size: 14px;
+                max-width: 140px;
+            }
+            .nav-link {
+                font-size: 9px;
+                padding: 6px 2px;
+            }
+            .nav-link span {
+                font-size: 18px;
+            }
+            .sidebar {
+                max-height: 60px;
+            }
+            .nav-menu {
+                height: 60px;
+            }
+            .main-content {
+                padding-bottom: 80px;
+            }
+            .cloud-status {
+                bottom: 70px;
+            }
+            .toast {
+                bottom: 75px;
+            }
+        }
+
+        /* ===== TOUCH-FRIENDLY IMPROVEMENTS ===== */
+        @media (pointer: coarse) {
+            .btn, .nav-link, .close-btn, button {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                min-height: 44px;
+            }
+            .search-input {
+                min-height: 44px;
+            }
+        }
+
+        /* ===== SAFE AREA PARA NOTCH ===== */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            @media (max-width: 768px) {
+                .header {
+                    padding-top: calc(12px + env(safe-area-inset-top));
+                }
+                .main-content {
+                    padding-top: calc(70px + env(safe-area-inset-top));
+                }
+            }
+        }
+</style>
+<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
@@ -988,6 +1390,67 @@
                 logout();
             }, INACTIVITY_TIMEOUT);
         }
+
+        
+        // ============================================
+        // DETECCIÓN Y ADAPTACIÓN MÓVIL
+        // ============================================
+        function detectMobile() {
+            const isMobile = window.innerWidth <= 768 || 
+                             /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            if (isMobile) {
+                document.body.classList.add('mobile-view');
+                console.log('📱 Vista móvil detectada');
+
+                // Ajustar sidebar para móvil
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar) {
+                    sidebar.style.position = 'fixed';
+                    sidebar.style.bottom = '0';
+                    sidebar.style.top = 'auto';
+                    sidebar.style.width = '100%';
+                    sidebar.style.height = 'auto';
+                    sidebar.style.maxHeight = '70px';
+                    sidebar.style.zIndex = '1000';
+                }
+
+                // Ajustar main content
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.style.marginLeft = '0';
+                    mainContent.style.paddingBottom = '90px';
+                }
+
+                // Ocultar logo en sidebar en móvil
+                const sidebarLogo = document.querySelector('.sidebar-logo');
+                if (sidebarLogo) sidebarLogo.style.display = 'none';
+
+                // Ocultar db-info en móvil
+                const dbInfo = document.querySelector('.db-info');
+                if (dbInfo) dbInfo.style.display = 'none !important';
+
+            } else {
+                document.body.classList.remove('mobile-view');
+            }
+
+            return isMobile;
+        }
+
+        // Detectar al cargar
+        document.addEventListener('DOMContentLoaded', () => {
+            detectMobile();
+        });
+
+        // Detectar cambio de orientación
+        window.addEventListener('resize', () => {
+            detectMobile();
+        });
+
+        // Detectar cambio de orientación específico
+        window.addEventListener('orientationchange', () => {
+            setTimeout(detectMobile, 300);
+        });
 
         function setupInactivityListeners() {
             const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
