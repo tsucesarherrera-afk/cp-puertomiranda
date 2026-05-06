@@ -1437,11 +1437,11 @@
         let isOnline = false;
 
         // ============================================
-        // CLAVE SUPER ADMIN - DERIVADA (NO VISIBLE)
-        // ============================================
-        // La clave se almacena como hash SHA-256 para que no sea visible en el código
-        // El hash corresponde a: "CPM2026#MASTER"
-        const SUPER_ADMIN_HASH = 'a8f5f167f44f4964e6c998dee827110c9a0c5e1e7a5b6e5f9d7c8b4a3e2f1d0c';
+// CLAVE SUPER ADMIN - CORREGIDO
+// ============================================
+// Contraseña: "CPM2026#MASTER"
+// Hash SHA-256 verificado correctamente
+const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4ab16b5a3a04';
 
         async function hashString(str) {
             const encoder = new TextEncoder();
@@ -1749,93 +1749,125 @@
         });
 
         async function loadUserProfile(user) {
-            console.log('👤 Cargando perfil para:', user.id);
+    console.log('👤 Cargando perfil para:', user.id);
 
-            try {
-                const { error: tableError } = await supabase
+    try {
+        // === CONTROL DE SESIÓN ÚNICA ===
+        // Verificar si ya hay otra sesión activa para este usuario
+        const { data: existingSession, error: sessionError } = await supabase
+            .from('user_sessions')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .single();
+
+        if (!sessionError && existingSession && existingSession.session_token !== user.access_token) {
+            // Hay otra sesión activa - cerrar esta
+            showToast('⚠️ Sesión activa en otro dispositivo. Cierre la otra sesión primero.', 'error');
+            await supabase.auth.signOut();
+            showLoading(false);
+            return;
+        }
+
+        // Registrar/actualizar sesión actual
+        const { error: upsertError } = await supabase
+            .from('user_sessions')
+            .upsert([{
+                user_id: user.id,
+                session_token: user.access_token,
+                is_active: true,
+                last_activity: new Date().toISOString(),
+                user_agent: navigator.userAgent.substring(0, 200),
+                device_type: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 'mobile' : 'desktop'
+            }], { onConflict: 'user_id' });
+
+        if (upsertError) console.warn('Error registrando sesión:', upsertError);
+
+        // === VERIFICAR TABLA PERFILES ===
+        const { error: tableError } = await supabase
+            .from('user_profiles')
+            .select('count', { count: 'exact', head: true });
+
+        if (tableError) {
+            console.error('❌ Error tabla user_profiles:', tableError);
+            throw new Error('Tabla user_profiles no existe. Ejecute el SQL primero.');
+        }
+
+        const { data: profile, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+        if (error) {
+            console.error('❌ Error cargando perfil:', error);
+
+            if (error.code === 'PGRST116') {
+                console.log('⚠️ Perfil no encontrado, creando...');
+
+                const { error: insertError } = await supabase
                     .from('user_profiles')
-                    .select('count', { count: 'exact', head: true });
+                    .insert([{
+                        id: user.id,
+                        role: 'consulta',
+                        nombre_completo: user.email,
+                        activo: true
+                    }]);
 
-                if (tableError) {
-                    console.error('❌ Error tabla user_profiles:', tableError);
-                    throw new Error('Tabla user_profiles no existe. Ejecute el SQL primero.');
+                if (insertError) {
+                    throw new Error('No se pudo crear perfil: ' + insertError.message);
                 }
 
-                const { data: profile, error } = await supabase
+                const { data: newProfile } = await supabase
                     .from('user_profiles')
                     .select('*')
                     .eq('id', user.id)
                     .single();
 
-                if (error) {
-                    console.error('❌ Error cargando perfil:', error);
-
-                    if (error.code === 'PGRST116') {
-                        console.log('⚠️ Perfil no encontrado, creando...');
-
-                        const { error: insertError } = await supabase
-                            .from('user_profiles')
-                            .insert([{
-                                id: user.id,
-                                role: 'consulta',
-                                nombre_completo: user.email,
-                                activo: true
-                            }]);
-
-                        if (insertError) {
-                            throw new Error('No se pudo crear perfil: ' + insertError.message);
-                        }
-
-                        const { data: newProfile } = await supabase
-                            .from('user_profiles')
-                            .select('*')
-                            .eq('id', user.id)
-                            .single();
-
-                        currentProfile = newProfile;
-                    } else {
-                        throw error;
-                    }
-                } else {
-                    currentProfile = profile;
-                }
-
-                currentUser = user;
-
-                console.log('✅ Perfil cargado:', currentProfile);
-
-                configureUI();
-
-                document.getElementById('appContainer').style.display = 'block';
-                document.getElementById('loginScreen').style.display = 'none';
-                document.body.style.background = 'var(--bg)';
-                document.body.classList.remove('login-active');
-
-                // Asegurar que en móvil se ajuste la UI después del login
-                setTimeout(() => {
-                    detectMobile();
-                }, 100);
-
-                updateCloudStatus('online', 'Conectado');
-                showLoading(false);
-
-                await loadTrabajadores();
-                updateStats();
-                loadRecent();
-
-                setupInactivityListeners();
-                resetInactivityTimer();
-
-                showToast(`Bienvenido, ${currentProfile?.nombre_completo || user.email}`);
-
-            } catch (error) {
-                console.error('❌ Error fatal en loadUserProfile:', error);
-                showError('Error cargando perfil: ' + error.message);
-                showDebugInfo('Error perfil: ' + error.message);
-                await supabase.auth.signOut();
-                showLoading(false);
+                currentProfile = newProfile;
+            } else {
+                throw error;
             }
+        } else {
+            currentProfile = profile;
         }
+
+        currentUser = user;
+
+        console.log('✅ Perfil cargado:', currentProfile);
+
+        configureUI();
+
+        document.getElementById('appContainer').style.display = 'block';
+        document.getElementById('loginScreen').style.display = 'none';
+        document.body.style.background = 'var(--bg)';
+        document.body.classList.remove('login-active');
+
+        // Asegurar que en móvil se ajuste la UI después del login
+        setTimeout(() => {
+            detectMobile();
+        }, 100);
+
+        updateCloudStatus('online', 'Conectado');
+        showLoading(false);
+
+        await loadTrabajadores();
+        updateStats();
+        loadRecent();
+
+        setupInactivityListeners();
+        resetInactivityTimer();
+
+        showToast(`Bienvenido, ${currentProfile?.nombre_completo || user.email}`);
+
+    } catch (error) {
+        console.error('❌ Error fatal en loadUserProfile:', error);
+        showError('Error cargando perfil: ' + error.message);
+        showDebugInfo('Error perfil: ' + error.message);
+        await supabase.auth.signOut();
+        showLoading(false);
+    }
+}
 
         function configureUI() {
             const isAdmin = currentProfile?.role === 'admin';
@@ -1873,11 +1905,23 @@
         }
 
         async function logout() {
-            clearTimeout(inactivityTimer);
-            await supabase.auth.signOut();
-            location.reload();
+    clearTimeout(inactivityTimer);
+    
+    // Marcar sesión como inactiva en la base de datos
+    if (currentUser) {
+        try {
+            await supabase
+                .from('user_sessions')
+                .update({ is_active: false })
+                .eq('user_id', currentUser.id);
+        } catch (e) {
+            console.warn('Error marcando sesión inactiva:', e);
         }
-
+    }
+    
+    await supabase.auth.signOut();
+    location.reload();
+}
         // ============================================
         // GESTIÓN DE USUARIOS (SOLO ADMIN)
         // ============================================
