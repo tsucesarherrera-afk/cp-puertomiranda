@@ -181,14 +181,7 @@
         .super-admin-key { background: rgba(220, 38, 38, 0.1); border: 2px solid var(--danger); border-radius: 10px; padding: 20px; margin-bottom: 20px; text-align: center; }
         .super-admin-key input { width: 100%; padding: 12px; border: 2px solid var(--danger); border-radius: 8px; margin-top: 10px; font-size: 16px; text-align: center; letter-spacing: 2px; }
         .hidden { display: none !important; }
-        .inactivity-modal .modal-content { max-width: 450px; text-align: center; }
-        .inactivity-timer { font-size: 48px; font-weight: 700; color: var(--danger); margin: 20px 0; }
-        .inactivity-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 25px; }
-        .inactivity-buttons button { padding: 12px 30px; border-radius: 10px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
-        .btn-continue { background: var(--success); color: white; }
-        .btn-continue:hover { background: #047857; }
-        .btn-exit { background: var(--danger); color: white; }
-        .btn-exit:hover { background: #b91c1c; }
+
         .encrypt-section { background: linear-gradient(135deg, rgba(5, 150, 105, 0.1), rgba(5, 150, 105, 0.05)); border: 2px solid rgba(5, 150, 105, 0.3); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
         .encrypt-section h4 { color: var(--success); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
         .encrypt-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(5, 150, 105, 0.1); color: var(--success); padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 15px; }
@@ -200,6 +193,7 @@
             .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
+<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
@@ -824,27 +818,31 @@
         </div>
     </div>
 
-    <!-- Modal de Inactividad -->
-    <div class="modal inactivity-modal" id="inactivityModal">
-        <div class="modal-content">
-            <div class="modal-body">
-                <h2 style="color: var(--danger); margin-bottom: 10px;">⚠️ Sesión por expirar</h2>
-                <p style="color: var(--secondary); margin-bottom: 10px;">
-                    Detectamos inactividad en el sistema por más de 1 minuto.
+
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Modal Confirmar Salida -->
+    <div class="modal" id="confirmarSalidaModal">
+        <div class="modal-content" style="max-width: 420px; text-align: center;">
+            <div class="modal-body" style="padding: 35px;">
+                <div style="font-size: 56px; margin-bottom: 15px;">🚪</div>
+                <h2 style="color: var(--danger); margin-bottom: 10px; font-size: 22px;">¿Desea salir del sistema?</h2>
+                <p style="color: var(--secondary); margin-bottom: 25px; font-size: 15px;">
+                    Se cerrará su sesión actual y deberá volver a iniciar sesión.
                 </p>
-                <p style="font-weight: 600;">La sesión se cerrará automáticamente en:</p>
-                <div class="inactivity-timer" id="inactivityTimer">30</div>
-                <p style="color: var(--secondary);">¿Desea continuar trabajando?</p>
-                <div class="inactivity-buttons">
-                    <button class="btn-continue" onclick="continueSession()">✅ Sí, continuar</button>
-                    <button class="btn-exit" onclick="logout()">❌ No, cerrar sesión</button>
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                    <button class="btn-secondary" onclick="cerrarModalSalida()" style="padding: 12px 30px; font-size: 15px;">
+                        ❌ No, continuar
+                    </button>
+                    <button class="btn-danger" onclick="logout()" style="padding: 12px 30px; font-size: 15px;">
+                        ✅ Sí, salir
+                    </button>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Toast Notification -->
-    <div class="toast" id="toast"></div>
 
     <script>
         // ============================================
@@ -979,65 +977,16 @@
         // ============================================
         // CONTROL DE INACTIVIDAD
         // ============================================
-        const INACTIVITY_TIMEOUT = 60 * 1000; // 60 segundos
-        const WARNING_TIMEOUT = 30 * 1000; // 30 segundos de advertencia
+        const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutos
         let inactivityTimer = null;
-        let warningTimer = null;
-        let countdownInterval = null;
-        let isWarningShown = false;
 
         function resetInactivityTimer() {
             if (!currentUser) return;
-
             clearTimeout(inactivityTimer);
-            clearTimeout(warningTimer);
-            clearInterval(countdownInterval);
-
-            if (isWarningShown) {
-                closeInactivityModal();
-            }
-
-            inactivityTimer = setTimeout(showInactivityWarning, INACTIVITY_TIMEOUT);
-        }
-
-        function showInactivityWarning() {
-            if (!currentUser) return;
-
-            isWarningShown = true;
-            const modal = document.getElementById('inactivityModal');
-            const timerEl = document.getElementById('inactivityTimer');
-            let secondsLeft = 30;
-
-            modal.classList.add('active');
-            timerEl.textContent = secondsLeft;
-
-            countdownInterval = setInterval(() => {
-                secondsLeft--;
-                timerEl.textContent = secondsLeft;
-
-                if (secondsLeft <= 0) {
-                    clearInterval(countdownInterval);
-                    logout();
-                }
-            }, 1000);
-
-            warningTimer = setTimeout(() => {
-                clearInterval(countdownInterval);
+            inactivityTimer = setTimeout(() => {
+                showToast('Sesión cerrada por inactividad de 5 minutos', 'error');
                 logout();
-            }, WARNING_TIMEOUT);
-        }
-
-        function closeInactivityModal() {
-            document.getElementById('inactivityModal').classList.remove('active');
-            isWarningShown = false;
-        }
-
-        function continueSession() {
-            closeInactivityModal();
-            clearTimeout(warningTimer);
-            clearInterval(countdownInterval);
-            resetInactivityTimer();
-            showToast('Sesión continuada');
+            }, INACTIVITY_TIMEOUT);
         }
 
         function setupInactivityListeners() {
@@ -1244,15 +1193,15 @@
         }
 
         function confirmarSalir() {
-            if (confirm('¿Está seguro de que desea salir del sistema?')) {
-                logout();
-            }
+            document.getElementById('confirmarSalidaModal').classList.add('active');
+        }
+
+        function cerrarModalSalida() {
+            document.getElementById('confirmarSalidaModal').classList.remove('active');
         }
 
         async function logout() {
             clearTimeout(inactivityTimer);
-            clearTimeout(warningTimer);
-            clearInterval(countdownInterval);
             await supabase.auth.signOut();
             location.reload();
         }
@@ -1678,33 +1627,145 @@
             const t = trabajadores.find(x => x.id === id);
             if (!t) return;
 
+            const hijosHtml = (t.hijos || []).map((h, idx) => `
+                <div class="hijo-item" data-index="${idx}">
+                    <input type="text" class="hijo-nombre-edit" value="${h.nombres_apellidos || ''}" placeholder="Nombres y Apellidos">
+                    <input type="text" class="hijo-cedula-edit" value="${h.cedula || ''}" placeholder="Cédula">
+                    <select class="hijo-sexo-edit">
+                        <option value="">Sexo</option>
+                        <option value="Masculino" ${h.sexo === 'Masculino' ? 'selected' : ''}>M</option>
+                        <option value="Femenino" ${h.sexo === 'Femenino' ? 'selected' : ''}>F</option>
+                    </select>
+                    <input type="date" class="hijo-fecha-edit" value="${h.fecha_nacimiento || ''}">
+                    <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+                </div>
+            `).join('');
+
             const modalBody = document.getElementById('editModalBody');
             modalBody.innerHTML = `
-                <form onsubmit="updateTrabajador(event, '${id}')">
+                <form id="editTrabajadorForm" onsubmit="updateTrabajador(event, '${id}')">
                     <div class="form-grid">
                         <div class="form-group" style="grid-column: 1 / -1;">
-                            <label>Cédula</label>
-                            <input type="text" value="${t.cedula}" disabled style="background: #f1f5f9;">
+                            <label>Cédula *</label>
+                            <input type="text" name="cedula" value="${t.cedula || ''}" required>
                         </div>
                         <div class="form-group">
                             <label>Primer Nombre</label>
                             <input type="text" name="primerNombre" value="${t.primer_nombre || ''}">
                         </div>
                         <div class="form-group">
+                            <label>Segundo Nombre</label>
+                            <input type="text" name="segundoNombre" value="${t.segundo_nombre || ''}">
+                        </div>
+                        <div class="form-group">
                             <label>Primer Apellido</label>
                             <input type="text" name="primerApellido" value="${t.primer_apellido || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Segundo Apellido</label>
+                            <input type="text" name="segundoApellido" value="${t.segundo_apellido || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Sexo</label>
+                            <select name="sexo">
+                                <option value="">Seleccione...</option>
+                                <option value="Masculino" ${t.sexo === 'Masculino' ? 'selected' : ''}>Masculino</option>
+                                <option value="Femenino" ${t.sexo === 'Femenino' ? 'selected' : ''}>Femenino</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de Nacimiento</label>
+                            <input type="date" name="fechaNacimiento" value="${t.fecha_nacimiento || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Estado Civil</label>
+                            <select name="estadoCivil">
+                                <option value="">Seleccione...</option>
+                                <option value="Soltero" ${t.estado_civil === 'Soltero' ? 'selected' : ''}>Soltero/a</option>
+                                <option value="Casado" ${t.estado_civil === 'Casado' ? 'selected' : ''}>Casado/a</option>
+                                <option value="Divorciado" ${t.estado_civil === 'Divorciado' ? 'selected' : ''}>Divorciado/a</option>
+                                <option value="Viudo" ${t.estado_civil === 'Viudo' ? 'selected' : ''}>Viudo/a</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label>Dirección</label>
+                            <input type="text" name="direccion" value="${t.direccion || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Celular</label>
+                            <input type="tel" name="celular" value="${t.celular || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Correo Electrónico</label>
+                            <input type="email" name="correo" value="${t.correo || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Nivel Académico</label>
+                            <select name="nivelAcademico">
+                                <option value="">Seleccione...</option>
+                                <option value="Primaria" ${t.nivel_academico === 'Primaria' ? 'selected' : ''}>Primaria</option>
+                                <option value="Secundaria" ${t.nivel_academico === 'Secundaria' ? 'selected' : ''}>Secundaria</option>
+                                <option value="Técnico Medio" ${t.nivel_academico === 'Técnico Medio' ? 'selected' : ''}>Técnico Medio</option>
+                                <option value="Universitario" ${t.nivel_academico === 'Universitario' ? 'selected' : ''}>Universitario</option>
+                                <option value="Especialización" ${t.nivel_academico === 'Especialización' ? 'selected' : ''}>Especialización</option>
+                                <option value="Maestría" ${t.nivel_academico === 'Maestría' ? 'selected' : ''}>Maestría</option>
+                                <option value="Doctorado" ${t.nivel_academico === 'Doctorado' ? 'selected' : ''}>Doctorado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Profesión</label>
+                            <input type="text" name="profesion" value="${t.profesion || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Personal</label>
+                            <select name="tipoPersonal">
+                                <option value="">Seleccione...</option>
+                                <option value="Fijo" ${t.tipo_personal === 'Fijo' ? 'selected' : ''}>Fijo</option>
+                                <option value="Contratado" ${t.tipo_personal === 'Contratado' ? 'selected' : ''}>Contratado</option>
+                                <option value="Obrero" ${t.tipo_personal === 'Obrero' ? 'selected' : ''}>Obrero</option>
+                                <option value="Temporal" ${t.tipo_personal === 'Temporal' ? 'selected' : ''}>Temporal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de Ingreso</label>
+                            <input type="date" name="fechaIngreso" value="${t.fecha_ingreso || ''}">
                         </div>
                         <div class="form-group">
                             <label>Cargo</label>
                             <input type="text" name="cargo" value="${t.cargo || ''}">
                         </div>
                         <div class="form-group">
+                            <label>Código</label>
+                            <input type="text" name="codigo" value="${t.codigo || ''}">
+                        </div>
+                        <div class="form-group">
                             <label>Dependencia</label>
                             <input type="text" name="dependencia" value="${t.dependencia || ''}">
                         </div>
+                        <div class="form-group">
+                            <label>Nómina</label>
+                            <input type="text" name="nomina" value="${t.nomina || ''}">
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label>Observaciones</label>
+                            <textarea name="observaciones" rows="2">${t.observaciones || ''}</textarea>
+                        </div>
                     </div>
-                    <div style="margin-top: 20px;">
-                        <button type="submit" class="btn-primary">Actualizar</button>
+
+                    <div class="hijos-section" style="margin-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="color: var(--cp-blue);">👶 Hijos/Dependientes</h3>
+                            <button type="button" class="btn-primary" onclick="addHijoEdit()" style="width: auto; padding: 8px 16px; font-size: 13px;">
+                                + Agregar Hijo
+                            </button>
+                        </div>
+                        <div id="hijosEditContainer">
+                            ${hijosHtml}
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 25px; display: flex; gap: 10px;">
+                        <button type="submit" class="btn-primary">💾 Guardar Cambios</button>
                         <button type="button" class="btn-secondary" onclick="closeModal()">Cancelar</button>
                     </div>
                 </form>
@@ -1713,25 +1774,74 @@
             document.getElementById('editModal').classList.add('active');
         }
 
+        function addHijoEdit() {
+            const container = document.getElementById('hijosEditContainer');
+            const div = document.createElement('div');
+            div.className = 'hijo-item';
+            div.innerHTML = `
+                <input type="text" class="hijo-nombre-edit" placeholder="Nombres y Apellidos">
+                <input type="text" class="hijo-cedula-edit" placeholder="Cédula">
+                <select class="hijo-sexo-edit">
+                    <option value="">Sexo</option>
+                    <option value="Masculino">M</option>
+                    <option value="Femenino">F</option>
+                </select>
+                <input type="date" class="hijo-fecha-edit">
+                <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+            `;
+            container.appendChild(div);
+        }
+
         async function updateTrabajador(e, id) {
             e.preventDefault();
             const formData = new FormData(e.target);
+
+            // Recolectar hijos del formulario de edición
+            const hijos = [];
+            document.querySelectorAll('#hijosEditContainer .hijo-item').forEach(item => {
+                const nombre = item.querySelector('.hijo-nombre-edit')?.value?.trim();
+                if (nombre) {
+                    hijos.push({
+                        nombres_apellidos: nombre,
+                        cedula: item.querySelector('.hijo-cedula-edit')?.value || '',
+                        sexo: item.querySelector('.hijo-sexo-edit')?.value || '',
+                        fecha_nacimiento: item.querySelector('.hijo-fecha-edit')?.value || ''
+                    });
+                }
+            });
 
             try {
                 const { error } = await supabase
                     .from('trabajadores')
                     .update({
-                        primer_nombre: formData.get('primerNombre'),
-                        primer_apellido: formData.get('primerApellido'),
-                        cargo: formData.get('cargo'),
-                        dependencia: formData.get('dependencia'),
+                        cedula: formData.get('cedula'),
+                        primer_nombre: formData.get('primerNombre') || '',
+                        segundo_nombre: formData.get('segundoNombre') || '',
+                        primer_apellido: formData.get('primerApellido') || '',
+                        segundo_apellido: formData.get('segundoApellido') || '',
+                        sexo: formData.get('sexo') || null,
+                        fecha_nacimiento: formData.get('fechaNacimiento') || null,
+                        estado_civil: formData.get('estadoCivil') || null,
+                        direccion: formData.get('direccion') || '',
+                        celular: formData.get('celular') || '',
+                        correo: formData.get('correo') || '',
+                        nivel_academico: formData.get('nivelAcademico') || null,
+                        profesion: formData.get('profesion') || '',
+                        tipo_personal: formData.get('tipoPersonal') || null,
+                        fecha_ingreso: formData.get('fechaIngreso') || null,
+                        cargo: formData.get('cargo') || '',
+                        codigo: formData.get('codigo') || '',
+                        dependencia: formData.get('dependencia') || '',
+                        nomina: formData.get('nomina') || '',
+                        observaciones: formData.get('observaciones') || '',
+                        hijos: hijos,
                         updated_by: currentUser.id
                     })
                     .eq('id', id);
 
                 if (error) throw error;
 
-                showToast('Trabajador actualizado');
+                showToast('✅ Trabajador actualizado correctamente');
                 closeModal();
                 await loadTrabajadores();
 
@@ -1773,10 +1883,29 @@
                     <p><strong>Edad:</strong> ${t.fecha_nacimiento ? calcularEdad(t.fecha_nacimiento) + ' años' : 'No especificada'}</p>
                     ${t.hijos && t.hijos.length > 0 ? `
                         <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
-                            <strong>👶 Hijos (${t.hijos.length}):</strong>
-                            ${t.hijos.map(h => `<div style="margin-left: 15px; font-size: 13px;">• ${h.nombres_apellidos || 'Sin nombre'}</div>`).join('')}
+                            <strong>👶 Hijos/Dependientes (${t.hijos.length}):</strong>
+                            <table style="margin-top: 8px; width: 100%; font-size: 13px;">
+                                <thead>
+                                    <tr style="background: rgba(74,144,226,0.05);">
+                                        <th style="padding: 6px; text-align: left;">Nombre</th>
+                                        <th style="padding: 6px; text-align: left;">Cédula</th>
+                                        <th style="padding: 6px; text-align: left;">Sexo</th>
+                                        <th style="padding: 6px; text-align: left;">Fecha Nac.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${t.hijos.map(h => `
+                                        <tr style="border-bottom: 1px solid var(--border);">
+                                            <td style="padding: 6px;">${h.nombres_apellidos || 'Sin nombre'}</td>
+                                            <td style="padding: 6px;">${h.cedula || '-'}</td>
+                                            <td style="padding: 6px;">${h.sexo || '-'}</td>
+                                            <td style="padding: 6px;">${h.fecha_nacimiento || '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
                         </div>
-                    ` : ''}
+                    ` : '<div style="margin-top: 10px; color: var(--secondary); font-size: 13px;">Sin hijos/dependientes registrados</div>'}
                 </div>
             `).join('');
         }
