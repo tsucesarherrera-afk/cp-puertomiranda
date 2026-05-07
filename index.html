@@ -776,6 +776,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 
@@ -1043,6 +1044,8 @@
                                         <th>Cédula</th>
                                         <th>Nombre</th>
                                         <th>Cargo</th>
+                                        <th>Edad</th>
+                                        <th>Hijos</th>
                                     </tr>
                                 </thead>
                                 <tbody id="previewExport">
@@ -2189,7 +2192,7 @@ const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4a
                     <td>${t.cargo || 'No especificado'}</td>
                     <td>${t.dependencia || 'No especificada'}</td>
                     <td>${t.fecha_nacimiento ? calcularEdad(t.fecha_nacimiento) + ' años' : '-'}</td>
-                    <td>${t.hijos ? t.hijos.length : 0}</td>
+                    <td>${t.hijos ? t.hijos.length : 0}${t.hijos && t.hijos.length > 0 ? ' <span style="font-size:11px;color:var(--secondary);">(' + t.hijos.filter(h=>h.fecha_nacimiento).map(h=>calcularEdad(h.fecha_nacimiento)+'a').join(', ') + ')</span>' : ''}</td>
                     <td>
                         ${currentProfile?.role === 'admin' ? `
                             <button class="btn-warning" onclick="editTrabajador('${t.id}')">✏️</button>
@@ -2352,7 +2355,8 @@ const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4a
                         <option value="Masculino" ${h.sexo === 'Masculino' ? 'selected' : ''}>M</option>
                         <option value="Femenino" ${h.sexo === 'Femenino' ? 'selected' : ''}>F</option>
                     </select>
-                    <input type="date" class="hijo-fecha-edit" value="${h.fecha_nacimiento || ''}">
+                    <input type="date" class="hijo-fecha-edit" value="${h.fecha_nacimiento || ''}" onchange="calcularEdadHijo(this)">
+                    <input type="text" class="hijo-edad-edit" value="${h.fecha_nacimiento ? calcularEdad(h.fecha_nacimiento) + ' años' : ''}" placeholder="Edad" readonly style="background: rgba(74,144,226,0.05); color: var(--cp-blue); font-weight: 600; text-align: center;">
                     <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
                 </div>
             `).join('');
@@ -2502,7 +2506,8 @@ const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4a
                     <option value="Masculino">M</option>
                     <option value="Femenino">F</option>
                 </select>
-                <input type="date" class="hijo-fecha-edit">
+                <input type="date" class="hijo-fecha-edit" onchange="calcularEdadHijo(this)">
+                <input type="text" class="hijo-edad-edit" placeholder="Edad" readonly style="background: rgba(74,144,226,0.05); color: var(--cp-blue); font-weight: 600; text-align: center;">
                 <button type="button" class="btn-danger" onclick="this.parentElement.remove()">🗑️</button>
             `;
             container.appendChild(div);
@@ -2607,17 +2612,21 @@ const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4a
                                         <th style="padding: 6px; text-align: left;">Cédula</th>
                                         <th style="padding: 6px; text-align: left;">Sexo</th>
                                         <th style="padding: 6px; text-align: left;">Fecha Nac.</th>
+                                        <th style="padding: 6px; text-align: left;">Edad</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${t.hijos.map(h => `
+                                    ${t.hijos.map(h => {
+                                        const edadHijo = h.fecha_nacimiento ? calcularEdad(h.fecha_nacimiento) : null;
+                                        return `
                                         <tr style="border-bottom: 1px solid var(--border);">
                                             <td style="padding: 6px;">${h.nombres_apellidos || 'Sin nombre'}</td>
                                             <td style="padding: 6px;">${h.cedula || '-'}</td>
                                             <td style="padding: 6px;">${h.sexo || '-'}</td>
                                             <td style="padding: 6px;">${h.fecha_nacimiento || '-'}</td>
+                                            <td style="padding: 6px; font-weight: 600; color: var(--cp-blue);">${edadHijo !== null ? edadHijo + ' años' : '-'}</td>
                                         </tr>
-                                    `).join('')}
+                                    `}).join('')}
                                 </tbody>
                             </table>
                         </div>
@@ -2662,35 +2671,228 @@ const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4a
                 }
 
                 const workbook = XLSX.read(data, { type: 'array' });
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+                // Buscar hoja de trabajadores (puede ser la primera o llamarse 'Trabajadores')
+                let sheetName = workbook.SheetNames[0];
+                if (workbook.SheetNames.includes('Trabajadores')) {
+                    sheetName = 'Trabajadores';
+                }
+
+                const sheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-                let imported = 0;
+                if (jsonData.length === 0) {
+                    showToast('El archivo Excel no contiene datos', 'error');
+                    showLoading(false);
+                    return;
+                }
+
+                // ============================================
+                // VERIFICAR DUPLICADOS Y ACTUALIZAR DATOS
+                // ============================================
+                let creados = 0;
+                let actualizados = 0;
+                let errores = 0;
+                let omitidos = 0;
+                const erroresDetalle = [];
+
+                // Obtener todos los trabajadores existentes para comparación
+                const { data: existingWorkers, error: fetchError } = await supabase
+                    .from('trabajadores')
+                    .select('id, cedula, primer_nombre, primer_apellido, cargo, dependencia, fecha_nacimiento, celular, correo, nivel_academico, profesion, tipo_personal, fecha_ingreso, codigo, nomina, observaciones, direccion, estado_civil, sexo, segundo_nombre, segundo_apellido, hijos');
+
+                if (fetchError) {
+                    console.warn('Error obteniendo trabajadores existentes:', fetchError);
+                }
+
+                const existingMap = {};
+                if (existingWorkers) {
+                    existingWorkers.forEach(w => {
+                        existingMap[w.cedula] = w;
+                    });
+                }
+
                 for (const row of jsonData) {
+                    const cedula = String(row.Cedula || row.cedula || row.Cédula || '').trim();
+
+                    if (!cedula) {
+                        omitidos++;
+                        continue;
+                    }
+
+                    // Parsear hijos desde el campo HijosDetalle o campos separados
+                    let hijos = [];
+
+                    // Intentar obtener hijos de la hoja separada si existe
+                    if (workbook.SheetNames.includes('Hijos_Dependientes')) {
+                        const hijosSheet = workbook.Sheets['Hijos_Dependientes'];
+                        const hijosData = XLSX.utils.sheet_to_json(hijosSheet);
+                        hijos = hijosData
+                            .filter(h => String(h.CedulaPadre || h.cedula_padre || '').trim() === cedula)
+                            .map(h => ({
+                                nombres_apellidos: h.NombreHijo || h.nombre_hijo || h.NombresApellidos || '',
+                                cedula: h.CedulaHijo || h.cedula_hijo || h.Cedula || '',
+                                sexo: h.SexoHijo || h.sexo_hijo || h.Sexo || '',
+                                fecha_nacimiento: h.FechaNacimientoHijo || h.fecha_nacimiento_hijo || h.FechaNacimiento || ''
+                            }));
+                    }
+
+                    // Si no hay hijos de la hoja separada, intentar parsear HijosDetalle
+                    if (hijos.length === 0 && row.HijosDetalle) {
+                        const hijosText = String(row.HijosDetalle);
+                        if (hijosText !== 'Sin hijos/dependientes') {
+                            const hijoLines = hijosText.split('\n');
+                            hijoLines.forEach(line => {
+                                const match = line.match(/Hijo \d+:\s*([^|]+)\s*\|\s*Cédula:\s*([^|]*)\s*\|\s*Sexo:\s*([^|]*)\s*\|\s*Fecha Nac:\s*([^|]*)\s*\|\s*Edad:\s*(.*)/);
+                                if (match) {
+                                    hijos.push({
+                                        nombres_apellidos: match[1].trim(),
+                                        cedula: match[2].trim(),
+                                        sexo: match[3].trim(),
+                                        fecha_nacimiento: match[4].trim()
+                                    });
+                                }
+                            });
+                        }
+                    }
+
+                    // Construir objeto completo del trabajador
                     const trabajador = {
-                        cedula: row.Cedula || row.cedula || '',
-                        primer_nombre: row.PrimerNombre || row.primer_nombre || '',
-                        primer_apellido: row.PrimerApellido || row.primer_apellido || '',
+                        cedula: cedula,
+                        primer_nombre: row.PrimerNombre || row.primer_nombre || row['Primer Nombre'] || '',
+                        segundo_nombre: row.SegundoNombre || row.segundo_nombre || row['Segundo Nombre'] || '',
+                        primer_apellido: row.PrimerApellido || row.primer_apellido || row['Primer Apellido'] || '',
+                        segundo_apellido: row.SegundoApellido || row.segundo_apellido || row['Segundo Apellido'] || '',
+                        sexo: row.Sexo || row.sexo || '',
+                        fecha_nacimiento: row.FechaNacimiento || row.fecha_nacimiento || row['Fecha Nacimiento'] || '',
+                        estado_civil: row.EstadoCivil || row.estado_civil || row['Estado Civil'] || '',
+                        direccion: row.Direccion || row.direccion || row.Dirección || '',
+                        celular: row.Celular || row.celular || '',
+                        correo: row.Correo || row.correo || row['Correo Electrónico'] || '',
+                        nivel_academico: row.NivelAcademico || row.nivel_academico || row['Nivel Académico'] || '',
+                        profesion: row.Profesion || row.profesion || row.Profesión || '',
+                        tipo_personal: row.TipoPersonal || row.tipo_personal || row['Tipo Personal'] || '',
+                        fecha_ingreso: row.FechaIngreso || row.fecha_ingreso || row['Fecha Ingreso'] || '',
                         cargo: row.Cargo || row.cargo || '',
+                        codigo: row.Codigo || row.codigo || row.Código || '',
                         dependencia: row.Dependencia || row.dependencia || '',
-                        created_by: currentUser.id
+                        nomina: row.Nomina || row.nomina || row.Nómina || '',
+                        observaciones: row.Observaciones || row.observaciones || '',
+                        hijos: hijos.length > 0 ? hijos : null,
+                        updated_by: currentUser.id
                     };
 
-                    if (trabajador.cedula) {
-                        const { error } = await supabase
-                            .from('trabajadores')
-                            .upsert([trabajador], { onConflict: 'cedula' });
+                    // Limpiar campos vacíos para no sobreescribir con null
+                    Object.keys(trabajador).forEach(key => {
+                        if (trabajador[key] === '' || trabajador[key] === undefined) {
+                            delete trabajador[key];
+                        }
+                    });
 
-                        if (!error) imported++;
+                    const existing = existingMap[cedula];
+
+                    try {
+                        if (existing) {
+                            // === ACTUALIZAR TRABAJADOR EXISTENTE ===
+                            // Fusionar datos: los del Excel tienen prioridad, pero conservar datos existentes si el Excel tiene vacío
+                            const mergedData = { ...existing };
+
+                            // Solo actualizar campos que vienen con valor en el Excel
+                            Object.keys(trabajador).forEach(key => {
+                                if (trabajador[key] !== undefined && trabajador[key] !== null && trabajador[key] !== '') {
+                                    mergedData[key] = trabajador[key];
+                                }
+                            });
+
+                            // Asegurar que hijos se manejen correctamente
+                            if (trabajador.hijos !== undefined) {
+                                mergedData.hijos = trabajador.hijos;
+                            }
+
+                            // Eliminar campos que no deben enviarse a Supabase
+                            delete mergedData.id;
+                            delete mergedData.fecha_registro;
+                            delete mergedData.created_at;
+
+                            const { error: updateError } = await supabase
+                                .from('trabajadores')
+                                .update(mergedData)
+                                .eq('cedula', cedula);
+
+                            if (updateError) {
+                                errores++;
+                                erroresDetalle.push(`Cédula ${cedula}: ${updateError.message}`);
+                                console.error('Error actualizando:', updateError);
+                            } else {
+                                actualizados++;
+                            }
+                        } else {
+                            // === CREAR NUEVO TRABAJADOR ===
+                            trabajador.created_by = currentUser.id;
+
+                            const { error: insertError } = await supabase
+                                .from('trabajadores')
+                                .insert([trabajador]);
+
+                            if (insertError) {
+                                errores++;
+                                erroresDetalle.push(`Cédula ${cedula}: ${insertError.message}`);
+                                console.error('Error insertando:', insertError);
+                            } else {
+                                creados++;
+                            }
+                        }
+                    } catch (opError) {
+                        errores++;
+                        erroresDetalle.push(`Cédula ${cedula}: ${opError.message}`);
+                        console.error('Error operación:', opError);
                     }
                 }
 
-                showToast(`${imported} registros importados/actualizados`);
-                await loadTrabajadores();
-                updateStats();
+                // Mostrar resumen detallado
+                const resumenDiv = document.getElementById('importStatus');
+                resumenDiv.innerHTML = `
+                    <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 12px; padding: 20px; margin-top: 15px;">
+                        <h4 style="color: #15803d; margin-bottom: 15px;">📊 Resumen de Importación</h4>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px;">
+                            <div style="background: white; padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 24px; font-weight: 700; color: #22c55e;">${creados}</div>
+                                <div style="font-size: 12px; color: #666;">Nuevos creados</div>
+                            </div>
+                            <div style="background: white; padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 24px; font-weight: 700; color: #3b82f6;">${actualizados}</div>
+                                <div style="font-size: 12px; color: #666;">Actualizados</div>
+                            </div>
+                            <div style="background: white; padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">${omitidos}</div>
+                                <div style="font-size: 12px; color: #666;">Omitidos (sin cédula)</div>
+                            </div>
+                            <div style="background: white; padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 24px; font-weight: 700; color: #dc2626;">${errores}</div>
+                                <div style="font-size: 12px; color: #666;">Errores</div>
+                            </div>
+                        </div>
+                        ${errores > 0 && erroresDetalle.length > 0 ? `
+                            <details style="margin-top: 10px;">
+                                <summary style="cursor: pointer; color: #dc2626; font-weight: 600;">Ver detalles de errores (${erroresDetalle.length})</summary>
+                                <div style="margin-top: 10px; max-height: 150px; overflow-y: auto; background: #fef2f2; padding: 10px; border-radius: 6px; font-size: 12px;">
+                                    ${erroresDetalle.map(e => `<div style="margin-bottom: 4px;">• ${e}</div>`).join('')}
+                                </div>
+                            </details>
+                        ` : ''}
+                    </div>
+                `;
+
+                showToast(`${creados} creados, ${actualizados} actualizados, ${errores} errores`);
+
+                if (creados > 0 || actualizados > 0) {
+                    await loadTrabajadores();
+                    updateStats();
+                }
 
             } catch (error) {
                 showToast('Error importando: ' + error.message, 'error');
+                console.error('Error general importación:', error);
             }
 
             showLoading(false);
@@ -2709,20 +2911,107 @@ const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4a
                 return;
             }
 
-            const data = trabajadores.map(t => ({
-                Cedula: t.cedula,
-                NombreCompleto: `${t.primer_nombre || ''} ${t.segundo_nombre || ''} ${t.primer_apellido || ''} ${t.segundo_apellido || ''}`,
-                Cargo: t.cargo,
-                Dependencia: t.dependencia,
-                Edad: t.fecha_nacimiento ? calcularEdad(t.fecha_nacimiento) : '',
-                Sexo: t.sexo,
-                Celular: t.celular,
-                Correo: t.correo
-            }));
+            // ============================================
+            // EXPORTAR TODOS LOS CAMPOS DE LA BASE DE DATOS
+            // ============================================
+            const data = trabajadores.map(t => {
+                // Calcular edad del trabajador
+                const edadTrabajador = t.fecha_nacimiento ? calcularEdad(t.fecha_nacimiento) : '';
 
-            const ws = XLSX.utils.json_to_sheet(data);
+                // Formatear hijos con edad calculada
+                let hijosInfo = '';
+                if (t.hijos && t.hijos.length > 0) {
+                    hijosInfo = t.hijos.map((h, idx) => {
+                        const edadHijo = h.fecha_nacimiento ? calcularEdad(h.fecha_nacimiento) : '';
+                        return `Hijo ${idx + 1}: ${h.nombres_apellidos || 'Sin nombre'} | Cédula: ${h.cedula || '-'} | Sexo: ${h.sexo || '-'} | Fecha Nac: ${h.fecha_nacimiento || '-'} | Edad: ${edadHijo ? edadHijo + ' años' : '-'}`;
+                    }).join('\n');
+                } else {
+                    hijosInfo = 'Sin hijos/dependientes';
+                }
+
+                return {
+                    // === DATOS PERSONALES ===
+                    Cedula: t.cedula || '',
+                    PrimerNombre: t.primer_nombre || '',
+                    SegundoNombre: t.segundo_nombre || '',
+                    PrimerApellido: t.primer_apellido || '',
+                    SegundoApellido: t.segundo_apellido || '',
+                    NombreCompleto: `${t.primer_nombre || ''} ${t.segundo_nombre || ''} ${t.primer_apellido || ''} ${t.segundo_apellido || ''}`.trim(),
+                    Sexo: t.sexo || '',
+                    FechaNacimiento: t.fecha_nacimiento || '',
+                    Edad: edadTrabajador ? edadTrabajador + ' años' : '',
+                    EstadoCivil: t.estado_civil || '',
+                    Direccion: t.direccion || '',
+                    Celular: t.celular || '',
+                    Correo: t.correo || '',
+
+                    // === DATOS ACADÉMICOS Y PROFESIONALES ===
+                    NivelAcademico: t.nivel_academico || '',
+                    Profesion: t.profesion || '',
+
+                    // === DATOS LABORALES ===
+                    TipoPersonal: t.tipo_personal || '',
+                    FechaIngreso: t.fecha_ingreso || '',
+                    TiempoServicio: t.fecha_ingreso ? calcularTiempoServicioTexto(t.fecha_ingreso) : '',
+                    Cargo: t.cargo || '',
+                    Codigo: t.codigo || '',
+                    Dependencia: t.dependencia || '',
+                    Nomina: t.nomina || '',
+
+                    // === HIJOS/DEPENDIENTES ===
+                    TotalHijos: t.hijos ? t.hijos.length : 0,
+                    HijosDetalle: hijosInfo,
+
+                    // === OBSERVACIONES ===
+                    Observaciones: t.observaciones || '',
+
+                    // === METADATOS ===
+                    FechaRegistro: t.fecha_registro || '',
+                    FechaActualizacion: t.updated_at || ''
+                };
+            });
+
+            // Crear hoja de trabajadores
+            const wsTrabajadores = XLSX.utils.json_to_sheet(data);
+
+            // Ajustar anchos de columna automáticamente
+            const colWidths = {};
+            data.forEach(row => {
+                Object.keys(row).forEach(key => {
+                    const val = String(row[key] || '');
+                    colWidths[key] = Math.max(colWidths[key] || 10, Math.min(val.length, 50));
+                });
+            });
+            wsTrabajadores['!cols'] = Object.keys(colWidths).map(k => ({ wch: colWidths[k] + 2 }));
+
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Trabajadores');
+            XLSX.utils.book_append_sheet(wb, wsTrabajadores, 'Trabajadores');
+
+            // Crear hoja separada solo de hijos con edades
+            const hijosData = [];
+            trabajadores.forEach(t => {
+                if (t.hijos && t.hijos.length > 0) {
+                    t.hijos.forEach(h => {
+                        hijosData.push({
+                            CedulaPadre: t.cedula || '',
+                            NombrePadre: `${t.primer_nombre || ''} ${t.primer_apellido || ''}`.trim(),
+                            NombreHijo: h.nombres_apellidos || '',
+                            CedulaHijo: h.cedula || '',
+                            SexoHijo: h.sexo || '',
+                            FechaNacimientoHijo: h.fecha_nacimiento || '',
+                            EdadHijo: h.fecha_nacimiento ? calcularEdad(h.fecha_nacimiento) + ' años' : ''
+                        });
+                    });
+                }
+            });
+
+            if (hijosData.length > 0) {
+                const wsHijos = XLSX.utils.json_to_sheet(hijosData);
+                wsHijos['!cols'] = [
+                    { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 12 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsHijos, 'Hijos_Dependientes');
+            }
 
             const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             let finalBuffer = excelBuffer;
@@ -2734,7 +3023,6 @@ const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4a
                     const base64Data = btoa(String.fromCharCode(...new Uint8Array(excelBuffer)));
                     const encrypted = await encryptData(base64Data, password);
 
-                    // Crear archivo de texto con datos encriptados
                     const encryptedBlob = new Blob([encrypted], { type: 'text/plain' });
                     const url = URL.createObjectURL(encryptedBlob);
                     const a = document.createElement('a');
@@ -2759,13 +3047,13 @@ const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4a
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `CP_Puerto_Miranda_${new Date().toISOString().split('T')[0]}.xlsx`;
+            a.download = `CP_Puerto_Miranda_COMPLETO_${new Date().toISOString().split('T')[0]}.xlsx`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            showToast('Excel descargado');
+            showToast(`✅ Excel exportado: ${trabajadores.length} trabajadores, ${hijosData.length} hijos`);
         }
 
         // ============================================
@@ -2806,6 +3094,38 @@ const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4a
             }
 
             input.value = `${años} años ${meses} meses`;
+        }
+
+        // ============================================
+        // CALCULAR EDAD AUTOMÁTICA DE HIJOS
+        // ============================================
+        function calcularEdadHijo(inputFecha) {
+            const hijoItem = inputFecha.closest('.hijo-item');
+            if (!hijoItem) return;
+
+            const fechaNac = inputFecha.value;
+            let edadInput;
+
+            // Buscar el campo de edad correspondiente (puede ser en registro o edición)
+            if (hijoItem.querySelector('.hijo-edad')) {
+                edadInput = hijoItem.querySelector('.hijo-edad');
+            } else if (hijoItem.querySelector('.hijo-edad-edit')) {
+                edadInput = hijoItem.querySelector('.hijo-edad-edit');
+            }
+
+            if (!edadInput) return;
+
+            if (!fechaNac) {
+                edadInput.value = '';
+                return;
+            }
+
+            const edad = calcularEdad(fechaNac);
+            if (edad !== null) {
+                edadInput.value = edad + ' años';
+            } else {
+                edadInput.value = '';
+            }
         }
 
         function addHijo() {
@@ -3021,13 +3341,18 @@ const SUPER_ADMIN_HASH = '0eff3f12c33e66570f429b7735233e8396c6fbf46305139fffab4a
             const preview = document.getElementById('previewExport');
             const data = trabajadores.slice(0, 5);
 
-            preview.innerHTML = data.length ? data.map(t => `
+            preview.innerHTML = data.length ? data.map(t => {
+                const edad = t.fecha_nacimiento ? calcularEdad(t.fecha_nacimiento) : '-';
+                const totalHijos = t.hijos ? t.hijos.length : 0;
+                return `
                 <tr>
                     <td>${t.cedula}</td>
                     <td>${t.primer_nombre || ''} ${t.primer_apellido || ''}</td>
                     <td>${t.cargo || '-'}</td>
+                    <td>${edad !== '-' ? edad + ' años' : '-'}</td>
+                    <td>${totalHijos}</td>
                 </tr>
-            `).join('') : '<tr><td colspan="3" style="text-align: center;">Sin datos</td></tr>';
+            `}).join('') : '<tr><td colspan="5" style="text-align: center;">Sin datos</td></tr>';
         }
 
         function showLoading(show, text = 'Cargando...') {
